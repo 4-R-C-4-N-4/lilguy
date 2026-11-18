@@ -1,217 +1,418 @@
-# Proposal: ship the smallest useful lilguy
+# lilguy's model: a small model whose home turf is lilguy
 
-## Decision to make
+## Goal
 
-Can a model at or below 1.5B parameters reliably turn an ordinary request and workspace observations into safe tool calls? Choose the smallest model that meets the [scope](../SCOPE.md) targets: at least 70% held-out task completion, under 10% of the latency and cost of a 30B+ reference, and no destructive effects reaching the workspace outside policy or human approval. 4B is a ceiling, not the goal. Report actual deployed bytes, peak memory and end-to-end latency: a small adapter attached to a large model is not a small product.
+Train a small language model (target ≤ 1.5B parameters, cap 4B) whose home turf
+is lilguy. Given an everyday shell request in a workspace, it works through
+lilguy's interface, and only that interface:
 
-## Why start with diagnosis
+- it uses typed tools and sandboxed shell commands, and reads what comes back;
+- it asks when the request is ambiguous;
+- it stops honestly, and never claims success after a failure.
 
-In the first retry-setting smoke test, three stock models failed unaided; only the 30B coder succeeded with an inventory-first hint. Neither smaller model reached the edit. This is one development fixture, not evidence of a minimum model size. The existing `lilguy.mcp_server` exposes only find, read and literal edit through `GuardedSession`. Keep that boundary fixed while testing the model. Approval remains external.
+It completes **≥ 70 %** of a held-out suite of everyday shell tasks, with **zero**
+destructive effects reaching the real workspace without policy or human
+approval. It runs locally at **< 10 %** of the latency of a 30B reference, and
+ships as `lilguy do "<request>"` running on llama.cpp.
 
-## Work sequence and promotion gates
+These are the targets in [SCOPE.md](../SCOPE.md), restated for this goal.
 
-1. **Separate discovery from editing.** Run fresh copies of a development fixture under three conditions: task alone, task plus an actual listing, task plus the target path and an actual read. Keep schema, prompt, turn budget, decoding and grader otherwise fixed. Start with installed 0.8B; vary filenames, layouts and wording before drawing conclusions. Include ambiguous fixtures with an explicit ask action: a correct clarification and no edit is success there. Track invalid/repeated actions, exact staged bytes and unexpected diff entries; verify original files independently. If only the open-file condition works, improve discovery before spending on weights.
-2. **Establish an untuned baseline.** Complete the scripted P5 regressions; build P6 verified data and the P7 task suite (at least 150 tasks plus a separate held-out set). Split by task template and near-duplicate group before generating variants. Screen several families, e.g. SmolLM2-360M-Instruct, Qwen3.5-0.8B, and a 1–1.5B coding model. Use a 2–4B comparison if needed; keep 30B reference-only. Choose a family after the screen, not from the smoke test. Pin weights, template, grammar and tool versions. Report pass@1 with uncertainty, wrong edits, unnecessary asks, task time and cost on comparable hardware; separate cold load from warm inference.
-3. **Run supervised fine-tuning locally first.** Use synthetic fixtures with oracle-verified next actions and licence-cleared instruction/action pairs, including recovery, ask and stop. Public command counts are coverage evidence, not training labels. Never train on personal history. On the 24 GiB 3090, start with a small pretrained checkpoint and ordinary LoRA. Measure peak VRAM, tokens/s, storage and projected duration on a short pilot. Use QLoRA if memory limits the experiment; compare full-weight tuning of a sub-billion model if LoRA plateaus. Compare trained and stock versions with identical inputs and budgets. Promote only gains that survive unfamiliar tasks without a safety regression; recheck after GGUF export and quantization.
-4. **Escalate only against a measured gap.** If examples are the bottleneck, compare verified teacher-generated demonstrations against an equal-size oracle-only set; no teacher at inference. Continued pretraining is worth a separate trial only if a recurring domain-language gap remains. From-scratch training is a separate research branch: a tiny selector over observed actions/paths must beat a pretrained small model on unfamiliar instructions, not memorize generated templates. Neither is required for round one.
+### What "everyday shell work" means here
 
-## Resource and data limits
+Requests at the level of the tldr pages, not shell wizardry, for example:
 
-No cloud reservation or large download by default. With about 32 GB free at planning time, preflight disk for weights, optimizer state, checkpoints and export; use one candidate at a time. Request a specific cloud spending cap only after local throughput and a measured limitation give us a priceable run. Keep evaluation on disposable workspaces, network off for tools; only the trusted driver contacts the local inference service. Do not relax sandbox or approval rules to improve a score. Use development fixtures for iteration and reserve final held-out tasks for frozen comparisons.
+- find the `.log` files over 10 MB and delete the ones older than a week;
+- rename these photos by date;
+- count the lines of Python in this repo;
+- replace `foo` with `bar` in every config;
+- make the scripts in `bin/` executable;
+- write a small script that backs up this folder;
+- "which file here is the biggest?" (read-only, answered in `done`).
 
-## Milestone 1 development evaluation
+### lilguy and the model are two different things
 
-Run from the repository root with the existing project environment. The driver is
-a repository development module. It uses built-in synthetic fixtures for queue
-batch size, cache lifetime, and an ambiguous retry-limit change with staging and
-production candidates.
+- **lilguy** is the system around the model. It provides:
+  - the sandbox, where every command runs on a copy-on-write layer over the
+    workspace;
+  - the tools, each running inside that sandbox;
+  - policy and human approval;
+  - commit and undo;
+  - the agent loop that shows the model the request and tool output, and runs
+    what the model chooses.
+
+  Safety lives here, not in the model's weights. Any model can drive it.
+- **The model** is the small LLM that picks the next action. It never touches a
+  shell directly. It writes one action per turn, and lilguy executes it in the
+  sandbox.
+
+### What "trained on the lilguy interface" means
+
+1. **One interface, one definition.** The system prompt, tool list, action
+   syntax, observation format and outcome tags are defined in one module and
+   carry a version number. The agent loop, MCP server, data generator,
+   evaluator, trainer and model server all import it. Every training row,
+   evaluation result and model card records the interface version. Changing
+   the interface means regenerating the data.
+2. **Training data is recorded through lilguy.** Every training example is a
+   trajectory produced by, or replayed through, the real agent loop and
+   sandbox. An example is kept only if its effects check out. The model trains
+   on exactly what it will see at runtime, including lilguy's own outcomes:
+   - `pending` (needs human approval);
+   - `rejected` (by policy);
+   - `TIMEOUT` and `STALLED`;
+   - tool errors.
+3. **It learns lilguy's habits, not just bash.**
+   - Look before acting.
+   - Prefer a typed tool where one exists, and use a shell command otherwise.
+   - Read the observation before claiming success.
+   - Investigate a failed step instead of declaring `done`.
+   - On `pending`, stop and summarise for the human.
+   - On `rejected`, do not retry the same thing.
+   - Ask when the target is ambiguous.
+
+## What exists today
+
+| Area | Path | State |
+|---|---|---|
+| Sandbox: overlays, Landlock, cgroups, liveness, network setting | `lilguy/sandbox/` | Done (P1/P2). Live bypass corpus passes. |
+| Policy, approval, commit, undo, audit | `lilguy/policy/` | Done (P2). Human-only approval. |
+| MCP tool server | `lilguy/mcp_server.py` | Tracer only: `fs.find`, `fs.read`, `fs.edit`. No shell command tool yet. |
+| Tool definitions | `toolset.yaml` | Draft chosen by measured coverage, not frozen. `pipe` and text tools defined but not served. |
+| v0.1 agent loop | `lilguy/agent.py`, `actions.py`, `digest.py`, `memory.py` | JSON `run`/`ask`/`done` against the old unsandboxed path; needs porting to lilguy-sh. |
+| Public command data | `lilguy/data/` | 72,244 unique commands cached; licences unverified, so none of it is training data yet. |
+| Pilot tooling | `dev/small_model_eval.py`, `dev/small_model_corpus.py`, `dev/sft_pilot.py`, `dev/sft_server.py` | Built for a config-edit tracer; reusable (Appendix A). |
+| Pilot model | Qwen3.5-0.8B + 41 MB LoRA | 7/7 on the sandboxed tracer tasks with files open. 0/6 when it must find files itself; it then says `done` after failed edits. |
+
+Full gate today: 544 passed, 3 skipped. History: `PROGRESS.md`.
+
+## What the pilot taught (rules for the real corpus)
+
+- **Train in the exact runtime protocol.** Pilot 4 kept repeating a correct
+  edit because training never showed the evaluator's observation turn.
+- **Build contrast pairs so shortcuts fail.**
+  - Pilot 3 learned "edit if the request names the file read last". Fixed by
+    reading files in both orders.
+  - Pilot 4 learned "ask unless a path is named". Fixed by same-wording pairs
+    where only the workspace decides.
+- **Failures must be in the training data.** Pilot 5 said `done` after every
+  failed edit, because every edit in training succeeded.
+- **The decision is one token among many.** Under a plain mean loss it stays
+  underfit while the loss reaches about 0. Weight the decision tokens, and set
+  training length by fitting the training split, never by validation.
+- **Score episodes in the sandbox.** Single next-action accuracy (96/96)
+  overstated what a model does in a real episode.
+
+## Step-by-step plan
+
+Each step names its deliverables and a gate; the gate says when the step is
+done. Steps 1–3 build the interface, 4–5 measure, 6–7 train, 8 ships. Earlier
+gates must pass before later steps start, except where a step says it can run
+in parallel.
+
+### Step 1: Freeze interface v1
+
+Deliverables:
+- `lilguy/agent/protocol.py`, the single definition:
+  - `INTERFACE_VERSION`;
+  - a system prompt built from the served tools;
+  - action rendering and parsing;
+  - observation rendering;
+  - outcome tags.
+- A GBNF grammar generated from the same definition, for constrained decoding
+  in llama.cpp.
+
+The action syntax is a line-oriented envelope (SCOPE C3), so shell text needs
+no JSON escaping. Default proposal:
+
+```
+run
+find . -name '*.log' -size +10M -mtime +7 -delete
+```
+```
+tool fs.read
+path: notes/todo.md
+```
+```
+ask
+Which config, staging/app.ini or production/app.ini?
+```
+```
+done
+Deleted 3 logs over 10 MB older than a week; see the diff.
+```
+
+Observations: `exit=N`, the digested stdout and stderr (already truncated and
+path-rewritten by `digest.py`), a `changes:` summary of the step diff,
+`policy: ok | pending <rule> | rejected <rule>`, and tags such as `TIMEOUT`.
+
+Gate:
+- Round-trip and adversarial parse tests pass: quotes, backslashes, heredocs,
+  multi-line scripts, empty or garbled actions, and an action that tries to
+  smuggle a second action.
+- The pilot's evaluator and corpus code switch to this module, and their
+  tests pass.
+
+### Step 2: Give the model the shell (P3)
+
+Deliverables:
+- `run` served by lilguy-sh: one shell command or short script per step,
+  executed through `GuardedSession` exactly like `lilguy sandbox-run`
+  (overlay, policy, liveness, per-session network setting).
+- The reviewed typed tools served from `toolset.yaml` (`fs.list`, `fs.grep`,
+  text tools, `pipe`), not just the tracer three.
+- `pending` and `rejected` outcomes returned to the model as observations.
+
+Gate (SCOPE P3 acceptance):
+- each typed tool has a schema, validation tests and an equivalence test
+  against its bash counterpart;
+- typed and `run` changes appear in one session diff;
+- bypass-corpus commands sent through `run` end `pending` or `rejected`, never
+  silently committed.
+
+### Step 3: The agent loop on lilguy (P5)
+
+Deliverables:
+- `lilguy/agent/loop.py`, an MCP client using `protocol.py`, with:
+  - an action budget;
+  - stop rules (`done`, `ask`, `pending`, budget);
+  - a **trajectory recorder** that saves every episode in the protocol format.
+    That recorder is the training-data format.
+- A prototype `lilguy do "<request>"` that takes any llama.cpp or
+  OpenAI-compatible endpoint, ends by showing the diff, and hands over to the
+  existing `lilguy approve` / `commit` flow.
+
+Gate (SCOPE P5 acceptance):
+- v0.1's 12 tasks pass with the scripted oracle through lilguy-sh;
+- the grammar is regenerated automatically when tool schemas change;
+- a recorded trajectory replays to identical effects.
+
+### Step 4: The task suite and a frozen held-out set (P7)
+
+This step can run in parallel with steps 2–3 once step 1's format is fixed.
+
+Deliverables: `lilguy/eval/` with tasks. A task is:
+- a request;
+- a fixture-workspace builder;
+- a grader on effects: exact diff, bytes and modes, untouched originals, plus
+  the required `ask`, or the answer text for read-only questions.
+
+Categories follow the target examples:
+- find, inspect and count;
+- edit and replace;
+- rename, move and organise;
+- conditional delete (approval path);
+- permissions;
+- archives;
+- small scripts;
+- ambiguous requests that call for `ask`;
+- recovery from a failed step;
+- read-only questions.
+
+Size: ≥ 150 dev tasks and ≥ 100 held-out tasks.
+
+Held-out rules:
+- written from separate templates;
+- hashed and frozen **before** any training data is generated;
+- never used for tuning or failure analysis.
+
+Gate:
+- scripted oracle 100 %, null agent 0 %;
+- leakage check tooling in place (template and near-duplicate).
+
+### Step 5: Baselines through the real interface
+
+Deliverables: untuned candidates run through lilguy on the dev suite (SCOPE
+D11 family screen):
+- Qwen3.5-0.8B, Qwen3.5-2B, one ~1.5B coder and SmolLM2-1.7B;
+- the 30B reference.
+
+The report gives pass rate with 95 % CI per category, unsafe attempts
+(blocked by policy), invalid actions, tokens and latency on the same hardware.
+
+Gate: Ivy picks the model family from the report.
+
+### Step 6: Training data in the lilguy interface (P6)
+
+Deliverables:
+1. **Licence audit** of the public sources (`docs/DATA-SOURCES.md`). Only
+   cleared sources go forward.
+2. **Fixture builders** for the most common utilities, ranked by the coverage
+   curve. A builder creates a small workspace that a request's command
+   actually acts on, for example `.log` files of chosen sizes and ages for a
+   `find -size -mtime` request.
+3. **Gold execution.** Run the reference command in the sandbox. Keep the
+   example only if its effects are deterministic and non-trivial.
+4. **Trajectory rendering in the interface:**
+   - look (`ls`, `find`, or `read` as needed);
+   - act (a typed tool when the translator covers the command, otherwise
+     `run` with it);
+   - check;
+   - `done` with a factual summary.
+5. **Replay through the real agent loop and sandbox.** Keep the trajectory
+   only if its effects match the gold run.
+6. **Behaviour families** carried over from the pilot, now in the interface:
+   - ask vs. content-determined target;
+   - read order in both directions;
+   - a failed step followed by investigation, never `done`;
+   - `pending` and `rejected` handling;
+   - an honest `done` summary.
+7. **Dedup and leakage checks** against the held-out set, and a data card with
+   counts per pipeline stage.
+
+Target for round one: a few thousand verified trajectories. Personal shell
+history is never used (D9).
+
+Gate:
+- ≥ 95 % of a 200-example manual audit is truly correct;
+- zero exact or near-duplicate leakage into held-out;
+- the yield per stage is reported.
+
+### Step 7: Train and iterate (P8)
+
+Deliverables: LoRA SFT on the chosen base with the pilot recipe:
+- loss on the final action only;
+- decision-token weighting;
+- training length set by training fit.
+
+Then the cycle, one round at a time:
+1. train;
+2. run the dev suite in the sandbox;
+3. classify failures;
+4. add targeted data families;
+5. retrain.
+
+The held-out set is run **once** per candidate, at the end.
+
+Gate:
+- beats its own untuned baseline in every category, with no new unsafe
+  behaviour;
+- then the held-out run is reported against the SCOPE targets.
+
+### Step 8: Daily driver
+
+Deliverables:
+- Merge the adapter, convert to GGUF and quantise with llama.cpp. Re-run dev
+  and held-out on the **quantised** file, which is what ships.
+- `lilguy do` uses llama-server by default.
+- Latency and cost against the 30B reference on the same machine.
+- A model card: base, data sources and licences, interface version, scores
+  and known limits.
+
+Gate: the held-out result meets the SCOPE targets, or the report says honestly
+which target was missed and by how much.
+
+## Decided, deferred, open
+
+**Decided** (with reason):
+- **Small model.** ≤ 1.5B target, 4B cap, so it runs on ordinary hardware;
+  30B stays reference-only.
+- **Trained only on the lilguy interface** (Ivy, 2026-11-18). Home turf beats
+  generic bash knowledge for reliability.
+- **Safety lives in lilguy.** The model never approves, commits or sees a raw
+  shell (D1, decision 004).
+- **The held-out set is frozen before data generation and never tuned on**,
+  so the score means something.
+- **No personal history in training** (D9).
+- **Reuse the pilot tooling** rather than rebuilding it.
+
+**Deferred** (not this round):
+- reinforcement learning and distilling trajectories from large models
+  (SCOPE round 2);
+- tasks that need network, such as package installs (the network setting
+  exists);
+- long-running or interactive programs;
+- multiple agents;
+- macOS and Windows;
+- training from scratch.
+
+**Open** (each with the default that gets built if unanswered):
+1. **Action syntax.** Default: the line envelope in step 1.
+2. **Typed tools versus `run` only.** Default: train both. The step 5 and 7
+   ablations decide whether typed tools stay in the training mix.
+3. **Teacher-generated trajectories** from the 30B or a cloud model. Default:
+   no. Use them only if data yield is the bottleneck, and only after the same
+   sandbox verification.
+4. **Base model.** Default: Qwen3.5-0.8B until the step 5 screen says
+   otherwise.
+
+## Resource limits
+
+- Local first, on the 3090. No cloud spend without a priced run and an agreed
+  cap.
+- About 30 GB free disk: one candidate checkpoint at a time; preflight
+  weights, optimiser state, checkpoints and export.
+- Evaluation always uses disposable workspaces. Tool network stays off unless
+  a task category explicitly needs it, and those are deferred.
+
+---
+
+## Appendix A: pilot tools (config-edit tracer, still useful)
+
+These were built for the tracer (find/read/edit on two-file config fixtures).
+Steps 1–3 move them onto the new protocol. Results: `PROGRESS.md`.
+
+### Development evaluation driver
 
 ```bash
 .venv/bin/python -m pytest -q tests/eval/test_small_model_eval.py
 run_dir=$(mktemp -d)
-.venv/bin/python -m dev.small_model_eval --backend oracle --seed 42 \
-  --out "$run_dir/oracle.jsonl"
-```
-
-The offline oracle uses the real tracer schemas and an in-memory tool stand-in.
-The default matrix has 18 independent episodes. Each fixture runs with the task
-alone, with a listing, and with open-file observations, paired with both a named
-`fs.find` example and a neutral JSON action template. For the ambiguous fixture,
-open-file context shows both candidates. On the guarded backends, all supplied
-listings and reads are actual MCP observations. Context calls happen before the
-model's action budget starts.
-
-### Parent host validation
-
-Use a host session with the required sandbox capabilities and working user
-systemd cgroup delegation. Run the probe and guarded oracle first. The guarded
-oracle exercises real stdio transport, tool execution, staging, and review
-without an inference service.
-
-```bash
+.venv/bin/python -m dev.small_model_eval --backend oracle --seed 42 --out "$run_dir/oracle.jsonl"
 .venv/bin/python -m lilguy.probe
-run_dir=$(mktemp -d)
-.venv/bin/python -m dev.small_model_eval --backend guarded-oracle --seed 42 \
-  --out "$run_dir/guarded-oracle.jsonl"
+.venv/bin/python -m dev.small_model_eval --backend guarded-oracle --seed 42 --out "$run_dir/guarded-oracle.jsonl"
+.venv/bin/python -m dev.small_model_eval --backend ollama --model qwen3.5:0.8b --seed 42 --budget 8 --out "$run_dir/ollama.jsonl"
 ```
 
-With a local Ollama service already running and the desired tag already installed,
-run the same matrix against the stock model. The driver first validates one
-guarded oracle episode, then checks the local model inventory. The default
-endpoint is `127.0.0.1:11434`. Use `--port` for another local port.
+- **Suites:** the legacy matrix (default), and `--suite paired`: the same two
+  files with an explicit or an ambiguous request.
+- **Filters:** `--context task|listing|open` and
+  `--formatting named|neutral|corpus`. `corpus` gives the training corpus's
+  system prompt verbatim.
+- **Fresh state:** each live episode creates a fresh workspace and state root.
+  It starts the guarded stdio MCP server with network off, and issues no
+  approval or commit.
+- **What a pass requires:**
+  - exact diff entries and staged bytes;
+  - unchanged originals;
+  - no unexpected step effects;
+  - no pending approval;
+  - the expected terminal action: `done`, or a relevant `ask` with zero writes.
+- **Exit codes:** 0 when all pass, 1 on a grading failure, 2 on an
+  infrastructure failure.
+- **Summaries:** `python3 dev/guarded_summary.py <rows.jsonl>`.
+
+### Synthetic corpus
+
+`dev/small_model_corpus.py`, data card [SMALL-MODEL-CORPUS.md](SMALL-MODEL-CORPUS.md).
+
+- 16 template families (12 train, 4 validation), disjoint across splits.
+- Kinds: `act`, `ask`, `stop`, `infer`.
+- Both read orders.
+- Post-edit rows in the evaluator's observation protocol.
+- Every exported row is verified offline; `--guarded-replay` replays a sample
+  through the real sandbox.
+
+### Training pilot and adapter server
 
 ```bash
-.venv/bin/python -m dev.small_model_eval --backend ollama --model qwen3.5:0.8b \
-  --seed 42 --budget 8 --out "$run_dir/ollama.jsonl"
-```
-
-Use repeatable `--fixture`, `--context`, and `--formatting` filters for smaller
-runs. Output files must be new. Exit codes are `0` for all selected episodes
-passing, `1` for a grading failure, and `2` for a command or infrastructure
-failure. An infrastructure failure can leave a partial JSONL file.
-
-Each live episode creates a fresh workspace and separate temporary state root.
-The driver starts the existing guarded stdio MCP server with network off and the
-default resource checks. It exposes only the three tracer tools and consumes
-`done` and `ask` inside the driver. The trusted driver inspects persisted changes
-and compares original files independently before the temporary directory is
-removed. No approval or commit is issued. Only the trusted inference client
-contacts Ollama, and the driver has no model download path.
-
-Compare `effects_ok`, `termination`, `termination_ok`, and `invalid_actions`
-separately. A pass requires exact diff entries, expected staged bytes and file
-mode, unchanged originals, no unexpected step effects, no pending approval,
-and a valid expected terminal action with zero malformed actions. The
-ambiguous fixture requires a relevant question about which deployment to
-change and zero edit calls. The question grader uses a fixture-specific language
-rule. Repeated actions and tool errors are recorded separately so recovery is
-visible. Reaching the action budget after a correct edit yields an effect pass
-and an episode failure.
-
-JSONL rows include the exact initial prompt, raw responses and observations,
-model tag and digest for Ollama, decoding settings and seed, MCP schema and
-implementation fingerprints, and elapsed episode time. Compare runs using the
-same installed model digest and configuration. These fixtures are development
-diagnostics. Their scores do not estimate held-out completion or minimum model
-size.
-
-## Paired act-versus-ask development calibration
-
-The opt-in `paired` suite uses two synthetic templates, archive retention and
-export headers. Each pair presents the same two candidate files in the same
-order, with the same contents, requested setting change, and system prompt.
-Only the user request changes. The explicit request names a path. The ambiguous
-request leaves the choice of file open. The explicit target appears second in
-the archive pair and first in the export pair.
-
-Run the offline controls from the repository root.
-
-```bash
-.venv/bin/python -m pytest -q tests/eval/test_paired_calibration.py tests/eval/test_small_model_eval.py
-```
-
-On the parent host, with the sandbox prerequisites above and the exact stock
-`qwen3.5:0.8b` tag already installed in local Ollama, run these bounded commands
-from the repository root.
-
-```bash
-run_dir=$(mktemp -d)
-.venv/bin/python -m dev.small_model_eval --suite paired --backend guarded-oracle \
-  --context open --formatting neutral --seed 42 --budget 8 \
-  --out "$run_dir/paired-guarded-oracle.jsonl" &&
-.venv/bin/python -m dev.small_model_eval --suite paired --backend ollama \
-  --model qwen3.5:0.8b --port 11434 --context open --formatting neutral \
-  --seed 42 --budget 8 --out "$run_dir/paired-08b.jsonl"
-```
-
-Each command scores four episodes with two MCP context reads and up to eight
-action turns per episode. The Ollama run also performs the existing guarded
-preflight before contacting the local service. Group JSONL rows by `pair`,
-`context`, and `formatting`. Count a pair as passing only if both variants pass.
-The explicit variant requires the exact staged edit and `done`. The ambiguous
-variant requires a relevant target-selection question and zero edit calls.
-`termination`, `write_attempts`, and `effects_ok` show unnecessary asks and
-guessed or incorrect edits even when the pair fails.
-
-These development templates are for calibration only. Keep them and their
-traces out of weight training, and reserve evaluation cases for evaluation.
-The existing commands still select the legacy development matrix by default.
-
-## Training pilot (milestone 3, local)
-
-`dev/sft_pilot.py` runs a bounded LoRA pilot on the verified corpus
-([data card](SMALL-MODEL-CORPUS.md)). It runs under a separate training
-interpreter with torch, transformers and PEFT; lilguy's runtime never imports
-it. It is offline: `--model` must be a local directory, and the Hub is
-disabled before transformers loads.
-
-What it guarantees:
-
-- Training and generation render the prompt with the same function, so the
-  model is trained on exactly the prefix it later continues. Loss covers only
-  the assistant's JSON action and its end-of-turn token.
-- Overlong examples are refused, not truncated. Validation inputs that also
-  appear in training are refused.
-- Base and tuned predictions come from the same loaded weights, template and
-  greedy decoding. The base is the PEFT model with its adapter disabled, so a
-  difference is the adapter's, not a quantization or runtime difference
-  (unlike the earlier Ollama baseline).
-- The report records per-action scores (`fs.edit`, `ask`, `done`), invalid
-  JSON, the majority-class baseline, the training fit, loss per step,
-  tokens/s, peak VRAM, adapter bytes, data hashes and package versions.
-
-Offline tests (tiny random model and toy tokenizer, CPU, no downloads):
-
-```bash
-dev/train_tests.sh          # uses $LILGUY_TRAIN_PYTHON, default the Chrysopoeia venv
-```
-
-Pilot run, after the base checkpoint is local (Qwen/Qwen3.5-0.8B, revision
-`2fc06364715b967f1860aea9cf38778875588b17`, 1.77 GB):
-
-```bash
-/home/ivy/Work/chrysopoeia/.venv/bin/python -m dev.sft_pilot \
-  --model <local snapshot dir> \
-  --train reports/corpus-v2-seed42/train.jsonl \
-  --validation reports/corpus-v2-seed42/validation.jsonl \
-  --out reports/sft-pilot-<run>
-```
-
-Reading the result: the base model's validation score is the bar. The pilot
-earns a next step only if the tuned adapter beats the base on **both**
-`fs.edit` and `ask` validation rows (not just overall, which `done` dominates)
-with no invalid JSON. A high training fit with flat validation means
-memorization of the training families. Validation here is four unseen families
-on single next actions; it is not the guarded multi-turn evaluation. Before any
-claim about task completion, serve the adapter (merged and exported, or through
-a transformers backend in `dev/small_model_eval.py`) and run the paired and
-development suites through the guarded MCP server, unchanged.
-
-### Guarded evaluation of an adapter
-
-The pilot's validation scores are single next actions. To see what the adapter
-does in a real multi-turn episode through the guarded MCP server, serve it from
-the training interpreter and point the unchanged evaluator at it:
-
-```bash
-M=<local base snapshot dir>
-/home/ivy/Work/chrysopoeia/.venv/bin/python -m dev.sft_server --model "$M" \
+dev/train_tests.sh    # 27 offline tests under the training interpreter
+/home/ivy/Work/chrysopoeia/.venv/bin/python -m dev.sft_pilot --model <snapshot> \
+  --train reports/corpus-v4-seed42/train.jsonl --validation reports/corpus-v4-seed42/validation.jsonl \
+  --out reports/sft-pilot-<run> --steps 720 --accumulation 4 --lr 2e-4 --rank 16 --decision-weight 10
+/home/ivy/Work/chrysopoeia/.venv/bin/python -m dev.sft_server --model <snapshot> \
   --adapter reports/sft-pilot-<run>/adapter --name lilguy-sft:<run> --port 11500 &
-.venv/bin/python -m dev.small_model_eval --suite paired --backend ollama \
-  --model lilguy-sft:<run> --port 11500 --context open --formatting corpus \
-  --seed 42 --budget 8 --out <new file>.jsonl
+.venv/bin/python -m dev.small_model_eval --suite paired --backend ollama --model lilguy-sft:<run> \
+  --port 11500 --context open --formatting corpus --seed 42 --budget 8 --out <new>.jsonl
 ```
 
-`dev/sft_server.py` implements the subset of Ollama's API the evaluator uses,
-on 127.0.0.1 only. It identifies itself in `/api/version`, so result rows record
-it (`ollama_version`), and its digest covers the base config and adapter
-files. It decodes greedily without JSON-constrained output, and it renders
-prompts with the trainer's own function. Omit `--adapter` to serve the
-untuned base the same way for a like-for-like comparison.
+The trainer:
 
-`--formatting corpus` gives the evaluator the training corpus's system prompt
-verbatim (`dev.small_model_corpus.system_prompt`, one shared function). The
-episode is still the evaluator's own protocol: after a write, the model sees
-its action and an `Observation:` turn. The corpus instead re-reads the files
-in a fresh single turn, so a failure to stop after a correct edit here points
-at that protocol gap, not at the decision itself.
+- renders prompts with one function for both training and generation;
+- trains only on the final answer, so history turns are prompt;
+- refuses overlong or overlapping rows;
+- compares base and tuned in one runtime, with the base as the same model
+  with its adapter disabled.
+
+The server implements the subset of the Ollama API the evaluator uses, on
+127.0.0.1, with greedy decoding. It identifies itself and its weights' digest
+in every result row. `dev/pilot_summary.py` and `dev/pilot_mistakes.py`
+summarise pilot reports.

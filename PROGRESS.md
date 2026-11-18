@@ -1,5 +1,18 @@
 # Implementation progress
 
+## Current goal (2026-11-18)
+
+Train a small model (≤ 1.5B target, 4B cap) whose home turf is the lilguy interface.
+It handles everyday shell requests through typed tools and sandboxed `run`, asks when
+a request is ambiguous, and stops honestly. Targets: ≥ 70 % of a held-out suite, zero
+unreviewed destructive effects, < 10 % of a 30B reference's latency. It ships as
+`lilguy do` on llama.cpp. Plan and gates, steps 1–8:
+[`docs/SMALL-MODEL-PROPOSAL.md`](docs/SMALL-MODEL-PROPOSAL.md). Next: step 1, freeze
+interface v1 in `lilguy/agent/protocol.py`.
+
+The sections below record the tracer pilot (find/read/edit on config fixtures) that
+proved the training and sandboxed-evaluation pipeline.
+
 ## Small-model development pilot
 
 **Pilot 5 (corpus v4; pilot 4's settings at 720 steps ≈ 10 epochs, 951 s, peak 8.1 GiB, adapter 41 MiB).** Single next action on the four unseen validation families: edits 32/32 (including all 16 content-determined `infer` cases), asks 16/16 by action (the 3 non-exact list the two files in the other order), stops 48/48 (including the multi-turn post-edit stops), no invalid JSON; base 48/96 (all `done`); training 288/288. **Guarded multi-turn evaluation, files open (corpus prompt, seed 42, budget 8): 7/7** (base 0/7, pilot 4 3/7). Every episode used the minimum actions: `fs.edit` then `done` for the four edits, one relevant `ask` and no write for the three ambiguous requests; originals unchanged. Episodes took 1.2–2.4 s (bf16 transformers on the 3090; the 30B Q4 Ollama reference took 1.6–3.8 s on the paired suite with a different prompt — not a like-for-like latency comparison, and not yet the <10% target). Rows: `reports/guarded-pilot5-{paired,legacy}.jsonl`.

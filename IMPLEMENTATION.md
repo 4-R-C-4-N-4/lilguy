@@ -10,13 +10,28 @@ and the pitfalls already found. Where it makes a design choice not already in SC
 
 ## 0. Rules for the implementing agent
 
-### First local-model milestone
+### Current goal: lilguy's own model (supersedes the "first local-model milestone")
 
-1. P3 tracer: exercise find → read → literal edit via a real stdio MCP client on a disposable workspace. Review the session diff outside the model; assert the original file has not changed.
-2. P5: replay the 12 scripted tasks through the guarded server before attributing failures to model quality.
-3. Run a local instruction GGUF without fine-tuning on the stale-setting fixture; retain the tool trace, expected vs. actual diff, and workspace-integrity check. Report this separately from the oracle score and from P7 benchmarks.
+The working goal and its step-by-step plan live in
+[`docs/SMALL-MODEL-PROPOSAL.md`](docs/SMALL-MODEL-PROPOSAL.md). In short, train a
+small model (≤ 1.5B target) whose home turf is the lilguy interface. It handles
+everyday shell requests through typed tools and sandboxed `run`, asks when a
+request is ambiguous, stops honestly, and ships as `lilguy do`. The plan's steps
+map onto the phases below:
 
-Neither SWE-chat access nor host process tools gate this demo. The approved Git integration (option B) is a separate human action: only reviewed changes enter a project commit; the model never writes `.git`.
+| Plan step | Phase |
+|---|---|
+| Step 1: freeze interface v1 | P5 |
+| Step 2: `run` and the reviewed typed tools on lilguy-sh | P3 |
+| Step 3: agent loop and trajectory recorder | P5 |
+| Steps 4–5: task suite, held-out set and baselines | P7 |
+| Step 6: verified training trajectories in the interface | P6 |
+| Steps 7–8: SFT and quantised daily driver | P8 |
+
+The earlier tracer milestone (find/read/edit on config fixtures) is complete; see
+PROGRESS.md.
+
+Neither SWE-chat access nor host process tools gate this work. The approved Git integration (option B) is a separate human action: only reviewed changes enter a project commit; the model never writes `.git`.
 
 1. **Work phase by phase.** A phase is done when its SCOPE acceptance criteria pass in CI (or, for
    sandbox tests, on a host where `lilguy probe` passes). Don't start a dependent phase on assumptions.
