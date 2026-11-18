@@ -7,8 +7,16 @@ It handles everyday shell requests through typed tools and sandboxed `run`, asks
 a request is ambiguous, and stops honestly. Targets: ≥ 70 % of a held-out suite, zero
 unreviewed destructive effects, < 10 % of a 30B reference's latency. It ships as
 `lilguy do` on llama.cpp. Plan and gates, steps 1–8:
-[`docs/SMALL-MODEL-PROPOSAL.md`](docs/SMALL-MODEL-PROPOSAL.md). Next: step 1, freeze
-interface v1 in `lilguy/agent/protocol.py`.
+[`docs/SMALL-MODEL-PROPOSAL.md`](docs/SMALL-MODEL-PROPOSAL.md).
+
+- **Step 1 done:** interface v1 is frozen in `lilguy/protocol.py`. 36 tests, and a golden
+  prompt that cannot change without a version bump. A real `llama-server` running our
+  Qwen3.5-0.8B converted to GGUF accepted the generated grammar, and 8/8 constrained replies
+  parsed. That run also showed this llama.cpp build supports Qwen3.5, which step 8 needs.
+  The untuned model copied prompt placeholders, then a concrete example question, so the
+  frozen prompt keeps examples only for `run` and `tool`. Timing preview on the 3090
+  (8-bit GGUF): ~330–365 tokens/s generation, ~1,000 tokens/s prompt processing.
+- **Next:** step 2, serving `run` plus the five file tools through lilguy-sh.
 
 The sections below record the tracer pilot (find/read/edit on config fixtures) that
 proved the training and sandboxed-evaluation pipeline.

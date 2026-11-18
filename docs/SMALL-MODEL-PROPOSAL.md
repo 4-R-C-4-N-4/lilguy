@@ -109,10 +109,40 @@ done. Steps 1–3 build the interface, 4–5 measure, 6–7 train, 8 ships. Earl
 gates must pass before later steps start, except where a step says it can run
 in parallel.
 
-### Step 1: Freeze interface v1
+### Step 1: Freeze interface v1 (done, 2026-11-18)
+
+Status: `lilguy/protocol.py`, with `INTERFACE_VERSION = 1`. It sits at the top
+level rather than in `lilguy/agent/`, because the v0.1 `lilguy/agent.py`
+module still exists and a package would shadow it. What was built and
+verified:
+
+- The prompt is frozen by a golden file, `tests/unit/interface_v1_system_prompt.txt`.
+  Any change fails the test until the version is bumped.
+- 36 unit tests cover parsing and rendering (quotes, backslashes, heredocs,
+  multi-line values, 18 malformed forms, smuggling attempts), tool-argument
+  typing, observations and the grammar.
+- The served tools are `run` plus `fs.list`, `fs.find`, `fs.read`, `fs.grep`
+  and `fs.edit`; their definitions come from `toolset.yaml`.
+- Arguments are kept in the tool's own order, which is the order the grammar
+  accepts. Data generators must render actions with `render_action(action, tools)`.
+- Live check (`python -m dev.grammar_check`): a `llama-server` built from our
+  own Qwen3.5-0.8B checkpoint (converted to 8-bit GGUF; this also showed that
+  this llama.cpp build supports Qwen3.5, which step 8 needs) accepted the
+  grammar, and 8/8 constrained replies parsed.
+- The live check changed the prompt twice before it was frozen:
+  - with `<placeholder>` forms, the untuned model copied a placeholder as its
+    command in 2 of 8 replies;
+  - with a concrete example question, it copied that question in 3 of 8.
+
+  The frozen prompt gives concrete examples only for `run` and `tool` and
+  describes `ask` and `done` in words. One reply still copies the `run`
+  example. Expect some example-copying in the untuned step 5 baselines.
+- Deviation from the gate below: the pilot evaluator now takes its observation
+  wrapper from `lilguy/protocol.py`. The pilot's JSON actions are replaced
+  wholesale by the step 3 loop rather than ported.
 
 Deliverables:
-- `lilguy/agent/protocol.py`, the single definition:
+- `lilguy/protocol.py`, the single definition:
   - `INTERFACE_VERSION`;
   - a system prompt built from the served tools;
   - action rendering and parsing;
@@ -122,7 +152,7 @@ Deliverables:
   in llama.cpp.
 
 The action syntax is a line-oriented envelope (SCOPE C3), so shell text needs
-no JSON escaping. Default proposal:
+no JSON escaping. As built:
 
 ```
 run
@@ -133,6 +163,12 @@ tool fs.read
 path: notes/todo.md
 ```
 ```
+tool fs.edit
+path: cfg/app.ini
+old: retry=2
+new: retry=5
+```
+```
 ask
 Which config, staging/app.ini or production/app.ini?
 ```
@@ -141,9 +177,12 @@ done
 Deleted 3 logs over 10 MB older than a week; see the diff.
 ```
 
+A value of several lines is written `name <<<`, then the lines, then a `>>>` line.
+
 Observations: `exit=N`, the digested stdout and stderr (already truncated and
-path-rewritten by `digest.py`), a `changes:` summary of the step diff,
-`policy: ok | pending <rule> | rejected <rule>`, and tags such as `TIMEOUT`.
+path-rewritten by `digest.py`), `changes: <op> <path>; …` (at most 20 entries,
+then "and N more"), then `policy: ok`, `policy: pending (<reason>)` or
+`policy: rejected (<reason>)`. Tags such as `TIMEOUT` go on the `exit=` line.
 
 Gate:
 - Round-trip and adversarial parse tests pass: quotes, backslashes, heredocs,
@@ -172,7 +211,7 @@ Gate (SCOPE P3 acceptance):
 ### Step 3: The agent loop on lilguy (P5)
 
 Deliverables:
-- `lilguy/agent/loop.py`, an MCP client using `protocol.py`, with:
+- `lilguy/loop.py`, an MCP client using `lilguy/protocol.py`, with:
   - an action budget;
   - stop rules (`done`, `ask`, `pending`, budget);
   - a **trajectory recorder** that saves every episode in the protocol format.

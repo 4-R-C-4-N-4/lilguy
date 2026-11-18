@@ -231,9 +231,9 @@ async def action_loop(respond, tool, schemas, initial_messages, budget):
 
 
 def observation_message(observation):
-    """How a tool result is returned to the model. The training corpus imports this, so its
-    multi-turn rows match the evaluator's protocol exactly."""
-    return f"Observation:\n{observation}"
+    """How a tool result is returned to the model: the one definition in lilguy.protocol."""
+    from lilguy.protocol import observation_message as shared
+    return shared(observation)
 
 
 async def initial_prompt(fixture, context, formatting, tool, schemas):

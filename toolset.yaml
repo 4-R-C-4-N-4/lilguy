@@ -19,6 +19,7 @@ tools:
       utility: find
       flags: {'-name': name_glob, '-type': type, '-maxdepth': max_depth}
   fs.grep:
+    description: Search file contents for a literal string (or a regex) and show matching lines.
     tier: 1
     effect: read
     args:
@@ -36,6 +37,7 @@ tools:
       utility: grep
       flags: {'-F': regex, '-E': regex, '-i': ignore_case, '-n': line_numbers, '-v': invert, '-r': recursive, '-l': filenames_only}
   fs.list:
+    description: List a directory, optionally recursing a few levels.
     tier: 1
     effect: read
     args:
