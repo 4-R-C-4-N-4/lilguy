@@ -1,0 +1,27 @@
+name: tests
+on: [push, pull_request]
+jobs:
+  unit-and-regression:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python: ['3.11', '3.12', '3.13', '3.14']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: ${{ matrix.python }}
+      - run: uv venv
+      - run: uv pip install -e '.[dev]'
+      - run: uv run --no-project ruff check lilguy tests
+      - run: uv run --no-project python -m pytest -q
+      - run: uv build
+      - name: Report sandbox capability (host-dependent, not a false pass)
+        run: |
+          .venv/bin/lilguy probe --json > probe.json || result=$?
+          .venv/bin/python -c 'import json; print(json.dumps(json.load(open("probe.json")), indent=2))'
+          printf 'Probe exit: %s\n' "${result:-0}"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: capability-python-${{ matrix.python }}
+          path: probe.json

@@ -1,0 +1,11 @@
+# One agent action per model turn. Used by llama-server via the "grammar" field.
+#   {"action":"run","arg":"ls -la","expect":"output"}
+# action: run (execute arg in bash) | ask (arg = question for user) | done (arg = summary)
+# expect: the model's prediction of the outcome. A mismatch is a cheap "something's off" signal.
+
+root   ::= "{" ws "\"action\"" ws ":" ws action ws "," ws "\"arg\"" ws ":" ws string ws "," ws "\"expect\"" ws ":" ws expect ws "}"
+action ::= "\"run\"" | "\"ask\"" | "\"done\""
+expect ::= "\"ok\"" | "\"output\"" | "\"fail\""
+string ::= "\"" char* "\""
+char   ::= [^"\\\x7F\x00-\x1F] | "\\" (["\\/bfnrt] | "u" [0-9a-fA-F] [0-9a-fA-F] [0-9a-fA-F] [0-9a-fA-F])
+ws     ::= [ \t\n]?

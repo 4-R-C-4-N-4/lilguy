@@ -1,0 +1,19 @@
+# Conservative starting policy from spec §9; Q3 sign-off awaits measured outcomes.
+protected:
+  - .git/**
+  - .lilguy/**
+  - '**/.env'
+auto_commit:
+  max_deletes: 20
+  max_modified: 50
+  max_bytes_written: 50MB
+  delete_free_paths: [build/**, dist/**, '**/__pycache__/**', '**/*.tmp']
+require_approval:
+  - any_delete_outside: [build/**, dist/**, '**/*.tmp']
+  - truncated_to_zero: true
+  - mode_change: executable_bit
+  - symlink_target_outside_root: true
+  - session_conflict: true
+reject:
+  - path_matches: protected
+  - special_files: true

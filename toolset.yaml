@@ -1,0 +1,129 @@
+# DRAFT for Q1 review, not frozen or executable. Generated from measured utility
+# priorities in reports/coverage.json. bash blocks drive structural coverage;
+# The tracer field selects the fixed P3 milestone tools without freezing this draft.
+status: draft
+coverage_semantics: syntactic-upper-bound-not-execution-verified
+tools:
+  fs.find:
+    tracer: true
+    description: Find workspace-relative paths without traversing symlink directories.
+    tier: 1
+    effect: read
+    args:
+      path: {type: path, default: .}
+      name_glob: {type: string, optional: true, max_length: 4096}
+      type: {type: enum, values: [f, d, l], optional: true}
+      max_depth: {type: int, optional: true, min: 0, max: 20}
+      max_results: {type: int, default: 200, min: 1, max: 2000}
+    bash:
+      utility: find
+      flags: {'-name': name_glob, '-type': type, '-maxdepth': max_depth}
+  fs.grep:
+    tier: 1
+    effect: read
+    args:
+      pattern: {type: string}
+      path: {type: path, default: .}
+      glob: {type: string, optional: true}
+      regex: {type: bool, default: false}
+      ignore_case: {type: bool, default: false}
+      line_numbers: {type: bool, default: false}
+      invert: {type: bool, default: false}
+      recursive: {type: bool, default: true}
+      filenames_only: {type: bool, default: false}
+      max_results: {type: int, default: 200, max: 2000}
+    bash:
+      utility: grep
+      flags: {'-F': regex, '-E': regex, '-i': ignore_case, '-n': line_numbers, '-v': invert, '-r': recursive, '-l': filenames_only}
+  fs.list:
+    tier: 1
+    effect: read
+    args:
+      path: {type: path, default: .}
+      depth: {type: int, default: 1, max: 3}
+      show_hidden: {type: bool, default: false}
+      detailed: {type: bool, default: true}
+    bash:
+      utility: ls
+      flags: {'-a': show_hidden, '-l': detailed}
+  fs.read:
+    tracer: true
+    description: Read lines from a workspace file, starting at a one-based offset.
+    tier: 1
+    effect: read
+    args:
+      path: {type: path}
+      offset: {type: int, default: 1, min: 1}
+      limit: {type: int, default: 200, min: 1, max: 2000}
+    bash: {utility: cat, flags: {}}
+  fs.edit:
+    tracer: true
+    description: Replace exactly one literal match in a UTF-8 file of at most 1 MiB.
+    tier: 1
+    effect: write
+    args:
+      path: {type: path}
+      old: {type: string, min_length: 1, max_length: 8192}
+      new: {type: string, max_length: 8192}
+  text.sort:
+    tier: 2
+    effect: read
+    args:
+      path: {type: path, default: '-'}
+      reverse: {type: bool, default: false}
+      numeric: {type: bool, default: false}
+      unique: {type: bool, default: false}
+    bash: {utility: sort, flags: {'-r': reverse, '-n': numeric, '-u': unique}}
+  text.head:
+    tier: 2
+    effect: read
+    args:
+      path: {type: path, default: '-'}
+      lines: {type: int, default: 10, max: 2000}
+    bash: {utility: head, flags: {'-n': lines}}
+  text.tail:
+    tier: 2
+    effect: read
+    args:
+      path: {type: path, default: '-'}
+      lines: {type: int, default: 10, max: 2000}
+    bash: {utility: tail, flags: {'-n': lines}}
+  text.cut:
+    tier: 2
+    effect: read
+    args:
+      path: {type: path, default: '-'}
+      fields: {type: string}
+      delimiter: {type: string, default: "\t"}
+    bash: {utility: cut, flags: {'-f': fields, '-d': delimiter}}
+  text.tr:
+    tier: 2
+    effect: read
+    args:
+      from: {type: string}
+      to: {type: string, optional: true}
+      delete: {type: bool, default: false}
+      squeeze: {type: bool, default: false}
+    bash: {utility: tr, flags: {'-d': delete, '-s': squeeze}}
+  text.wc:
+    tier: 2
+    effect: read
+    args:
+      path: {type: path, default: '-'}
+      lines: {type: bool, default: false}
+      words: {type: bool, default: false}
+      bytes: {type: bool, default: false}
+    bash: {utility: wc, flags: {'-l': lines, '-w': words, '-c': bytes}}
+  text.uniq:
+    tier: 2
+    effect: read
+    args:
+      path: {type: path, default: '-'}
+      count: {type: bool, default: false}
+      duplicates_only: {type: bool, default: false}
+      unique_only: {type: bool, default: false}
+    bash: {utility: uniq, flags: {'-c': count, '-d': duplicates_only, '-u': unique_only}}
+  pipe:
+    tier: 2
+    effect: read
+    stages: [grep, sort, head, tail, cut, tr, wc, uniq, cat]

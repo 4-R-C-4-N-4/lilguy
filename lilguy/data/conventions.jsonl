@@ -1,0 +1,13 @@
+# Global, tldr-style command knowledge. One JSON object per line.
+{"keys": ["find", "path", "paths", "search", "extension", "list", "under"], "text": "Find files by name: find DIR -type f -name '*.py' (add | sort for stable order)."}
+{"keys": ["count", "lines", "how many"], "text": "Count lines in a file: wc -l < FILE (prints only the number)."}
+{"keys": ["rename", "extension", "mv"], "text": "Rename extensions: for f in *.old; do mv -- \"$f\" \"${f%.old}.new\"; done"}
+{"keys": ["copy", "directory", "missing", "nested", "create", "mkdir", "enoent"], "text": "Create nested directories: mkdir -p a/b/c. ENOENT on a destination usually means its parent dir is missing."}
+{"keys": ["replace", "substitute", "string", "text", "sed", "edit"], "text": "Replace text in place: sed -i 's/OLD/NEW/g' FILES (escape . and / in OLD)."}
+{"keys": ["csv", "column", "field", "filter", "awk"], "text": "Filter CSV rows by column: awk -F, 'NR>1 && $2==\"x\" {print $1}' FILE.csv"}
+{"keys": ["largest", "biggest", "size", "sort"], "text": "Largest files in a dir: ls -S | head -n 1 (files only: find . -maxdepth 1 -type f -printf '%s %f\\n' | sort -rn | head -1)."}
+{"keys": ["archive", "tar", "compress", "gz", "tarball"], "text": "Create a tar.gz: tar czf OUT.tar.gz DIR. List contents: tar tzf OUT.tar.gz"}
+{"keys": ["delete", "remove", "rm", "clean"], "text": "Delete files matching a glob: rm -- *.tmp. Deletion requires approval; ask if scope is unclear."}
+{"keys": ["grep", "contains", "search", "text", "occurrence"], "text": "Search text recursively: grep -rn 'PATTERN' DIR. Count matches: grep -rc."}
+{"keys": ["output", "save", "write", "redirect"], "text": "Save command output to a file: CMD > FILE 2>&1 (captures stdout and stderr)."}
+{"keys": ["test", "tests", "suite"], "text": "Test suites: check the project's conventions first; common runners are make test, npm test, pytest."}
