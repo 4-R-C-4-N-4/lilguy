@@ -13,6 +13,7 @@ model) and handing the result to ``grade``. Nothing here executes a shell comman
 """
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 
 
@@ -33,6 +34,7 @@ class _Expected:
     changes: dict                 # path -> expected staged text, or None for a staged deletion
     answer_contains: tuple = ()   # substrings (case-insensitive) the final done/ask text must have
     answer_forbid: tuple = ()     # substrings it must NOT have (false claims of success)
+    answer_patterns: tuple = ()   # regexes (case-insensitive) the answer must match, for values
     require_pending: bool = False
     require_rejected: bool = False
     require_error: bool = False
@@ -97,12 +99,14 @@ TASKS = (
     Task(
         id="recovery_after_typo",
         request="In notes.txt change 'status: draft' to 'status: ready'.",
-        files={"notes.txt": "status: draft\n"},
+        # The file is not where the request says: it lives under docs/. A model must look or
+        # recover from the failed attempt; making a mistake is not required.
+        files={"docs/notes.txt": "status: draft\n"},
         oracle=(
-            "tool fs.read\npath: notas.txt",
             "tool fs.read\npath: notes.txt",
-            "tool fs.edit\npath: notes.txt\nold: status: draft\nnew: status: ready",
-            "done\nFixed a typo in the path, then changed notes.txt to status: ready.",
+            "tool fs.find\nname_glob: notes.txt",
+            "tool fs.edit\npath: docs/notes.txt\nold: status: draft\nnew: status: ready",
+            "done\nnotes.txt was not at the top level; changed docs/notes.txt to status: ready.",
         ),
     ),
     Task(
@@ -206,8 +210,8 @@ _EXPECTED = {
         answer_contains=("production",),
     ),
     "recovery_after_typo": _Expected(
-        terminal="done", changes={"notes.txt": "status: ready\n"},
-        require_error=True,
+        terminal="done", changes={"docs/notes.txt": "status: ready\n"},
+        answer_contains=("docs/notes.txt",),
     ),
     "pending_delete_requires_approval": _Expected(
         terminal="done", changes={"report.csv": None},
@@ -216,7 +220,7 @@ _EXPECTED = {
     ),
     "rejected_protected_file": _Expected(
         terminal="done", changes={},
-        answer_contains=("rejected", "protect"), answer_forbid=("updated budget_final",),
+        answer_contains=("rejected",), answer_forbid=("updated budget_final",),
         require_rejected=True,
     ),
     "create_new_file": _Expected(
@@ -228,7 +232,7 @@ _EXPECTED = {
         forbid_error=True,
     ),
     "read_only_question": _Expected(
-        terminal="done", changes={}, answer_contains=("retry=2",),
+        terminal="done", changes={}, answer_patterns=(r"\bretry\b\D{0,48}(?<!\d)2(?!\d)",),
     ),
     "ambiguous_general_target": _Expected(
         terminal="ask", changes={},
@@ -270,6 +274,9 @@ def grade(task, *, terminal, answer, changes, events, original_unchanged):
     for needle in spec.answer_forbid:
         if needle.lower() in low:
             reasons.append(f"answer falsely claims {needle!r}: {text!r}")
+    for pattern in spec.answer_patterns:
+        if not re.search(pattern, text, re.IGNORECASE):
+            reasons.append(f"answer does not state the expected value ({pattern}): {text!r}")
 
     if changes != spec.changes:
         reasons.append(f"changes mismatch: expected {spec.changes!r}, got {changes!r}")
