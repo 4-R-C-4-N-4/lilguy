@@ -1,7 +1,7 @@
 """Offline tests for the supervised LoRA pilot.
 
 Needs torch, transformers and PEFT, so the main gate skips them. Run them with the
-training interpreter (see docs/SMALL-MODEL-PROPOSAL.md, "Training pilot").
+training interpreter (see docs/plan/ROADMAP.md, "Training pilot").
 """
 import json
 

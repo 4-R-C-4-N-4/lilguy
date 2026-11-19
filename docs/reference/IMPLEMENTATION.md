@@ -13,7 +13,7 @@ and the pitfalls already found. Where it makes a design choice not already in SC
 ### Current goal: lilguy's own model (supersedes the "first local-model milestone")
 
 The working goal and its step-by-step plan live in
-[`Model plan`](../SMALL-MODEL-PROPOSAL.md). In short, train a
+[`Model plan`](../plan/ROADMAP.md). In short, train a
 small model (≤ 1.5B target) whose home turf is the lilguy interface. It handles
 everyday shell requests through typed tools and sandboxed `run`, asks when a
 request is ambiguous, stops honestly, and ships as `lilguy do`. The plan's steps
@@ -453,7 +453,7 @@ Normalise flags: split combined short flags (`-rn` → `-r -n`), map long↔shor
 
 A record is **covered** by a toolset if every (utility, flag) used maps to a tool argument or a `pipe` stage, and the structure is supported (pipes yes, `&&` chains yes as multiple calls, subshells/control flow no).
 
-Report (`reports/coverage.md` + CSV):
+Report (`reports/coverage/coverage.md` + CSV):
 - Top 50 utilities by frequency per source, with cumulative share.
 - For the top 20 utilities: flag frequency tables.
 - Coverage % of the current `toolset.yaml`, overall and per source, plus the top uncovered (utility, flag) pairs by count.

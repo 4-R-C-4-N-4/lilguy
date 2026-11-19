@@ -1,5 +1,7 @@
 # lilguy's model: a small model whose home turf is lilguy
 
+This is the plan and its gates. Current progress, results and open decisions: [STATUS.md](../STATUS.md).
+
 ## Goal
 
 Train a small language model (target ≤ 1.5B parameters, cap 4B) whose home turf
@@ -15,7 +17,7 @@ destructive effects reaching the real workspace without policy or human
 approval. It runs locally at **< 10 %** of the latency of a 30B reference, and
 ships as `lilguy do "<request>"` running on llama.cpp.
 
-These are the targets in [SCOPE.md](reference/SCOPE.md), restated for this goal.
+These are the targets in [SCOPE.md](../reference/SCOPE.md), restated for this goal.
 
 ### What "everyday shell work" means here
 
@@ -83,7 +85,7 @@ Requests at the level of the tldr pages, not shell wizardry, for example:
 | Pilot tooling | `dev/small_model_eval.py`, `dev/small_model_corpus.py`, `dev/sft_pilot.py`, `dev/sft_server.py` | Built for a config-edit tracer; reusable (Appendix A). |
 | Pilot model | Qwen3.5-0.8B + 41 MB LoRA | 7/7 on the sandboxed tracer tasks with files open. 0/6 when it must find files itself; it then says `done` after failed edits. |
 
-Full gate today: 544 passed, 3 skipped. History: `PROGRESS.md`.
+Test counts and step progress: [STATUS.md](../STATUS.md). Pre-v1 history: [archive/PROGRESS.md](../archive/PROGRESS.md).
 
 ## What the pilot taught (rules for the real corpus)
 
@@ -321,7 +323,7 @@ Gate: Ivy picks the model family from the report.
 ### Step 6: Training data in the lilguy interface (P6)
 
 Deliverables:
-1. **Licence audit** of the public sources (`docs/DATA-SOURCES.md`). Only
+1. **Licence audit** of the public sources (`docs/data/DATA-SOURCES.md`). Only
    cleared sources go forward.
 2. **Fixture builders** for the most common utilities, ranked by the coverage
    curve. A builder creates a small workspace that a request's command
@@ -436,7 +438,7 @@ which target was missed and by how much.
 ## Appendix A: pilot tools (config-edit tracer, still useful)
 
 These were built for the tracer (find/read/edit on two-file config fixtures).
-Steps 1–3 move them onto the new protocol. Results: `PROGRESS.md`.
+Steps 1–3 move them onto the new protocol. Results: [archive/PROGRESS.md](../archive/PROGRESS.md).
 
 ### Development evaluation driver
 
@@ -469,7 +471,7 @@ run_dir=$(mktemp -d)
 
 ### Synthetic corpus
 
-`dev/small_model_corpus.py`, data card [SMALL-MODEL-CORPUS.md](SMALL-MODEL-CORPUS.md).
+`dev/small_model_corpus.py`, data card [pilot-corpus.md](../archive/pilot-corpus.md).
 
 - 16 template families (12 train, 4 validation), disjoint across splits.
 - Kinds: `act`, `ask`, `stop`, `infer`.
@@ -483,10 +485,10 @@ run_dir=$(mktemp -d)
 ```bash
 dev/train_tests.sh    # 27 offline tests under the training interpreter
 /home/ivy/Work/chrysopoeia/.venv/bin/python -m dev.sft_pilot --model <snapshot> \
-  --train reports/corpus-v4-seed42/train.jsonl --validation reports/corpus-v4-seed42/validation.jsonl \
-  --out reports/sft-pilot-<run> --steps 720 --accumulation 4 --lr 2e-4 --rank 16 --decision-weight 10
+  --train reports/archive/pilots/corpus-v4-seed42/train.jsonl --validation reports/archive/pilots/corpus-v4-seed42/validation.jsonl \
+  --out reports/archive/pilots/sft-pilot-<run> --steps 720 --accumulation 4 --lr 2e-4 --rank 16 --decision-weight 10
 /home/ivy/Work/chrysopoeia/.venv/bin/python -m dev.sft_server --model <snapshot> \
-  --adapter reports/sft-pilot-<run>/adapter --name lilguy-sft:<run> --port 11500 &
+  --adapter reports/archive/pilots/sft-pilot-<run>/adapter --name lilguy-sft:<run> --port 11500 &
 .venv/bin/python -m dev.small_model_eval --suite paired --backend ollama --model lilguy-sft:<run> \
   --port 11500 --context open --formatting corpus --seed 42 --budget 8 --out <new>.jsonl
 ```

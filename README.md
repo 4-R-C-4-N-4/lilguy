@@ -1,32 +1,46 @@
 # lilguy model factory
 
-The product is a small model that handles everyday shell tasks through lilguy. The model chooses an action; lilguy runs it in a sandbox and owns policy, approval and apply. The factory is how we test one change to the model without operating the servers or grading the result by hand.
+The product is a small model that handles everyday shell tasks through lilguy. The model chooses an action; lilguy runs it in a sandbox and owns policy, approval and apply. The factory tests one change to the model without operating servers or grading by hand.
 
-## Run a job
+**Current state, open decisions and evidence: [docs/STATUS.md](docs/STATUS.md).**
+
+## Jobs
 
 From this checkout, with the project `.venv` installed:
 
 ```sh
-.venv/bin/python -m dev.factory check
-.venv/bin/python -m dev.factory trial --gguf /path/to/candidate.gguf
-.venv/bin/python -m dev.factory fast12 --gguf /path/to/candidate.gguf
+.venv/bin/python -m dev.factory check                       # interface, split protection, guarded tools, bypass corpus, trainer smoke
+.venv/bin/python -m dev.factory fast12 --gguf MODEL.gguf    # 12 development tasks, daily comparison
+.venv/bin/python -m dev.factory trial  --gguf MODEL.gguf    # one disposable edit task, smoke test
+.venv/bin/python -m dev.factory compare --stock DIR --candidate DIR    # named tasks improved / regressed
+.venv/bin/python -m dev.factory audit-splits --held-out H --held-out-sha256 PIN --manifest M
+dev/baselines.sh OUT.tsv                                    # every stock candidate through fast12, sequentially
+.venv/bin/python -m dev.baseline_report OUT.tsv --reference LABEL      # comparison table
 ```
 
-`check` runs the interface tests, guarded tool integration, and trainer smoke tests in order. A missing dependency, skipped required test, or failed stage stops the job. The trainer smoke uses a toy model and legacy pilot fixtures; it does not train the product. Set `LILGUY_TRAIN_PYTHON` to an interpreter with torch, transformers and PEFT if not using the local training environment.
+Every job writes a fresh directory under `reports/factory/` and never overwrites earlier results. `result.json` records revision, dirty flag, stages and status; stage logs explain failures. A skipped required test or failed stage stops the job.
 
-`trial` starts its own loopback llama-server and sandbox tool server, gives the candidate one disposable file-edit task with six actions, checks the file rather than trusting `done`, then shuts down. Supply `--server /path/to/llama-server` if needed. It never applies a change. This is a development smoke test, not a held-out score.
+Model jobs (`fast12`, `trial`) refuse to start unless:
 
-Both commands print their run directory under `reports/factory/`. `result.json` records the revision, dirty flag, stages, times and status; stage logs explain failures. `trial.json` records the model's turns and task verdict when a trial completes. Exit zero means the job passed; jobs do not overwrite previous results.
+- the frozen held-out suite matches its pinned digest and no development task overlaps it (`dev/holdout_manifest.sha256`);
+- exactly one CUDA device is visible and it matches `--gpu-name` (default `RTX 3090`). Device order is forced to PCI order, because CUDA's default order put index 0 on the desktop 4070.
 
-`fast12` is the everyday development comparison: 12 disposable tasks, with a scripted solution and a false-completion control for each. Read `fast12.json` for the counts and `task_*.json` for individual actions, observations and grading reasons. A nonzero exit can mean model misses or infrastructure failures; the report separates them. This job does not train or use held-out tasks.
+`fast12` runs a scripted solution and a false-completion control beside the model on every task. It reports model misses separately from infrastructure failures, and records requests, tokens and seconds per task. `identity.json` fingerprints the model bytes separately from the evaluation inputs and the GPU. `compare` and the baseline report refuse runs whose fingerprints or devices differ.
 
-## What to read
+The held-out suite is never run by these jobs. It is reserved for the one selected shipping GGUF.
 
-- [Model plan and release criteria](docs/SMALL-MODEL-PROPOSAL.md): the one active roadmap. Target ≤1.5B parameters (4B hard ceiling), ≥70% held-out completion, <10% of 30B latency, and no unauthorized destructive changes.
-- [Sandbox specification](docs/reference/spec.md), [scope](docs/reference/SCOPE.md), [implementation details](docs/reference/IMPLEMENTATION.md) and [decision records](docs/decisions/): reference, not separate model roadmaps.
-- [Data sources](docs/DATA-SOURCES.md) and [pilot corpus card](docs/SMALL-MODEL-CORPUS.md): provenance, not permission to train on raw commands.
-- [Historical progress](docs/archive/PROGRESS.md) and [prototype review](docs/archive/legacy-readme.md): old results and superseded designs. Run evidence belongs under `reports/`, not here.
+`lilguy do "REQUEST" --state-dir DIR` is the prototype assistant. It uses the same loop and guarded tools, stages changes but never applies them, and hands off to `lilguy diff | approve | deny | commit`.
 
-## Where the factory stops today
+## Layout
 
-The repeatable path ends at a development trial. Production training is not enabled: finish the guarded tool review, freeze disjoint development and held-out suites before generating training data, then wire verified episode generation, training, GGUF export and development evaluation into this same entry point. Keep the one-shot held-out release test out of the everyday iteration job.
+| Path | Contents |
+|---|---|
+| `docs/STATUS.md` | Where each step stands, with evidence and open decisions |
+| `docs/plan/ROADMAP.md` | The one active plan and release criteria |
+| `docs/data/` | Data sources and licence status |
+| `docs/reference/`, `docs/decisions/` | Sandbox spec, scope, implementation notes, decision records |
+| `docs/archive/` | Superseded progress logs, pilot corpus card, prototype README |
+| `lilguy/` | Runtime: protocol, loop, guarded MCP server, sandbox, policy, `lilguy do` |
+| `dev/` | Factory: jobs, Fast12, broader development tasks, held-out corpus and gate, baselines |
+| `tests/` | `unit/` (offline), `sandbox/` and `bypass/` (real bwrap; run one suite at a time), `train/` |
+| `reports/` | Run evidence, gitignored; see [reports/README.md](reports/README.md) |

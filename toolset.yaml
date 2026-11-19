@@ -1,5 +1,5 @@
 # DRAFT for Q1 review, not frozen or executable. Generated from measured utility
-# priorities in reports/coverage.json. bash blocks drive structural coverage;
+# priorities in reports/coverage/coverage.json. bash blocks drive structural coverage;
 # The tracer field selects the fixed P3 milestone tools without freezing this draft.
 status: draft
 coverage_semantics: syntactic-upper-bound-not-execution-verified

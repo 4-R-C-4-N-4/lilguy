@@ -39,7 +39,7 @@ from typing import Iterable, Iterator
 _SOURCES = {
     "nl2sh-alfa": "westenfelder/NL2SH-ALFA",
     "tldr": "neulab/tldr",
-    # Coverage / use-case analysis only until licences are audited (docs/DATA-SOURCES.md).
+    # Coverage / use-case analysis only until licences are audited (docs/data/DATA-SOURCES.md).
     "cli-explained": "b-mc2/cli-commands-explained",   # commandlinefu + cheat/cheatsheets
     "nl2bash-custom": "AnishJoshi/nl2bash-custom",      # ships a loader script: never run it
     "bash6k": "emirkaanozdemr/bash_command_data_6K",
