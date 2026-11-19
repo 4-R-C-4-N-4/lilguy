@@ -1,0 +1,139 @@
+"""One-command v2 pilot: verify (or build) the corpus, then per base check template parity, train,
+export a matched stock/tuned Q8_0 pair with identical converter flags, score both development
+suites for both artifacts, and write comparison.json. Development only; never the held-out suite.
+"""
+import hashlib
+import json
+import os
+from pathlib import Path
+import shutil
+import subprocess
+import time
+
+from dev import v2_report
+
+ROOT = Path(__file__).resolve().parents[1]
+LLAMA = Path(os.environ.get('LILGUY_LLAMA_CPP', Path.home() / 'programs/llama.cpp'))
+LLAMA_REVISION = '01818e4956858fe225a6875aae88b4cbee0b319e'
+TRAINER = Path(os.environ.get('LILGUY_TRAIN_PYTHON', Path.home() / 'Work/chrysopoeia/.venv/bin/python'))
+MIN_FREE_GIB = 30
+
+
+def sha256(path):
+    with open(path, 'rb') as stream:
+        return hashlib.file_digest(stream, 'sha256').hexdigest()
+
+
+class Stage:
+    """Run one subprocess stage with its own log; record the outcome in the job's plan."""
+
+    def __init__(self, directory, plan):
+        self.directory, self.plan = directory, plan
+
+    def __call__(self, name, argv, env=None):
+        started = time.monotonic()
+        print(name, flush=True)
+        with (self.directory / f'{name}.log').open('w') as log:
+            rc = subprocess.run([str(a) for a in argv], cwd=ROOT, stdout=log, stderr=subprocess.STDOUT,
+                                env={**os.environ, **(env or {})}).returncode
+        self.plan['stages'].append({'name': name, 'exit': rc, 'seconds': round(time.monotonic() - started, 1)})
+        self.save()
+        if rc != 0:
+            raise RuntimeError(f'stage {name} failed (exit {rc}); see {self.directory}/{name}.log')
+
+    def save(self):
+        (self.directory / 'plan.json').write_text(json.dumps(self.plan, indent=2) + '\n')
+
+
+def preflight():
+    if subprocess.check_output(['git', '-C', LLAMA, 'rev-parse', 'HEAD'], text=True).strip() != LLAMA_REVISION:
+        raise RuntimeError(f'llama.cpp must be at {LLAMA_REVISION}')
+    if subprocess.check_output(['git', '-C', LLAMA, 'status', '--porcelain', '--untracked-files=no'], text=True).strip():
+        raise RuntimeError('llama.cpp checkout has local changes')
+    if not TRAINER.is_file():
+        raise RuntimeError(f'missing training interpreter {TRAINER}')
+    free = shutil.disk_usage(ROOT).free / 2**30
+    if free < MIN_FREE_GIB:
+        raise RuntimeError(f'only {free:.0f} GiB free; the pilot keeps at least {MIN_FREE_GIB} GiB')
+
+
+def export(stage, name, src, outfile, convert_args):
+    stage(name, [TRAINER, LLAMA / 'convert_hf_to_gguf.py', src, *convert_args, '--outtype', 'q8_0',
+                 '--outfile', outfile], env={'PYTHONPATH': str(LLAMA / 'gguf-py')})
+    return outfile
+
+
+def reusable_stock(previous, base, gguf, server, device):
+    """A previous job's stock scores count only if the artifact, evaluation inputs and device match."""
+    from dev.broad_runner import SOURCES
+    from dev.factory import fast12_identity
+    if previous is None:
+        return None
+    root = Path(previous) / base / 'stock'
+    try:
+        for suite, sources in (('fast12', ()), ('broad', SOURCES)):
+            old = json.loads((root / suite / 'identity.json').read_text())
+            now = fast12_identity(gguf, server, extra_sources=sources)
+            if (old['gguf_sha256'], old['evaluation_sha256'], old['device']) != (
+                    now['gguf_sha256'], now['evaluation_sha256'], device):
+                return None
+    except (OSError, ValueError, KeyError):
+        return None
+    return root
+
+
+def run(directory, *, bases, data, server, device, gate, evaluate, max_minutes, stock_from=None, build_seed=None):
+    from dev import v2_train
+    preflight()
+    plan = {'job': 'pilot-v2', 'bases': bases, 'device': device, 'split_gate': gate, 'max_minutes': max_minutes,
+            'llama_cpp': LLAMA_REVISION, 'stages': []}
+    stage = Stage(directory, plan)
+    if data is None:
+        data = directory / 'data'
+        argv = ['.venv/bin/python', '-m', 'dev.v2_corpus', data]
+        if build_seed is not None:
+            argv += ['--seed', build_seed]
+        stage('corpus', argv)
+    data = Path(data).resolve()
+    stage('corpus-verify', ['.venv/bin/python', '-c', 'import sys; from dev import v2_corpus; '
+                            'print(len(v2_corpus.verified_rows(sys.argv[1])))', data])
+    plan['data'] = {'path': str(data), 'train_sha256': sha256(data / 'train.jsonl'),
+                    'effects_sha256': sha256(data / 'effects.json'),
+                    'datacard': json.loads((data / 'datacard.json').read_text())['stages']}
+    stage.save()
+    trainpy = ROOT / 'dev/trainpy.sh'
+    for base in bases:
+        spec = v2_train.BASES[base]
+        out = directory / base
+        out.mkdir()
+        stock_gguf = export(stage, f'{base}-export-stock', spec['snapshot'], out / 'stock-q8_0.gguf',
+                            spec['convert_args'])
+        stage(f'{base}-template-parity', [trainpy, 'dev.v2_template_check', base, spec['snapshot'], stock_gguf,
+                                          server, data, out / 'parity'])
+        stage(f'{base}-train', [trainpy, 'dev.v2_train', base, spec['snapshot'], data, out / 'training',
+                                '--max-minutes', max_minutes])
+        tuned_gguf = export(stage, f'{base}-export-tuned', out / 'training/merged', out / 'tuned-q8_0.gguf',
+                            spec['convert_args'])
+        plan.setdefault('artifacts', {})[base] = {'stock_q8_0_sha256': sha256(stock_gguf),
+                                                  'tuned_q8_0_sha256': sha256(tuned_gguf),
+                                                  'convert_args': spec['convert_args']}
+        stage.save()
+        reused = reusable_stock(stock_from, base, stock_gguf, server, device)
+        sides = (('tuned', tuned_gguf),) if reused else (('stock', stock_gguf), ('tuned', tuned_gguf))
+        if reused:
+            shutil.copytree(reused, out / 'stock', symlinks=True)
+            plan['artifacts'][base]['stock_scores_reused_from'] = str(reused)
+        for side, gguf in sides:
+            for suite in ('fast12', 'broad'):
+                folder = out / side / suite
+                folder.mkdir(parents=True)
+                print(f'{base}: {side} {suite}', flush=True)
+                started = time.monotonic()
+                rc = evaluate(folder, suite, gguf)
+                plan['stages'].append({'name': f'{base}-{side}-{suite}', 'exit': rc,
+                                       'seconds': round(time.monotonic() - started, 1)})
+                stage.save()
+    result = v2_report.write(directory, bases)
+    plan['status'] = 'passed'
+    stage.save()
+    return result

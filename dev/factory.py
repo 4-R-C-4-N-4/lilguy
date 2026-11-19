@@ -130,7 +130,8 @@ def run_development(directory, suite, gguf, server, device):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('job', choices=['check', 'trial', 'fast12', 'broad', 'screen', 'audit-splits', 'compare'])
+    parser.add_argument('job', choices=['check', 'trial', 'fast12', 'broad', 'screen', 'pilot', 'audit-splits',
+                                        'compare'])
     parser.add_argument('--stock', type=Path)
     parser.add_argument('--candidate', type=Path)
     parser.add_argument('--held-out', type=Path)
@@ -140,6 +141,11 @@ def main():
     parser.add_argument('--model', action='append', default=[], metavar='LABEL=GGUF',
                         help='repeat for each local GGUF in a screen')
     parser.add_argument('--reference', help='comparison label for screen (does not select the release reference)')
+    parser.add_argument('--base', action='append', default=[], help='pilot base key (repeat): minicpm, qwen08')
+    parser.add_argument('--data', type=Path, help='pilot: reuse a built corpus v2 directory (default: build one)')
+    parser.add_argument('--max-minutes', type=float, default=25.0, help='pilot: training time box per base')
+    parser.add_argument('--stock-from', type=Path,
+                        help='pilot: reuse stock scores from a previous pilot job when artifact and evaluation match')
     parser.add_argument('--server', type=Path, default=Path(os.environ.get('LLAMA_SERVER', Path.home() / 'programs/llama.cpp/build/bin/llama-server')))
     parser.add_argument('--gpu-name', default=os.environ.get('LILGUY_GPU', 'RTX 3090'),
                         help='model jobs run only when exactly one visible CUDA device matches')
@@ -171,6 +177,11 @@ def main():
             models = factory_screen.parse_models(args.model, args.reference)
         except (OSError, ValueError) as exc:
             parser.error(str(exc))
+    elif args.job == 'pilot':
+        from dev.v2_train import BASES
+        if args.gguf or not args.server.is_file() or not args.base or set(args.base) - set(BASES) \
+                or len(set(args.base)) != len(args.base):
+            parser.error(f'pilot needs one or more distinct --base from {sorted(BASES)} and a local llama-server')
     elif args.job != 'check' and not (args.gguf and args.gguf.is_file() and args.server.is_file()):
         parser.error(f'{args.job} needs a local --gguf and llama-server (--server or LLAMA_SERVER)')
     if args.job != 'check':
@@ -197,6 +208,17 @@ def main():
                     lambda out, suite, gguf: run_development(out, suite, gguf, args.server, device))
             except (ValueError, OSError, KeyError, TypeError) as exc:
                 parser.exit(1, f'Screen stopped: {exc}; see {directory}\n')
+            print(directory / 'comparison.json', flush=True)
+            return 0
+        if args.job == 'pilot':
+            from dev import factory_pilot
+            try:
+                factory_pilot.run(directory, bases=args.base, data=args.data, server=args.server, device=device,
+                                  gate=gate, max_minutes=args.max_minutes, stock_from=args.stock_from,
+                                  evaluate=lambda out, suite, gguf: run_development(out, suite, gguf, args.server,
+                                                                                    device))
+            except (RuntimeError, ValueError, OSError, KeyError) as exc:
+                parser.exit(1, f'Pilot stopped: {exc}; see {directory}\n')
             print(directory / 'comparison.json', flush=True)
             return 0
         if args.job in ('fast12', 'broad'):
