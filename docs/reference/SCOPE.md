@@ -1,6 +1,6 @@
 # lilguy: scope of work
 
-**Version:** 1.0 draft · **Owner:** Ivy · **Companion docs:** [`IMPLEMENTATION.md`](IMPLEMENTATION.md) (how), [`spec.md`](spec.md) (sandbox design), [`README.md`](README.md) (v0.1 prototype and design review)
+**Version:** 1.0 draft · **Owner:** Ivy · **Companion docs:** [`IMPLEMENTATION.md`](IMPLEMENTATION.md) (how), [`spec.md`](spec.md) (sandbox design), [prototype review](../archive/legacy-readme.md) (historical)
 
 ---
 

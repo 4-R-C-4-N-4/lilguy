@@ -7,7 +7,7 @@ It handles everyday shell requests through typed tools and sandboxed `run`, asks
 a request is ambiguous, and stops honestly. Targets: ≥ 70 % of a held-out suite, zero
 unreviewed destructive effects, < 10 % of a 30B reference's latency. It ships as
 `lilguy do` on llama.cpp. Plan and gates, steps 1–8:
-[`docs/SMALL-MODEL-PROPOSAL.md`](docs/SMALL-MODEL-PROPOSAL.md).
+[`docs/SMALL-MODEL-PROPOSAL.md`](../SMALL-MODEL-PROPOSAL.md).
 
 - **Step 1 done:** interface v1 is frozen in `lilguy/protocol.py`. 36 tests, and a golden
   prompt that cannot change without a version bump. A real `llama-server` running our
@@ -57,7 +57,7 @@ Parent-host verification of `dev/small_model_eval.py`: probe passed all nine che
 
 Paired follow-up: 12 independent runs on two new synthetic settings (queue batch size and cache lifetime), same stock 0.8B model and eight-turn budget. With the named `fs.find` example, no exact edits in six runs. With neutral action-format wording, both open-file runs staged the exact edit and preserved the sibling setting; neither task-only nor listing-only run did. All originals unchanged. These are effect-only passes: neither successful trace recorded an explicit `done`. Raw local results: `reports/paired-development.jsonl`. This is evidence for separating edit accuracy from discovery and clean termination, not a held-out pass rate.
 
-Approach and promotion gates: [small-model proposal](docs/SMALL-MODEL-PROPOSAL.md). Stock `qwen3.5:0.8b` (`f3817196d142`), local Ollama JSON mode, thinking disabled, temperature 0, eight-action budget. Three independent copies of the synthetic retry-limit fixture: task alone (8 actions, guessed an absolute path), listing supplied (2 actions, used the correct path but stopped without editing), and target path plus actual read supplied (8 actions, repeated find instead of editing). No staged changes; original fixture files unchanged throughout. This isolates path discovery as insufficient on this example, not a model capacity limit. The prompt's JSON action example names `fs.find`; control for that cue before interpreting tool-choice failures or training on them.
+Approach and promotion gates: [small-model proposal](../SMALL-MODEL-PROPOSAL.md). Stock `qwen3.5:0.8b` (`f3817196d142`), local Ollama JSON mode, thinking disabled, temperature 0, eight-action budget. Three independent copies of the synthetic retry-limit fixture: task alone (8 actions, guessed an absolute path), listing supplied (2 actions, used the correct path but stopped without editing), and target path plus actual read supplied (8 actions, repeated find instead of editing). No staged changes; original fixture files unchanged throughout. This isolates path discovery as insufficient on this example, not a model capacity limit. The prompt's JSON action example names `fs.find`; control for that cue before interpreting tool-choice failures or training on them.
 
 ## P3 tracer milestone
 

@@ -1,6 +1,6 @@
 # lilguy-sh: a safe shell interface for small agents
 
-**Status:** Draft v0.2 (corrected after testing) · **Scope:** the execution layer of [lilguy](README.md) · **Platform:** Linux first
+**Status:** Draft v0.2 (corrected after testing) · **Scope:** the execution layer of [lilguy](../../README.md) · **Platform:** Linux first
 
 ---
 

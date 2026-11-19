@@ -54,6 +54,9 @@ def main(argv: list[str] | None = None) -> int:
     if args and args[0] == "sandbox-run":
         from .sandbox.cli import main as sandbox_main
         return sandbox_main(args[1:])
+    if args and args[0] == "do":
+        from .do import main as do_main
+        return do_main(args[1:])
     if args and args[0] in ("approve", "deny", "diff", "commit", "undo", "sessions"):
         from .policy import cli as decision_cli
         return getattr(decision_cli, f"{args[0]}_main")(args[1:])
@@ -66,8 +69,9 @@ def main(argv: list[str] | None = None) -> int:
         print("WARNING: v0.1 runs commands on the host; regex policy is NOT a sandbox.", file=sys.stderr)
         return legacy_main(args[1:])
     parser = argparse.ArgumentParser(description="lilguy: sandboxed shell for small models")
-    parser.add_argument("command", choices=["probe", "sandbox-run", "diff", "approve", "deny", "commit", "undo", "sessions", "eval", "run"],
+    parser.add_argument("command", choices=["probe", "sandbox-run", "do", "diff", "approve", "deny", "commit", "undo", "sessions", "eval", "run"],
                         help="sandbox-run: run a command in the sandbox (preview only); "
+                             "do: drive one guarded interface-v1 request with a local model and stage it; "
                              "diff/approve/deny/commit/undo: review a kept session and apply it; probe: host checks; "
                              "eval/run: legacy v0.1 harness (run is NOT sandboxed)")
     parser.parse_args(args)

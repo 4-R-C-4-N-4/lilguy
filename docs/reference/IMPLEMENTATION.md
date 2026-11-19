@@ -13,7 +13,7 @@ and the pitfalls already found. Where it makes a design choice not already in SC
 ### Current goal: lilguy's own model (supersedes the "first local-model milestone")
 
 The working goal and its step-by-step plan live in
-[`docs/SMALL-MODEL-PROPOSAL.md`](docs/SMALL-MODEL-PROPOSAL.md). In short, train a
+[`Model plan`](../SMALL-MODEL-PROPOSAL.md). In short, train a
 small model (≤ 1.5B target) whose home turf is the lilguy interface. It handles
 everyday shell requests through typed tools and sandboxed `run`, asks when a
 request is ambiguous, stops honestly, and ships as `lilguy do`. The plan's steps

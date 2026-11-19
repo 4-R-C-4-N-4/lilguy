@@ -3,6 +3,7 @@ import fnmatch
 import itertools
 import json
 import os
+import re
 import stat
 import sys
 import tempfile
@@ -51,6 +52,122 @@ def find(path, name_glob=None, type=None, max_depth=None, max_results=200):
         print(entry)
 
 
+LIST_RESULT_CAP = 2000  # not in the schema; internal safety cap so list can't dump huge trees
+
+
+def _listable(path, depth):
+    """Children of `path` up to `depth` levels, skipping symlinked directories."""
+    if depth is not None and depth <= 0:
+        return
+    for directory, dirs, files in os.walk(path):
+        parent = Path(directory)
+        level = len(parent.relative_to(path).parts) + 1
+        dirs.sort()
+        for name in sorted(dirs + files):
+            yield parent / name
+        if (depth is not None and level >= depth) or (parent / "").is_symlink():
+            dirs.clear()
+        dirs[:] = [d for d in dirs if not (parent / d).is_symlink()]
+
+
+def list_(path, depth=1, show_hidden=False, detailed=True):
+    start, _ = checked_path(path)
+    if not start.exists() and not start.is_symlink():
+        raise ValueError("Path does not exist")
+    if start.is_symlink() or not start.is_dir():
+        entries = [start]
+    else:
+        entries = _listable(start, depth)
+    root = Path.cwd()
+    count = 0
+    for entry in entries:
+        if not show_hidden and any(part.startswith(".") for part in entry.relative_to(start).parts):
+            continue
+        if count >= LIST_RESULT_CAP:
+            break
+        count += 1
+        relative = entry.relative_to(root).as_posix()
+        if not detailed:
+            print(relative)
+            continue
+        info = entry.lstat()
+        if stat.S_ISLNK(info.st_mode):
+            kind = "l"
+        elif stat.S_ISDIR(info.st_mode):
+            kind = "d"
+        else:
+            kind = "f"
+        print(f"{kind} {info.st_size:>10} {relative}")
+
+
+_TEXT_SUFFIX_ERROR = (UnicodeDecodeError,)
+
+
+def grep(pattern, path=".", glob=None, regex=False, ignore_case=False, line_numbers=False,
+          invert=False, recursive=True, filenames_only=False, max_results=200):
+    start, _ = checked_path(path)
+    if not start.exists() and not start.is_symlink():
+        raise ValueError("Path does not exist")
+    if start.is_symlink():
+        raise ValueError("Path does not exist")
+    if start.is_dir():
+        if recursive:
+            targets = (
+                entry for entry in candidates(start, None) if entry != start and entry.is_file()
+                and not entry.is_symlink()
+                and not any(part.startswith(".") for part in entry.relative_to(start).parts)
+            )
+        else:
+            targets = (
+                entry for entry in sorted(start.iterdir())
+                if entry.is_file() and not entry.is_symlink() and not entry.name.startswith(".")
+            )
+    else:
+        if not start.is_file():
+            raise ValueError("Expected a regular file")
+        targets = iter([start])
+    if glob is not None:
+        targets = (entry for entry in targets if fnmatch.fnmatchcase(entry.name, glob))
+
+    flags = re.IGNORECASE if ignore_case else 0
+    matcher = re.compile(pattern, flags) if regex else None
+
+    def line_matches(line):
+        if matcher is not None:
+            found = matcher.search(line) is not None
+        else:
+            found = (pattern.casefold() in line.casefold()) if ignore_case else (pattern in line)
+        return found != invert
+
+    root = Path.cwd()
+    seen_files = set()
+    emitted = 0
+    for entry in targets:
+        if emitted >= max_results:
+            break
+        relative = entry.relative_to(root).as_posix()
+        try:
+            with entry.open("r", encoding="utf8") as stream:
+                for number, line in enumerate(stream, start=1):
+                    if emitted >= max_results:
+                        break
+                    if not line_matches(line.rstrip("\n")):
+                        continue
+                    if filenames_only:
+                        if relative not in seen_files:
+                            seen_files.add(relative)
+                            print(relative)
+                            emitted += 1
+                        break
+                    if line_numbers:
+                        print(f"{relative}:{number}:{line.rstrip(chr(10))}")
+                    else:
+                        print(f"{relative}:{line.rstrip(chr(10))}")
+                    emitted += 1
+        except _TEXT_SUFFIX_ERROR:
+            continue
+
+
 def read(path, offset, limit):
     _, target = checked_path(path)
     if not target.is_file():
@@ -91,7 +208,8 @@ def edit(path, old, new):
 def main():
     name, _, arguments = sys.argv[1:]
     try:
-        {"fs.find": find, "fs.read": read, "fs.edit": edit}[name](**json.loads(arguments))
+        {"fs.find": find, "fs.read": read, "fs.edit": edit,
+         "fs.list": list_, "fs.grep": grep}[name](**json.loads(arguments))
     except (UnicodeError, OSError, OverflowError, RuntimeError):
         print("Unable to access workspace text", file=sys.stderr)
         return 1

@@ -1,4 +1,4 @@
-include SCOPE.md IMPLEMENTATION.md spec.md PROGRESS.md landlock_shim.py policy.yaml toolset.yaml
+include landlock_shim.py policy.yaml toolset.yaml
 recursive-include tests *.py
 recursive-include docs *.md
 include dev/small_model_eval.py

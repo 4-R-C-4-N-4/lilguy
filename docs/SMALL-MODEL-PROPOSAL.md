@@ -15,7 +15,7 @@ destructive effects reaching the real workspace without policy or human
 approval. It runs locally at **< 10 %** of the latency of a 30B reference, and
 ships as `lilguy do "<request>"` running on llama.cpp.
 
-These are the targets in [SCOPE.md](../SCOPE.md), restated for this goal.
+These are the targets in [SCOPE.md](reference/SCOPE.md), restated for this goal.
 
 ### What "everyday shell work" means here
 
@@ -193,12 +193,18 @@ Gate:
 
 ### Step 2: Give the model the shell (P3)
 
+Status: safety acceptance open; v1 scope decided. Keep `run` and five typed
+file tools. Defer separate `text.*` and `pipe`: `run` already supports pipelines,
+and changing the interface would invalidate candidate comparisons. Any future
+typed additions require a versioned interface change.
+Fast12 is a development check, not a substitute for this acceptance gate.
+
 Deliverables:
 - `run` served by lilguy-sh: one shell command or short script per step,
   executed through `GuardedSession` exactly like `lilguy sandbox-run`
   (overlay, policy, liveness, per-session network setting).
-- The reviewed typed tools served from `toolset.yaml` (`fs.list`, `fs.grep`,
-  text tools, `pipe`), not just the tracer three.
+- The five reviewed typed tools served from `toolset.yaml`: `fs.list`,
+  `fs.find`, `fs.read`, `fs.grep` and `fs.edit`.
 - `pending` and `rejected` outcomes returned to the model as observations.
 
 Gate (SCOPE P3 acceptance):
