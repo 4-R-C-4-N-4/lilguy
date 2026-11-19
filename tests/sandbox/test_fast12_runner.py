@@ -80,6 +80,26 @@ def test_judge_task_controls_agree_without_a_model(tmp_path):
     assert oracle_ok and false_done_caught
 
 
+def test_run_model_records_requests_tokens_and_seconds(tmp_path):
+    import io
+    import json
+
+    class Opener:
+        def __init__(self):
+            self.calls = 0
+
+        def open(self, request, timeout):
+            self.calls += 1
+            reply = ["tool fs.read\npath: notes.txt", "done\nnothing changed"][self.calls - 1]
+            return io.BytesIO(json.dumps({"choices": [{"message": {"content": reply}}],
+                                          "usage": {"prompt_tokens": 100, "completion_tokens": 7}}).encode())
+
+    result = runner.run_model(tmp_path, make_task(), p.load_tools(), 0, Opener(), _grade_status_ready)
+    metrics = result["metrics"]
+    assert (metrics["requests"], metrics["prompt_tokens"], metrics["completion_tokens"]) == (2, 200, 14)
+    assert metrics["model_seconds"] >= 0 and metrics["episode_seconds"] >= metrics["model_seconds"]
+
+
 def test_oracle_script_rejects_a_malformed_action(tmp_path):
     tools = p.load_tools()
     task = Task(id="broken", request="irrelevant", files={"a.txt": "x\n"},

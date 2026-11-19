@@ -225,6 +225,8 @@ def run_model(root: Path, task, tools, port, opener, grade):
     messages = [{"role": "system", "content": p.system_prompt(tools)},
                 {"role": "user", "content": task.request}]
     grammar = p.grammar(tools)
+    metrics = {"requests": 0, "prompt_tokens": 0, "completion_tokens": 0, "model_seconds": 0.0}
+    started = time.monotonic()
 
     async def drive():
         """Thin adapter over `lilguy.loop.run_loop`: builds each llama-server request from the
@@ -246,8 +248,15 @@ def run_model(root: Path, task, tools, port, opener, grade):
                         "max_tokens": 256, "chat_template_kwargs": {"enable_thinking": False}}
                 req = urllib.request.Request(f"http://127.0.0.1:{port}/v1/chat/completions",
                                               json.dumps(body).encode(), {"Content-Type": "application/json"})
+                asked = time.monotonic()
                 with opener.open(req, timeout=90) as response:
-                    reply = json.load(response)["choices"][0]["message"]["content"]
+                    data = json.load(response)
+                metrics["model_seconds"] += time.monotonic() - asked
+                metrics["requests"] += 1
+                usage = data.get("usage") or {}
+                metrics["prompt_tokens"] += int(usage.get("prompt_tokens", 0))
+                metrics["completion_tokens"] += int(usage.get("completion_tokens", 0))
+                reply = data["choices"][0]["message"]["content"]
                 messages.append({"role": "assistant", "content": reply})
                 try:
                     return p.parse_action(reply, tools)
@@ -260,6 +269,8 @@ def run_model(root: Path, task, tools, port, opener, grade):
                 [(t.action, t.observation, t.is_error) for t in record.turns])
 
     terminal, answer, events = asyncio.run(drive())
+    metrics["episode_seconds"] = time.monotonic() - started
+    metrics = {k: round(v, 3) if isinstance(v, float) else v for k, v in metrics.items()}
     unchanged = original_unchanged(ws, task.files)
     try:
         changes = collect_changes(state)
@@ -278,7 +289,7 @@ def run_model(root: Path, task, tools, port, opener, grade):
     return {
         "terminal": terminal, "answer": answer, "original_unchanged": unchanged,
         "changes": changes, "failures": failures, "infra_error": infra_error,
-        "events": trace_events,
+        "events": trace_events, "metrics": metrics,
     }
 
 
@@ -366,8 +377,13 @@ def main(argv=None):
         "infra_failures": sum(1 for v in verdicts if v["infra_failure"]),
         "model_misses": sum(1 for v in verdicts if v["model_miss"]),
         "tasks": [{"task": v["task"], "passed": v["passed"], "infra_failure": v["infra_failure"],
-                   "model_miss": v["model_miss"]} for v in verdicts],
+                   "model_miss": v["model_miss"], "terminal": v["model"]["terminal"],
+                   "metrics": v["model"].get("metrics")} for v in verdicts],
     }
+    measured = [v["model"].get("metrics") or {} for v in verdicts]
+    summary["model_totals"] = {key: round(sum(m.get(key, 0) for m in measured), 3) for key in
+                               ("requests", "prompt_tokens", "completion_tokens", "model_seconds",
+                                "episode_seconds")}
     (args.out / "fast12.json").write_text(json.dumps(summary, indent=2) + "\n")
     print(summary)
     return 0 if summary["infra_failures"] == 0 and summary["passed"] == summary["total"] else 1
