@@ -326,9 +326,9 @@ def managed_server(server: str, gguf: str, out: Path):
     opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
     with (out / "server.log").open("w") as log:
         proc = subprocess.Popen([server, "-m", gguf, "--host", "127.0.0.1", "--port", str(port),
-                                  "-c", "4096", "-np", "1"], stdout=log, stderr=subprocess.STDOUT)
+                                  "-c", "4096", "-np", "1", "-ngl", "all"], stdout=log, stderr=subprocess.STDOUT)
         try:
-            deadline = time.monotonic() + 120
+            deadline = time.monotonic() + 300
             while proc.poll() is None and time.monotonic() < deadline:
                 try:
                     with opener.open(f"http://127.0.0.1:{port}/health", timeout=1) as r:
