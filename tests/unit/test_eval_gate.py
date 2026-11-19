@@ -53,12 +53,11 @@ def test_clean_control_and_cross_split_leak(tmp_path):
 
 def test_full_dev_controls_and_third_copy(tmp_path):
     from pathlib import Path
-    from dev import broad_dev, fast12
+    from dev.broad_runner import development_rows
     from dev.eval_gate import verify
     held = Path(__file__).resolve().parents[2] / 'dev/holdout_manifest.json'
     pin = held.with_suffix('.sha256').read_text().split()[0]
-    entries = [dict(id=t.id, request=t.request, files=t.files, split='dev', template_id=t.id)
-               for t in (*fast12.TASKS, *broad_dev.TASKS)]
+    entries = development_rows()
     path = tmp_path / 'development.json'
     path.write_text(json.dumps(entries))
     assert verify(held, pin, path)['ok']

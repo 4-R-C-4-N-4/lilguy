@@ -1,3 +1,5 @@
+import xml.etree.ElementTree as ET
+
 from dev import factory
 
 
@@ -9,8 +11,50 @@ def test_skips_are_not_evidence(tmp_path):
     assert factory.all_executed(report)
 
 
+def test_full_safety_evidence_rejects_a_deselected_or_substituted_case(tmp_path):
+    path = tmp_path / 'safety.xml'
+    expected = frozenset({('tests.safety', 'case[other]'), ('tests.safety', 'case[required]')})
+
+    def save(roster):
+        suite = ET.Element('testsuite')
+        for name in roster:
+            ET.SubElement(suite, 'testcase', classname='tests.safety', name=name)
+        ET.ElementTree(suite).write(path)
+
+    save(['case[other]'])
+    assert not factory.all_executed(path, required=expected)
+    save(['case[other]', 'case[other]'])
+    assert not factory.all_executed(path, required=expected)
+    save(['case[other]', 'case[unrelated]'])
+    assert not factory.all_executed(path, required=expected)
+    save(['case[other]', 'case[required]'])
+    assert factory.all_executed(path, required=expected)
+
+
+def test_check_cannot_silently_deselect_the_missing_dependency_case(tmp_path, monkeypatch):
+    monkeypatch.setattr(factory, 'ROOT', tmp_path)
+    monkeypatch.setattr('sys.argv', ['factory', 'check'])
+    captured = {}
+
+    def execute(directory, stages, *, required_cases):
+        captured.update(suite=stages, cases=required_cases)
+        return 0
+
+    monkeypatch.setattr(factory, 'execute', execute)
+    assert factory.main() == 0
+    names = [stage[0] for stage in captured['suite']]
+    assert names.index('safety-prerequisites') < names.index('v1-bypass-corpus')
+    corpus = next(argv for name, argv, _ in captured['suite'] if name == 'v1-bypass-corpus')
+    assert '--deselect' not in corpus
+    assert ('tests.bypass.test_v1_run_corpus', 'test_corpus_through_v1_run_never_commits[17]') in (
+        captured['cases']['v1-bypass-corpus'])
+
+
 def test_evaluation_gate_uses_real_suites_and_stops_on_bad_pin(tmp_path):
-    assert factory.evaluation_gate()['ok']
+    result = factory.evaluation_gate()
+    assert result['ok']
+    assert result['candidate_count'] == 80
+    assert result['held_out_count'] == 100
     pin = tmp_path / 'pin'
     pin.write_text('0' * 64 + '\n')
     assert factory.evaluation_gate(pin_path=pin) == {'ok': False, 'reason': 'held-out digest mismatch'}

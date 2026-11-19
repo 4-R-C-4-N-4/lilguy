@@ -13,14 +13,21 @@ import xml.etree.ElementTree as ET
 from lilguy.protocol import INTERFACE_VERSION
 
 ROOT = Path(__file__).resolve().parents[1]
+V1_SAFETY_CASES = frozenset(
+    ('tests.bypass.test_v1_run_corpus', f'test_corpus_through_v1_run_never_commits[{case}]')
+    for case in ('1', '2', '3', '4', '5', '6', '7', '8', '17', '18', 'approval-spoof',
+                 'chmod-one', 'chmod-tree', 'git-config', 'git-remove', 'dotenv',
+                 'new-git-hook', 'new-nested-env')
+)
 
 
-def fast12_identity(model, server):
+def fast12_identity(model, server, *, extra_sources=()):
     def sha(path):
         with path.open('rb') as stream:
             return hashlib.file_digest(stream, 'sha256').hexdigest()
 
-    sources = [ROOT / p for p in ('dev/fast12.py', 'dev/fast12_runner.py', 'toolset.yaml', 'policy.yaml')]
+    sources = [ROOT / p for p in ('dev/fast12.py', 'dev/fast12_runner.py', 'toolset.yaml', 'policy.yaml',
+                                  *extra_sources)]
     sources.extend(sorted((ROOT / 'lilguy').rglob('*.py')))
     inputs = {str(p.relative_to(ROOT)): sha(p) for p in sources}
     inputs['llama-server'] = sha(server)
@@ -45,31 +52,34 @@ def gpu_device(server, expected):
     return names[0] if len(names) == 1 and expected in names[0] else None
 
 
-def all_executed(path):
+def all_executed(path, *, required=None):
     try:
         cases = ET.parse(path).findall('.//testcase')
     except (ET.ParseError, OSError):
         return False
-    return bool(cases) and not any(c.find(tag) is not None for c in cases for tag in ('skipped', 'failure', 'error'))
+    if not cases or any(c.find(tag) is not None for c in cases for tag in ('skipped', 'failure', 'error')):
+        return False
+    if required is not None:
+        actual = {(c.get('classname'), c.get('name')) for c in cases}
+        return len(cases) == len(required) and actual == required
+    return True
 
 
 def evaluation_gate(pin_path=ROOT / 'dev/holdout_manifest.sha256'):
     """Audit every development task against the frozen held-out suite before a model job."""
-    from dev import broad_dev, fast12
+    from dev.broad_runner import development_rows
     from dev.eval_gate import verify
-    rows = [dict(id=t.id, split='dev', template_id=t.id, request=t.request, files=t.files)
-            for t in (*fast12.TASKS, *broad_dev.TASKS)]
     try:
         pin = Path(pin_path).read_text().split()[0]
     except (OSError, IndexError):
         return {'ok': False, 'reason': 'held-out suite is not frozen'}
     with tempfile.TemporaryDirectory() as tmp:
         manifest = Path(tmp) / 'development.json'
-        manifest.write_text(json.dumps(rows))
+        manifest.write_text(json.dumps(development_rows()))
         return verify(ROOT / 'dev/holdout_manifest.json', pin, manifest)
 
 
-def execute(directory, stages):
+def execute(directory, stages, *, required_cases=None):
     def git(*args):
         return subprocess.check_output(['git', *args], cwd=ROOT, text=True).strip()
 
@@ -91,7 +101,8 @@ def execute(directory, stages):
             except OSError as exc:
                 print(str(exc), file=log)
                 rc = 1
-        ok = rc == 0 and (evidence is None or all_executed(evidence))
+        roster = (required_cases or {}).get(name)
+        ok = rc == 0 and (all_executed(evidence, required=roster) if evidence else roster is None)
         report['stages'].append({'name': name, 'argv': list(map(str, argv)), 'exit': rc, 'passed': ok,
                                  'seconds': round(time.monotonic() - started, 3)})
         if not ok:
@@ -105,20 +116,37 @@ def execute(directory, stages):
     return 0
 
 
+def run_development(directory, suite, gguf, server, device):
+    if suite == 'broad':
+        from dev.broad_runner import SOURCES
+        runner, sources = 'dev.broad_runner', SOURCES
+    else:
+        runner, sources = 'dev.fast12_runner', ()
+    identity = {**fast12_identity(gguf, server, extra_sources=sources), 'device': device}
+    (directory / 'identity.json').write_text(json.dumps(identity, indent=2, sort_keys=True) + '\n')
+    return execute(directory, [('dev-suite', ['.venv/bin/python', '-m', runner,
+        server.resolve(), gguf.resolve(), directory], None)])
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('job', choices=['check', 'trial', 'fast12', 'audit-splits', 'compare'])
+    parser.add_argument('job', choices=['check', 'trial', 'fast12', 'broad', 'screen', 'audit-splits', 'compare'])
     parser.add_argument('--stock', type=Path)
     parser.add_argument('--candidate', type=Path)
     parser.add_argument('--held-out', type=Path)
     parser.add_argument('--manifest', type=Path)
     parser.add_argument('--held-out-sha256', help='previously pinned digest; never derive from current input')
     parser.add_argument('--gguf', type=Path)
+    parser.add_argument('--model', action='append', default=[], metavar='LABEL=GGUF',
+                        help='repeat for each local GGUF in a screen')
+    parser.add_argument('--reference', help='comparison label for screen (does not select the release reference)')
     parser.add_argument('--server', type=Path, default=Path(os.environ.get('LLAMA_SERVER', Path.home() / 'programs/llama.cpp/build/bin/llama-server')))
     parser.add_argument('--gpu-name', default=os.environ.get('LILGUY_GPU', 'RTX 3090'),
                         help='model jobs run only when exactly one visible CUDA device matches')
     args = parser.parse_args()
     device = None
+    models = None
+    gate = {}
     if args.job == 'compare':
         from dev.fast12_compare import compare
         if not (args.stock and args.candidate):
@@ -135,7 +163,15 @@ def main():
         result = verify(args.held_out, args.held_out_sha256, args.manifest)
         print(json.dumps(result, sort_keys=True))
         return 0 if result['ok'] else 1
-    if args.job != 'check' and not (args.gguf and args.gguf.is_file() and args.server.is_file()):
+    if args.job == 'screen':
+        from dev import factory_screen
+        if args.gguf or not args.server.is_file():
+            parser.error('screen uses --model instead of --gguf and requires a local llama-server')
+        try:
+            models = factory_screen.parse_models(args.model, args.reference)
+        except (OSError, ValueError) as exc:
+            parser.error(str(exc))
+    elif args.job != 'check' and not (args.gguf and args.gguf.is_file() and args.server.is_file()):
         parser.error(f'{args.job} needs a local --gguf and llama-server (--server or LLAMA_SERVER)')
     if args.job != 'check':
         gate = evaluation_gate()
@@ -154,11 +190,17 @@ def main():
             parser.exit(2, 'Another factory job owns the sandbox gate.\n')
         directory = Path(tempfile.mkdtemp(prefix=args.job + '-', dir=base))
         print(directory, flush=True)
-        if args.job == 'fast12':
-            identity = {**fast12_identity(args.gguf, args.server), 'device': device}
-            (directory / 'identity.json').write_text(json.dumps(identity, indent=2, sort_keys=True) + '\n')
-            return execute(directory, [('dev-suite', ['.venv/bin/python', '-m', 'dev.fast12_runner',
-                args.server.resolve(), args.gguf.resolve(), directory], None)])
+        if models is not None:
+            from dev import factory_screen
+            try:
+                factory_screen.run(directory, models, args.reference, device, gate,
+                    lambda out, suite, gguf: run_development(out, suite, gguf, args.server, device))
+            except (ValueError, OSError, KeyError, TypeError) as exc:
+                parser.exit(1, f'Screen stopped: {exc}; see {directory}\n')
+            print(directory / 'comparison.json', flush=True)
+            return 0
+        if args.job in ('fast12', 'broad'):
+            return run_development(directory, args.job, args.gguf, args.server, device)
         if args.job == 'trial':
             return execute(directory, [('dev-task', ['.venv/bin/python', '-m', 'dev.factory_trial',
                 args.server.resolve(), args.gguf.resolve(), directory], None)])
@@ -169,16 +211,18 @@ def main():
                           ('guarded-tools', ['.venv/bin/python', '-m', 'pytest', '-q',
                                             'tests/unit/test_mcp_server_v1.py', 'tests/unit/test_typed_step_fs.py',
                                             'tests/sandbox/test_mcp_server_v1_live.py']),
-                          # Step 2 acceptance. Corpus #17 needs rsync, absent on this host; it is
-                          # deselected by name so the gap stays visible in the job record.
+                          ('safety-prerequisites', ['.venv/bin/python', '-c',
+                              'import shutil, sys; sys.exit(0 if shutil.which("rsync", path="/usr/bin:/bin") '
+                              'else "Full v1 safety acceptance requires rsync on the sandbox PATH for corpus case 17.")']),
                           ('v1-bypass-corpus', ['.venv/bin/python', '-m', 'pytest', '-q',
-                                                'tests/bypass/test_v1_run_corpus.py', '--deselect',
-                                                'tests/bypass/test_v1_run_corpus.py::'
-                                                'test_corpus_through_v1_run_never_commits[17]']),
+                                                'tests/bypass/test_v1_run_corpus.py']),
                           ('trainer-smoke', ['dev/train_tests.sh'])]:
+            if name == 'safety-prerequisites':
+                stages.append((name, cmd, None))
+                continue
             evidence = directory / f'{name}.xml'
             stages.append((name, [*cmd, f'--junitxml={evidence}'], evidence))
-        return execute(directory, stages)
+        return execute(directory, stages, required_cases={'v1-bypass-corpus': V1_SAFETY_CASES})
 
 
 if __name__ == '__main__':
