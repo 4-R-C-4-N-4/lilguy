@@ -195,20 +195,22 @@ Gate:
 
 ### Step 2: Give the model the shell (P3)
 
-Status: done (2026-11-19); v1 scope decided. Keep `run` and five typed
+Status: v1 scope decided; full safety acceptance remains open. Keep `run` and five typed
 file tools. Defer separate `text.*` and `pipe`: `run` already supports pipelines,
 and changing the interface would invalidate candidate comparisons. Any future
 typed additions require a versioned interface change.
 
 Safety acceptance: `tests/bypass/test_v1_run_corpus.py` sends the bypass corpus
 through the model-facing v1 `run` tool (`factory check` stage `v1-bypass-corpus`).
-Every case ends `pending` or `rejected`, or is `blocked`: an existing protected
+All executed cases ended `pending` or `rejected`, or were blocked: an existing protected
 path (`.git/`, `.env`) is mounted read-only, so the write fails with
 `changes: none` and nothing is staged. In every case the real workspace and a host
 canary are unchanged, a pending session refuses further steps, and no approval tool
 is offered. An unrecognized policy decision is a tool error, and the shared loop
-stops on any missing or malformed policy line. Gap: corpus #17 (`rsync --delete`)
-is unverified on this host because rsync is not installed.
+stops on any missing or malformed policy line. Corpus #17 was excluded from the
+historical partial run because rsync was not installed. The full factory check
+now requires rsync on the sandbox executable path and verifies the exact 18-case
+JUnit roster, including #17. A missing dependency or missing case is a gate failure.
 Fast12 is a development check, not a substitute for this acceptance gate.
 
 Deliverables:
@@ -223,8 +225,9 @@ Gate (SCOPE P3 acceptance):
 - each typed tool has a schema, validation tests and an equivalence test
   against its bash counterpart;
 - typed and `run` changes appear in one session diff;
-- bypass-corpus commands sent through `run` end `pending` or `rejected`, never
-  silently committed.
+- all required bypass-corpus cases run through `run` and are held for approval,
+  rejected, or blocked before staging; none are silently committed. An excluded
+  case keeps full acceptance open.
 
 ### Step 3: The agent loop on lilguy (P5)
 
@@ -323,7 +326,7 @@ Gate: Ivy picks the model family from the report.
 ### Step 6: Training data in the lilguy interface (P6)
 
 Deliverables:
-1. **Licence audit** of the public sources (`docs/data/DATA-SOURCES.md`). Only
+1. **[Licence audit](../data/LICENCE-AUDIT.md)** of the public sources. Only
    cleared sources go forward.
 2. **Fixture builders** for the most common utilities, ranked by the coverage
    curve. A builder creates a small workspace that a request's command

@@ -1,6 +1,10 @@
 # Public data sources and provenance
 
-No commands from these sources have been executed. Personal shell history has not been read. Source-card counts below are publisher claims, not completed local verification counts.
+Licence status for all six public sources below (declared licence, verified upstream licence,
+obligations, per-source verdict) is tracked in [LICENCE-AUDIT.md](./LICENCE-AUDIT.md); do not
+treat source labels in this file as settled licence findings.
+
+No commands from these sources have been executed for training. Local history analysis is separate and aggregate-only. Source-card counts below are publisher claims, not completed local verification counts.
 
 ## NL2SH-ALFA
 
@@ -34,8 +38,8 @@ No commands from these sources have been executed. Personal shell history has no
 Fetched with `python -m lilguy.data.fetch --source <name>` from raw files using the installed json/parquet builders; no remote loader script is run. Records stay `license: unverified`; none may become training data until provenance is checked.
 
 - `cli-explained` → b-mc2/cli-commands-explained (Hub tag CC0-1.0). Built from commandlinefu.com and github.com/cheat/cheatsheets; the upstream terms for both still need checking before any training use. 16,090 rows with a command.
-- `nl2bash-custom` → AnishJoshi/nl2bash-custom (no licence declared on the Hub; derives from NL2Bash, GPLv3, and NL2CMD). Ships a `dataset.py` loader that is **never** executed. 24,569 rows.
-- `bash6k` → emirkaanozdemr/bash_command_data_6K (Apache-2.0 declared). Likely model-generated; treat as low-trust. 6,153 rows.
+- `nl2bash-custom` → AnishJoshi/nl2bash-custom (no licence declared on the Hub; derives from NL2Bash and Magnum-NLC2CMD; see audit for the data/code licence distinction). Ships a `dataset.py` loader that is **never** executed. 24,569 rows.
+- `bash6k` → emirkaanozdemr/bash_command_data_6K (Apache-2.0 declared; creation method undisclosed). 6,153 rows.
 - Considered, not fetched: SALT-NLP/SWE-chat (ODC-BY, gated: the account owner must accept the terms), scraped public `.bash_history` files (credentials; not collected), SEA/Greenberg (no arguments), KYPO training commands, The Stack shell subset.
 
 ## Local shell history (D9)
