@@ -8,7 +8,7 @@ while read -r label gguf; do
     [ -z "$label" ] && continue
     case "$label" in \#*) continue ;; esac
     log=$(mktemp)
-    CUDA_VISIBLE_DEVICES=0 timeout 3600 .venv/bin/python -m dev.factory fast12 --gguf "$gguf" > "$log" 2>&1
+    CUDA_DEVICE_ORDER=PCI_BUS_ID CUDA_VISIBLE_DEVICES=0 timeout 3600 .venv/bin/python -m dev.factory fast12 --gguf "$gguf" > "$log" 2>&1
     rc=$?
     dir=$(head -1 "$log")
     rm -f "$log"

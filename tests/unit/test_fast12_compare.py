@@ -7,20 +7,22 @@ import pytest
 from dev.fast12 import TASKS
 
 
-def result(root, winner, digest):
+def result(root, winner, digest, device='NVIDIA GeForce RTX 3090'):
     root.mkdir()
-    (root / 'identity.json').write_text(json.dumps(dict(evaluation_sha256=digest, gguf_sha256='c'*64)))
+    (root / 'identity.json').write_text(json.dumps(dict(evaluation_sha256=digest, gguf_sha256='c'*64,
+                                                        device=device)))
     rows = [dict(task=t.id, passed=i == winner, model_miss=i != winner, infra_failure=False)
             for i, t in enumerate(TASKS)]
     (root / 'fast12.json').write_text(json.dumps(dict(total=12, passed=1, model_misses=11,
                                                      infra_failures=0, tasks=rows)))
 
 
-@pytest.mark.parametrize('case', ['clean', 'different', 'incomplete', 'infra'])
+@pytest.mark.parametrize('case', ['clean', 'different', 'incomplete', 'infra', 'device'])
 def test_compare_cli(tmp_path, case):
     a, b = tmp_path / 'stock', tmp_path / 'candidate'
     result(a, 0, 'a'*64)
-    result(b, 1, ('b' if case == 'different' else 'a')*64)
+    result(b, 1, ('b' if case == 'different' else 'a')*64,
+           'NVIDIA GeForce RTX 4070' if case == 'device' else 'NVIDIA GeForce RTX 3090')
     path = b / 'fast12.json'
     data = json.loads(path.read_text())
     if case == 'incomplete':

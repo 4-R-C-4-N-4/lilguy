@@ -31,6 +31,8 @@ def compare(stock, candidate):
     b, new = _load(candidate)
     if a['evaluation_sha256'] != b['evaluation_sha256']:
         raise ValueError('evaluation fingerprints differ; rerun stock')
+    if a.get('device') != b.get('device'):
+        raise ValueError('runs used different GPUs; latency is not comparable')
     return dict(evaluation_sha256=a['evaluation_sha256'], stock_sha256=a['gguf_sha256'],
                 candidate_sha256=b['gguf_sha256'], stock_passed=sum(old.values()),
                 candidate_passed=sum(new.values()), improved=sorted(t for t in new if new[t] and not old[t]),

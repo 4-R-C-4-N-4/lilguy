@@ -28,6 +28,23 @@ def fast12_identity(model, server):
             'evaluation_sha256': hashlib.sha256(json.dumps(inputs, sort_keys=True).encode()).hexdigest()}
 
 
+def gpu_device(server, expected):
+    """Name of the single visible CUDA device if it matches `expected`, else None.
+
+    CUDA's default ordering differs from nvidia-smi's, so CUDA_VISIBLE_DEVICES=0 picked the
+    desktop 4070 here. Force PCI order for this process and every child it starts.
+    """
+    os.environ['CUDA_DEVICE_ORDER'] = 'PCI_BUS_ID'
+    try:
+        listing = subprocess.run([str(server), '--list-devices'], capture_output=True, text=True,
+                                 timeout=60).stdout
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    names = [line.split(':', 1)[1].split('(')[0].strip() for line in listing.splitlines()
+             if line.strip().startswith('CUDA') and ':' in line]
+    return names[0] if len(names) == 1 and expected in names[0] else None
+
+
 def all_executed(path):
     try:
         cases = ET.parse(path).findall('.//testcase')
@@ -98,7 +115,10 @@ def main():
     parser.add_argument('--held-out-sha256', help='previously pinned digest; never derive from current input')
     parser.add_argument('--gguf', type=Path)
     parser.add_argument('--server', type=Path, default=Path(os.environ.get('LLAMA_SERVER', Path.home() / 'programs/llama.cpp/build/bin/llama-server')))
+    parser.add_argument('--gpu-name', default=os.environ.get('LILGUY_GPU', 'RTX 3090'),
+                        help='model jobs run only when exactly one visible CUDA device matches')
     args = parser.parse_args()
+    device = None
     if args.job == 'compare':
         from dev.fast12_compare import compare
         if not (args.stock and args.candidate):
@@ -121,6 +141,10 @@ def main():
         gate = evaluation_gate()
         if not gate['ok']:
             parser.exit(1, f"Evaluation gate failed: {gate['reason']}\n")
+        device = gpu_device(args.server, args.gpu_name)
+        if device is None:
+            parser.exit(1, f'Expected exactly one visible CUDA device matching {args.gpu_name!r}; '
+                           'set CUDA_VISIBLE_DEVICES (PCI order).\n')
     base = ROOT / 'reports' / 'factory'
     base.mkdir(parents=True, exist_ok=True)
     with (base / '.lock').open('a') as lock:
@@ -131,8 +155,8 @@ def main():
         directory = Path(tempfile.mkdtemp(prefix=args.job + '-', dir=base))
         print(directory, flush=True)
         if args.job == 'fast12':
-            (directory / 'identity.json').write_text(json.dumps(fast12_identity(args.gguf, args.server),
-                                                                indent=2, sort_keys=True) + '\n')
+            identity = {**fast12_identity(args.gguf, args.server), 'device': device}
+            (directory / 'identity.json').write_text(json.dumps(identity, indent=2, sort_keys=True) + '\n')
             return execute(directory, [('dev-suite', ['.venv/bin/python', '-m', 'dev.fast12_runner',
                 args.server.resolve(), args.gguf.resolve(), directory], None)])
         if args.job == 'trial':
