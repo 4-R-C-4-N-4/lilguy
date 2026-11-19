@@ -145,6 +145,12 @@ def main():
                           ('guarded-tools', ['.venv/bin/python', '-m', 'pytest', '-q',
                                             'tests/unit/test_mcp_server_v1.py', 'tests/unit/test_typed_step_fs.py',
                                             'tests/sandbox/test_mcp_server_v1_live.py']),
+                          # Step 2 acceptance. Corpus #17 needs rsync, absent on this host; it is
+                          # deselected by name so the gap stays visible in the job record.
+                          ('v1-bypass-corpus', ['.venv/bin/python', '-m', 'pytest', '-q',
+                                                'tests/bypass/test_v1_run_corpus.py', '--deselect',
+                                                'tests/bypass/test_v1_run_corpus.py::'
+                                                'test_corpus_through_v1_run_never_commits[17]']),
                           ('trainer-smoke', ['dev/train_tests.sh'])]:
             evidence = directory / f'{name}.xml'
             stages.append((name, [*cmd, f'--junitxml={evidence}'], evidence))

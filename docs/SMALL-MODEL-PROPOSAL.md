@@ -193,10 +193,20 @@ Gate:
 
 ### Step 2: Give the model the shell (P3)
 
-Status: safety acceptance open; v1 scope decided. Keep `run` and five typed
+Status: done (2026-11-19); v1 scope decided. Keep `run` and five typed
 file tools. Defer separate `text.*` and `pipe`: `run` already supports pipelines,
 and changing the interface would invalidate candidate comparisons. Any future
 typed additions require a versioned interface change.
+
+Safety acceptance: `tests/bypass/test_v1_run_corpus.py` sends the bypass corpus
+through the model-facing v1 `run` tool (`factory check` stage `v1-bypass-corpus`).
+Every case ends `pending` or `rejected`, or is `blocked`: an existing protected
+path (`.git/`, `.env`) is mounted read-only, so the write fails with
+`changes: none` and nothing is staged. In every case the real workspace and a host
+canary are unchanged, a pending session refuses further steps, and no approval tool
+is offered. An unrecognized policy decision is a tool error, and the shared loop
+stops on any missing or malformed policy line. Gap: corpus #17 (`rsync --delete`)
+is unverified on this host because rsync is not installed.
 Fast12 is a development check, not a substitute for this acceptance gate.
 
 Deliverables:
