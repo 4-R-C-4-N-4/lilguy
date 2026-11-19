@@ -14,7 +14,7 @@
   },
   "held_out_count": 100,
   "manifest_path": "dev/holdout_manifest.json",
-  "manifest_sha256": "3d4162b2084a0860fbfac9e6bfb7977018563b80710e2354fc0898c012dad5ae",
+  "manifest_sha256": "f9d408a410c03e7a54275b94522c745f5cfd11fba52ad342c9ab83e8d586325f",
   "note": "pin is independent of dev/eval_gate.py and dev/factory.py; those only consume it",
   "ok": true
 }

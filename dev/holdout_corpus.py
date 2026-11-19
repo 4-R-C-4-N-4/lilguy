@@ -26,6 +26,7 @@ Families (10 x 10 = 100 tasks):
 """
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 
 
@@ -43,6 +44,7 @@ class _Expected:
     changes: dict
     answer_contains: tuple = ()
     answer_forbid: tuple = ()
+    answer_patterns: tuple = ()   # regexes (case-insensitive) the answer must match, for values
     require_pending: bool = False
     require_rejected: bool = False
     require_error: bool = False
@@ -177,7 +179,7 @@ for i, (fname, old, new) in enumerate(_D):
         ),
         _Expected(
             terminal="done", changes={},
-            answer_contains=("rejected", "protect"),
+            answer_contains=("rejected",),
             answer_forbid=(f"updated {fname}",),
             require_rejected=True,
         ),
@@ -246,6 +248,10 @@ _G = [
 ]
 for i, (fname, content, key, val, question) in enumerate(_G):
     tid = f"holdout_g_readonly_{i:02d}"
+    if val.replace(".", "", 1).replace("/", "", 1).isdigit():
+        pattern = rf"\b{re.escape(key)}\b\D{{0,48}}(?<!\d){re.escape(val)}(?!\d)"
+    else:
+        pattern = rf"\b{re.escape(key)}\b.{{0,48}}\b{re.escape(val)}\b"
     _add(
         Task(
             id=tid,
@@ -256,37 +262,42 @@ for i, (fname, content, key, val, question) in enumerate(_G):
                 f"done\n{key}={val} in {fname}.",
             ),
         ),
-        _Expected(terminal="done", changes={}, answer_contains=(f"{key}={val}",)),
+        _Expected(terminal="done", changes={}, answer_patterns=(pattern,)),
     )
 
 # --- family H: recovery_after_wrong_path --------------------------------------------------------
+# The file named in the request is NOT at top level -- it lives in a natural subdirectory. A
+# model must look or recover (fs.find); making a mistake is not required (mirrors Fast12's
+# recovery_after_typo fix).
 _H = [
-    ("labels.txt", "color: red\n", "lables.txt", "color", "red", "blue"),
-    ("tickets.txt", "priority: low\n", "tikets.txt", "priority", "low", "high"),
-    ("permits.txt", "state: pending\n", "permts.txt", "state", "pending", "approved"),
-    ("contacts.txt", "preferred: phone\n", "contats.txt", "preferred", "phone", "email"),
-    ("assets.txt", "owner: ops\n", "assests.txt", "owner", "ops", "finance"),
-    ("shipments.txt", "carrier: ups\n", "shippments.txt", "carrier", "ups", "fedex"),
-    ("reservations.txt", "table: patio\n", "reservatons.txt", "table", "patio", "indoor"),
-    ("warranties.txt", "term: 1yr\n", "warranties_.txt", "term", "1yr", "3yr"),
-    ("subscriptions.txt", "plan: basic\n", "subscriptons.txt", "plan", "basic", "premium"),
-    ("certificates.txt", "status: valid\n", "certifcates.txt", "status", "valid", "revoked"),
+    ("labels.txt", "color: red\n", "archive", "color", "red", "blue"),
+    ("tickets.txt", "priority: low\n", "support", "priority", "low", "high"),
+    ("permits.txt", "state: pending\n", "records", "state", "pending", "approved"),
+    ("contacts.txt", "preferred: phone\n", "directory", "preferred", "phone", "email"),
+    ("assets.txt", "owner: ops\n", "inventory", "owner", "ops", "finance"),
+    ("shipments.txt", "carrier: ups\n", "logistics", "carrier", "ups", "fedex"),
+    ("reservations.txt", "table: patio\n", "bookings", "table", "patio", "indoor"),
+    ("warranties.txt", "term: 1yr\n", "compliance", "term", "1yr", "3yr"),
+    ("subscriptions.txt", "plan: basic\n", "billing", "plan", "basic", "premium"),
+    ("certificates.txt", "status: valid\n", "vault", "status", "valid", "revoked"),
 ]
-for i, (fname, content, typo, key, old, new) in enumerate(_H):
+for i, (fname, content, subdir, key, old, new) in enumerate(_H):
     tid = f"holdout_h_recovery_{i:02d}"
+    real_path = f"{subdir}/{fname}"
     _add(
         Task(
             id=tid,
             request=f"In {fname} change '{key}: {old}' to '{key}: {new}'.",
-            files={fname: content},
+            files={real_path: content},
             oracle=(
-                f"tool fs.read\npath: {typo}",
                 f"tool fs.read\npath: {fname}",
-                f"tool fs.edit\npath: {fname}\nold: {key}: {old}\nnew: {key}: {new}",
-                f"done\nFixed a typo in the path, then changed {fname} to {key}: {new}.",
+                f"tool fs.find\nname_glob: {fname}",
+                f"tool fs.edit\npath: {real_path}\nold: {key}: {old}\nnew: {key}: {new}",
+                f"done\n{fname} was not at the top level; changed {real_path} to {key}: {new}.",
             ),
         ),
-        _Expected(terminal="done", changes={fname: f"{key}: {new}\n"}, require_error=True),
+        _Expected(terminal="done", changes={real_path: f"{key}: {new}\n"},
+                  answer_contains=(real_path,)),
     )
 
 # --- family I: append_block_entry ----------------------------------------------------------------
@@ -378,6 +389,9 @@ def grade(task, *, terminal, answer, changes, events, original_unchanged):
     for needle in spec.answer_forbid:
         if needle.lower() in low:
             reasons.append(f"answer falsely claims {needle!r}: {text!r}")
+    for pattern in spec.answer_patterns:
+        if not re.search(pattern, text, re.IGNORECASE):
+            reasons.append(f"answer does not state the expected value ({pattern}): {text!r}")
 
     if changes != spec.changes:
         reasons.append(f"changes mismatch: expected {spec.changes!r}, got {changes!r}")

@@ -661,7 +661,7 @@
   },
   {
     "files": {
-      "labels.txt": "color: red\n"
+      "archive/labels.txt": "color: red\n"
     },
     "id": "holdout_h_recovery_00",
     "request": "In labels.txt change 'color: red' to 'color: blue'.",
@@ -670,7 +670,7 @@
   },
   {
     "files": {
-      "tickets.txt": "priority: low\n"
+      "support/tickets.txt": "priority: low\n"
     },
     "id": "holdout_h_recovery_01",
     "request": "In tickets.txt change 'priority: low' to 'priority: high'.",
@@ -679,7 +679,7 @@
   },
   {
     "files": {
-      "permits.txt": "state: pending\n"
+      "records/permits.txt": "state: pending\n"
     },
     "id": "holdout_h_recovery_02",
     "request": "In permits.txt change 'state: pending' to 'state: approved'.",
@@ -688,7 +688,7 @@
   },
   {
     "files": {
-      "contacts.txt": "preferred: phone\n"
+      "directory/contacts.txt": "preferred: phone\n"
     },
     "id": "holdout_h_recovery_03",
     "request": "In contacts.txt change 'preferred: phone' to 'preferred: email'.",
@@ -697,7 +697,7 @@
   },
   {
     "files": {
-      "assets.txt": "owner: ops\n"
+      "inventory/assets.txt": "owner: ops\n"
     },
     "id": "holdout_h_recovery_04",
     "request": "In assets.txt change 'owner: ops' to 'owner: finance'.",
@@ -706,7 +706,7 @@
   },
   {
     "files": {
-      "shipments.txt": "carrier: ups\n"
+      "logistics/shipments.txt": "carrier: ups\n"
     },
     "id": "holdout_h_recovery_05",
     "request": "In shipments.txt change 'carrier: ups' to 'carrier: fedex'.",
@@ -715,7 +715,7 @@
   },
   {
     "files": {
-      "reservations.txt": "table: patio\n"
+      "bookings/reservations.txt": "table: patio\n"
     },
     "id": "holdout_h_recovery_06",
     "request": "In reservations.txt change 'table: patio' to 'table: indoor'.",
@@ -724,7 +724,7 @@
   },
   {
     "files": {
-      "warranties.txt": "term: 1yr\n"
+      "compliance/warranties.txt": "term: 1yr\n"
     },
     "id": "holdout_h_recovery_07",
     "request": "In warranties.txt change 'term: 1yr' to 'term: 3yr'.",
@@ -733,7 +733,7 @@
   },
   {
     "files": {
-      "subscriptions.txt": "plan: basic\n"
+      "billing/subscriptions.txt": "plan: basic\n"
     },
     "id": "holdout_h_recovery_08",
     "request": "In subscriptions.txt change 'plan: basic' to 'plan: premium'.",
@@ -742,7 +742,7 @@
   },
   {
     "files": {
-      "certificates.txt": "status: valid\n"
+      "vault/certificates.txt": "status: valid\n"
     },
     "id": "holdout_h_recovery_09",
     "request": "In certificates.txt change 'status: valid' to 'status: revoked'.",

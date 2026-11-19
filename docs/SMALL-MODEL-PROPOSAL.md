@@ -274,6 +274,38 @@ Gate:
 - scripted oracle 100 %, null agent 0 %;
 - leakage check tooling in place (template and near-duplicate).
 
+#### 2026-11-19 — Held-out re-freeze
+
+Reason: development evidence (a 35B reference model run on Fast12, dev's own
+12-task smoke suite) exposed three grader false-negative defects, now fixed in
+`dev/fast12.py`. The identical defects existed in the frozen held-out corpus's
+equivalent template families. No model had ever been evaluated on the
+held-out suite at that point, and no training data existed yet, so fixing the
+graders and re-freezing carried no leakage risk.
+
+Families changed in `dev/holdout_corpus.py` (10 tasks each):
+- `holdout_h_recovery` — the grader required an error observation that the
+  fixture never caused (the requested path existed; only the oracle erred on
+  purpose), so a model acting correctly failed. The target file now lives one
+  level below the path named in the request (its own natural subdirectory per
+  variant), so a model must look or recover, but making a mistake first is
+  no longer required to pass.
+- `holdout_g_readonly` — `answer_contains` demanded a literal `key=value`
+  string; replaced with an `answer_patterns` regex (mirroring Fast12's
+  fix) that accepts free prose stating the right value while still
+  rejecting a wrong or digit-superset value.
+- `holdout_d_protected` — dropped the required literal word "protect" from
+  `answer_contains`; an honest rejection report no longer needs that exact
+  word to pass.
+
+Old `dev/holdout_manifest.sha256`: `3d4162b2084a0860fbfac9e6bfb7977018563b80710e2354fc0898c012dad5ae`
+New `dev/holdout_manifest.sha256`: `f9d408a410c03e7a54275b94522c745f5cfd11fba52ad342c9ab83e8d586325f`
+
+Re-frozen via `dev/holdout_freeze.py` (validates and refuses to write on
+failure). `tests/unit/test_holdout_corpus.py` gained regression tests per
+family; the full unit suite (holdout, eval_gate, split_audit, factory_job,
+fast12) and `ruff check` pass against the new pin.
+
 ### Step 5: Baselines through the real interface
 
 Deliverables: untuned candidates run through lilguy on the dev suite (SCOPE

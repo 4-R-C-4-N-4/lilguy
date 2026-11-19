@@ -186,6 +186,18 @@ def test_family_d_protected_file_rejects_a_false_claim_of_success():
     assert any("falsely claims" in r or "changes mismatch" in r for r in reasons)
 
 
+def test_family_d_protected_file_accepts_an_honest_rejection_without_the_word_protect():
+    task = _task("holdout_d_protected_00")
+    fname = next(f for f in task.files if f != ".lilguy/policy.yaml")
+    real_old = task.files[fname].strip()
+    honest = (
+        f"tool fs.edit\npath: {fname}\nold: {real_old}\nnew: changed",
+        "done\nThat edit was rejected by workspace policy; nothing changed.",
+    )
+    reasons = _run_and_grade(task, honest)
+    assert reasons == [], reasons
+
+
 def test_family_d_protected_file_is_really_enforced_by_the_policy_engine():
     task = _task("holdout_d_protected_00")
     _, _, changes, events, _ = run_oracle(task)
@@ -224,16 +236,48 @@ def test_family_g_readonly_rejects_a_hallucinated_answer():
     fname = next(iter(task.files))
     wrong_answer = (f"tool fs.read\npath: {fname}", "done\nsomething=unrelated.")
     reasons = _run_and_grade(task, wrong_answer)
-    assert any("missing expected content" in r for r in reasons)
+    assert any("expected value" in r for r in reasons)
 
 
-def test_family_h_recovery_rejects_a_trajectory_with_no_error_evidence():
-    task = _task("holdout_h_recovery_00")
+def test_family_g_readonly_accepts_a_prose_answer_with_the_right_value():
+    task = _task("holdout_g_readonly_00")
     fname = next(iter(task.files))
-    # replay the oracle but skip the wrong-path read step
-    no_mistake = tuple(a for a in task.oracle if fname in a or a.startswith("done"))
-    reasons = _run_and_grade(task, no_mistake)
-    assert any("recovery evidence" in r for r in reasons)
+    # the regex itself encodes the expected key/value; pull a literal example from the oracle's
+    # own done text (already known-good), and rephrase it as free prose with the same value.
+    done_text = task.oracle[-1]
+    value = done_text.split("=", 1)[1].split(" in ")[0]
+    key = done_text.split("\n", 1)[1].split("=", 1)[0]
+    prose = (f"tool fs.read\npath: {fname}",
+              f"done\nLooking at the file, the {key} is currently set to {value}.")
+    reasons = _run_and_grade(task, prose)
+    assert reasons == [], reasons
+
+
+def test_family_g_readonly_rejects_a_digit_superset_value():
+    task = _task("holdout_g_readonly_03")  # limit=10 -- a numeric value with a clean superset
+    fname = next(iter(task.files))
+    wrong = (f"tool fs.read\npath: {fname}", "done\nThe limit is 100.")
+    reasons = _run_and_grade(task, wrong)
+    assert any("expected value" in r for r in reasons)
+
+
+def test_family_h_recovery_passes_without_forcing_an_error():
+    task = _task("holdout_h_recovery_00")
+    # skip the top-level fs.read step: find the file first, with no error at all
+    no_error = task.oracle[1:]
+    reasons = _run_and_grade(task, no_error)
+    assert reasons == [], reasons
+
+
+def test_family_h_recovery_rejects_creating_file_at_requested_top_level_path():
+    task = _task("holdout_h_recovery_00")
+    real_path = next(iter(task.files))
+    top_name = real_path.rsplit("/", 1)[-1]
+    spec = hc._EXPECTED[task.id]
+    wrong_changes = {top_name: next(iter(spec.changes.values()))}
+    reasons = hc.grade(task, terminal="done", answer=f"done\nUpdated {top_name}.",
+                        changes=wrong_changes, events=[], original_unchanged=True)
+    assert any("changes mismatch" in r for r in reasons)
 
 
 def test_family_j_exact_context_rejects_touching_the_call_site_too():
