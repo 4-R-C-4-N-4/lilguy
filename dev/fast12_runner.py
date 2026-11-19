@@ -118,11 +118,14 @@ def original_unchanged(ws: Path, files: dict) -> bool:
 
 
 def collect_changes(state: Path) -> dict:
-    """The net session diff, staged content only, read-only.
+    """The net session diff, read-only: path -> staged text, None for a deletion, or a
+    `<...>` marker for an effect that is not plain text content (a mode change, a directory,
+    a symlink or special file, binary content).
 
-    Fails closed (InfraError) on anything the runner cannot or must not accept as a plain
-    content change: no session, more than one session, a mode-only/metadata-only change, a
-    non-regular-file change (symlink/special/dir-replace), or non-UTF8 staged content.
+    Every effect the agent caused is reported, so a grader comparing against the expected
+    changes sees it as a mismatch and the task cannot pass silently. Only harness-side
+    problems raise InfraError: no readable session state, more than one session, or a staged
+    path the backend cannot resolve.
     """
     sessions = list(state.glob("*/progress.json"))
     if len(sessions) == 0:
@@ -132,20 +135,23 @@ def collect_changes(state: Path) -> dict:
     session = persist.load_session(sessions[0].parent)
     changes = {}
     for entry in session_diff(session):
-        if entry.op == "meta":
-            raise InfraError(f"mode-only change rejected: {entry.path}")
-        if entry.kind != "file":
-            raise InfraError(f"unexpected {entry.kind} change rejected: {entry.path}")
         if entry.op == "deleted":
             changes[entry.path] = None
+            continue
+        if entry.op == "meta":
+            changes[entry.path] = f"<mode {entry.mode_before:o}->{entry.mode_after:o}>"
+            continue
+        if entry.kind != "file":
+            changes[entry.path] = f"<{entry.kind} {entry.op}>"
             continue
         target = layers.resolve(session, entry.path)
         if target is None or target.is_symlink() or not target.is_file():
             raise InfraError(f"unexpected staged state for {entry.path}")
+        data = target.read_bytes()
         try:
-            changes[entry.path] = target.read_bytes().decode("utf8")
-        except UnicodeDecodeError as exc:
-            raise InfraError(f"non-UTF8 staged content for {entry.path}") from exc
+            changes[entry.path] = data.decode("utf8")
+        except UnicodeDecodeError:
+            changes[entry.path] = f"<binary {len(data)} bytes>"
     return changes
 
 

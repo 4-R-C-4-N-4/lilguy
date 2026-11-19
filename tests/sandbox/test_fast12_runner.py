@@ -130,18 +130,19 @@ def test_pending_or_rejected_forces_terminal_next(tmp_path):
     assert result["terminal"] in ("budget", "invalid")
 
 
-def test_collect_changes_rejects_mode_only_change(tmp_path):
-    """A chmod-only change (no content change) must raise InfraError, not surface as a pass."""
-
-
+@pytest.mark.parametrize("command,path,marker", [
+    ("chmod 600 a.txt", "a.txt", "<mode "),
+    ("mkdir notes", "notes", "<dir added>"),
+])
+def test_model_caused_non_content_changes_are_scored_not_infra(tmp_path, command, path, marker):
+    """A chmod or new directory is an effect the agent caused. It must surface as a change the
+    grader sees (so it can never pass silently), not as an infrastructure failure that removes
+    the task from the model's score."""
     tools = p.load_tools()
-    task = Task(id="chmod", request="irrelevant", files={"a.txt": "hi\n"},
-                oracle=["run\nchmod 600 a.txt", "done\nchanged perms"])
-    ws = runner.write_fixture(tmp_path, task.files)
-    state = tmp_path / "state"
-    import asyncio
-    terminal, answer, events = asyncio.run(
-        runner._drive(ws, state, tools, runner._scripted(task.oracle, tools)))
-    assert terminal == "done"
-    with pytest.raises(runner.InfraError):
-        runner.collect_changes(state)
+    task = Task(id="x", request="irrelevant", files={"a.txt": "hi\n"},
+                oracle=[f"run\n{command}", "done\nchanged it"])
+    result = runner.run_episode(tmp_path, task, runner._scripted(task.oracle, tools), tools,
+                                lambda t, *, changes, **k: [] if changes == {} else ["unexpected change"])
+    assert result["infra_error"] is None
+    assert result["changes"][path].startswith(marker), result["changes"]
+    assert result["failures"] == ["unexpected change"]
