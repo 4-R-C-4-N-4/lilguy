@@ -19,4 +19,6 @@ minicpm5-2b-q4_k_m $HOME/programs/openbmb/MiniCPM5-2B/MiniCPM5-2B-Q4_K_M.gguf
 qwen3-4b-instruct-2507-q4_k_m $HOME/programs/qwen/Qwen3-4B-Instruct-2507-Q4_K_M.gguf
 qwen3.6-35b-a3b-iq4_xs $HOME/programs/qwen/Qwen3.6-35B-A3B-UD-IQ4_XS.gguf
 nanbeige4.3-33b-q4_k_m $HOME/programs/nanbeige/Nanbeige_Nanbeige4.3-33B-Q4_K_M.gguf
+qwen3.8-27b-ud-q4_k_xl $HOME/programs/qwen/Qwen3.8-27B-UD-Q4_K_XL.gguf
+qwen3.8-27b-ud-iq2_xxs $HOME/programs/qwen/Qwen3.8-27B-UD-IQ2_XXS.gguf
 EOF
