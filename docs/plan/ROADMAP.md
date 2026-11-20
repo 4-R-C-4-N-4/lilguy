@@ -392,6 +392,15 @@ the whole loop as one job:
 Results are in [STATUS.md](../STATUS.md). No candidate has yet beaten its stock base in every
 category, so the held-out suite has not been run.
 
+Decision sprint (2026-11-20): the factory now accepts matched `--arm control=DIR` and
+`--arm treatment=DIR` data inputs with a declared epoch cap. The output-orientation experiment
+completed both bases and both arms: MiniCPM 35→42/80 and Qwen 28→31/80, with clarification
+0→5/9 and 1→4/9. Category regressions, new unsafe actions and missed targets prevent promotion.
+The [controlled result](../data/DECISION-CONTROLLED-RESULT.md) and
+[per-example agent semantic audit](../data/DECISION-SEMANTIC-AUDIT.json) close this sprint with
+a negative promotion result. Additional warmup/cosine training is a separate experiment,
+not an extension beyond this sprint's two-recipes-per-base limit.
+
 For a long run launched by Hermes on this host, use a dedicated memory-bounded scope rather
 than its small default worker cgroup. For example, the revision-2 experiment used:
 

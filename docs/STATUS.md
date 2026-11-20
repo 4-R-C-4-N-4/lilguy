@@ -12,7 +12,7 @@ Updated 2026-11-20. This is the one place for current state; the plan and its ga
 | 4. Protected evaluation | Split gate passes; development suite at 80 of 150 | Held-out pin `f9d408a4…`; the model runner and training gate share the development roster |
 | 5. Baselines and family choice | MiniCPM5-2B is the main experimental base, Qwen3.5-0.8B the same-corpus control; no shipping selection | `reports/factory/pilot-w74u7u0b/comparison.json` |
 | 6. Verified training data | R3 control: 1,799 episodes / 5,286 rows; R4 treatment: 1,919 / 5,586; replay/split gates passed, human audit open | [Controlled data/result](data/DECISION-CONTROLLED-RESULT.md), [earlier data card](data/CORPUS-V2.md) |
-| 7. Train, iterate on development failures | Diagnosis and four-run control/treatment experiment complete; no promotion; final semantic/artifact reviews pending | [Diagnosis](data/DECISION-DIAGNOSIS.md), [controlled result](data/DECISION-CONTROLLED-RESULT.md) |
+| 7. Train, iterate on development failures | Decision sprint complete: controlled gains, failed targets and new unsafe behavior; no promotion | [Diagnosis](data/DECISION-DIAGNOSIS.md), [controlled result](data/DECISION-CONTROLLED-RESULT.md), [agent audit](data/DECISION-SEMANTIC-AUDIT.json) |
 | 8. Ship: quantize, held-out once, latency, model card | Not started | |
 
 Step numbers follow the roadmap. The recurring work list numbers them 1–5: tool server = 2, shared loop = 3, evaluation = 4, base choice = 5–6, one-job iteration = 7–8.
@@ -46,8 +46,13 @@ generation agreement), but the runtime difference does not explain away the meas
 
 Evidence: `reports/factory/pilot-_jk0eppk/arms.json`, `arms-report.md`, and
 `reports/diagnosis/decision-sprint/`. [Full result](data/DECISION-CONTROLLED-RESULT.md)
-records fit, exposure, regressions and remaining gates. Independent semantic and artifact reviews
-are pending. Current verification: 762 unit tests, 87 real sandbox corpus-variant tests, lint clean,
+records fit, exposure, regressions and remaining gates. Independent semantic review covers 119
+failed-done traces, 36 clarification traces and 19 policy events. It finds confirmed false claims
+of 27→11 for MiniCPM and 19→20 for Qwen within those changing failed-done cohorts, not full-suite
+semantic error rates. New unsafe effects occur in both treatments (including MiniCPM truncating
+`schedule.ini`). All original fixtures are preserved; there are no post-policy-stop tool retries.
+The parent verified all eight artifact hashes and reproduced both comparisons; the independent
+artifact worker was rate-limited. Current verification: 762 unit tests, 87 real sandbox corpus-variant tests, lint clean,
 frozen protocol/golden prompt unchanged. The earlier pilot results below are historical context.
 
 Cosine warmup/decay is approved as a separate future experiment, not part of these results. Its
@@ -132,8 +137,8 @@ had 95 GiB available after that cleanup, above the 30 GiB floor.
 
 ### Next work
 
-1. Finish independent semantic/artifact reviews and finalize the controlled result; do not train
-   a third recipe per base in this sprint.
+1. This sprint is complete with no promoted adapter. Do not train a third recipe per base in it.
+   Preserve the negative result and agent-audit caveats rather than treating aggregate gains as safety.
 2. In a separate experiment, test the agreed 3% warmup/cosine schedule against a fixed-data
    constant-rate control. Do not change dropout, base or data simultaneously; preserve a fixed
    training-fit probe when comparing fit across recipes.
