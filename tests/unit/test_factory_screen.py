@@ -56,7 +56,7 @@ def test_screen_compares_complete_fixtures_even_when_models_miss(tmp_path, monke
         assert measured['only_model'] == [tasks[0].id]
         assert measured['only_reference'] == [tasks[1].id]
         assert measured['episode_ratio_to_reference'] == 0.5
-        assert measured['clarification_total'] > 0
+        assert measured['clarification_total'] == 0  # interface v2: no ask tasks on the model roster
 
 
 @pytest.mark.parametrize('labels,error', [(['small', 'small'], 'duplicate'), (['../small', 'large'], 'label')])

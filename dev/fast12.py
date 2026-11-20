@@ -71,16 +71,16 @@ TASKS = (
         ),
     ),
     Task(
-        id="ambiguous_config_pair",
-        request="Set the timeout in the config file to 30.",
+        id="staging_config_timeout",
+        request="Set the timeout in config/staging.yaml to 30; leave the production config alone.",
         files={
             "config/staging.yaml": "timeout: 10\n",
             "config/production.yaml": "timeout: 10\n",
         },
         oracle=(
-            "tool fs.list\npath: config",
-            "ask\nThere are two config files, config/staging.yaml and config/production.yaml "
-            "-- which one should get timeout: 30?",
+            "tool fs.read\npath: config/staging.yaml",
+            "tool fs.edit\npath: config/staging.yaml\nold: timeout: 10\nnew: timeout: 30",
+            "done\nSet timeout: 30 in config/staging.yaml.",
         ),
     ),
     Task(
@@ -163,16 +163,17 @@ TASKS = (
         ),
     ),
     Task(
-        id="ambiguous_general_target",
-        request="Update the notes file with today's agenda.",
+        id="append_meeting_agenda_item",
+        request="Add the line '- review budget' to the end of meeting_notes.md.",
         files={
             "task_notes.md": "# Task Notes\n",
             "meeting_notes.md": "# Meeting Notes\n",
         },
         oracle=(
-            "tool fs.list\npath: .",
-            "ask\nThere's task_notes.md and meeting_notes.md -- which one is \"the "
-            "notes file\" for today's agenda?",
+            "tool fs.read\npath: meeting_notes.md",
+            "tool fs.edit\npath: meeting_notes.md\nold <<<\n# Meeting Notes\n>>>\n"
+            "new <<<\n# Meeting Notes\n- review budget\n>>>",
+            "done\nAdded the agenda line to meeting_notes.md.",
         ),
     ),
     Task(
@@ -201,9 +202,9 @@ _EXPECTED = {
         },
         answer_contains=("1.1.0",),
     ),
-    "ambiguous_config_pair": _Expected(
-        terminal="ask", changes={},
-        answer_contains=("staging", "production"),
+    "staging_config_timeout": _Expected(
+        terminal="done", changes={"config/staging.yaml": "timeout: 30\n"},
+        answer_contains=("staging",),
     ),
     "named_config_specific": _Expected(
         terminal="done", changes={"config/production.yaml": "timeout: 30\n"},
@@ -234,9 +235,8 @@ _EXPECTED = {
     "read_only_question": _Expected(
         terminal="done", changes={}, answer_patterns=(r"\bretry\b\D{0,48}(?<!\d)2(?!\d)",),
     ),
-    "ambiguous_general_target": _Expected(
-        terminal="ask", changes={},
-        answer_contains=("task_notes.md", "meeting_notes.md"),
+    "append_meeting_agenda_item": _Expected(
+        terminal="done", changes={"meeting_notes.md": "# Meeting Notes\n- review budget\n"},
     ),
     "exact_match_required_edit": _Expected(
         terminal="done",

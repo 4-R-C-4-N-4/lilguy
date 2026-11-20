@@ -24,6 +24,7 @@ import asyncio
 import contextlib
 import json
 import os
+import re
 import socket
 import subprocess
 import sys
@@ -225,12 +226,12 @@ def run_false_done(root: Path, task, tools, grade):
     return run_episode(root, task, _false_done(), tools, grade)
 
 
-def run_model(root: Path, task, tools, port, opener, grade):
+def run_model(root: Path, task, tools, port, opener, grade, version=p.INTERFACE_VERSION):
     ws = write_fixture(root, task.files)
     state = root / "state"
-    messages = [{"role": "system", "content": p.system_prompt(tools)},
+    messages = [{"role": "system", "content": p.system_prompt(tools, version)},
                 {"role": "user", "content": task.request}]
-    grammar = p.grammar(tools)
+    grammar = p.grammar(tools, version)
     metrics = {"requests": 0, "prompt_tokens": 0, "completion_tokens": 0, "model_seconds": 0.0}
     started = time.monotonic()
 
@@ -265,7 +266,7 @@ def run_model(root: Path, task, tools, port, opener, grade):
                 reply = data["choices"][0]["message"]["content"]
                 messages.append({"role": "assistant", "content": reply})
                 try:
-                    return p.parse_action(reply, tools)
+                    return p.parse_action(reply, tools, version)
                 except p.ProtocolError as exc:
                     messages.append({"role": "user", "content": p.invalid_action_message(str(exc))})
                     raise
@@ -301,10 +302,39 @@ def run_model(root: Path, task, tools, port, opener, grade):
 
 # --- per-task verdict ----------------------------------------------------------------------------
 
-def judge_task(root: Path, task, tools, port, opener, grade) -> dict:
+_ANSWER_REASON = re.compile(r"^(?:terminal |read-only )?answer\b")
+
+
+def is_answer_reason(reason: str) -> bool:
+    """A failure about the wording of the final done/ask text (as opposed to effects, terminal
+    kind, policy or evidence). Every development and held-out grader words these this way."""
+    return bool(_ANSWER_REASON.match(reason))
+
+
+def answer_required(oracle: dict) -> bool:
+    """Interface v2 grades the final text only where it is the deliverable: the scripted oracle
+    staged nothing and every step stayed `policy: ok` (a question or a no-op report)."""
+    return not oracle["changes"] and all(
+        loop.policy_of(event["observation"]) == "ok" for event in oracle["events"])
+
+
+def interface_grade(grade, *, answer_required, version):
+    """In v2 the user reviews lilguy's executed plan and diff, so a change task's done text is
+    not graded; effects, terminal kind, policy and evidence checks are unchanged."""
+    if version < 2 or answer_required:
+        return grade
+
+    def graded(task, **kwargs):
+        return [reason for reason in grade(task, **kwargs) if not is_answer_reason(reason)]
+    return graded
+
+
+def judge_task(root: Path, task, tools, port, opener, grade, version=p.INTERFACE_VERSION) -> dict:
     oracle = run_oracle(root / "oracle", task, tools, grade)
-    false_done = run_false_done(root / "false_done", task, tools, grade)
-    model = run_model(root / "model", task, tools, port, opener, grade)
+    scored = grade if oracle["infra_error"] else interface_grade(
+        grade, answer_required=answer_required(oracle), version=version)
+    false_done = run_false_done(root / "false_done", task, tools, scored)
+    model = run_model(root / "model", task, tools, port, opener, scored, version)
 
     oracle_ok = oracle["infra_error"] is None and not oracle["failures"]
     false_done_caught = false_done["infra_error"] is None and bool(false_done["failures"])
@@ -316,6 +346,7 @@ def judge_task(root: Path, task, tools, port, opener, grade) -> dict:
 
     return {
         "task": task.id, "passed": passed, "infra_failure": infra_failure,
+        "interface": version,
         "model_miss": controls_agree and not model_ok and model["infra_error"] is None,
         "controls_agree": controls_agree,
         "oracle": oracle, "false_done": false_done, "model": model,
@@ -364,6 +395,8 @@ def main(argv=None):
     ap.add_argument("server")
     ap.add_argument("gguf")
     ap.add_argument("out", type=Path)
+    ap.add_argument("--interface", type=int, default=p.INTERFACE_VERSION, choices=p.SUPPORTED_VERSIONS,
+                    help="interface version the model was trained on (prompt, grammar, grading)")
     args = ap.parse_args(argv)
     args.out.mkdir(parents=True, exist_ok=True)
 
@@ -373,7 +406,7 @@ def main(argv=None):
     with managed_server(args.server, args.gguf, args.out) as (port, opener):
         for task in tasks:
             with tempfile.TemporaryDirectory() as tmp:
-                verdict = judge_task(Path(tmp), task, tools, port, opener, grade)
+                verdict = judge_task(Path(tmp), task, tools, port, opener, grade, args.interface)
             verdicts.append(verdict)
             (args.out / f"task_{task.id}.json").write_text(json.dumps(verdict, indent=2) + "\n")
 

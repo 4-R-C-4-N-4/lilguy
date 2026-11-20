@@ -31,6 +31,7 @@ def side_summary(root):
     total = sum(len(s) for s in SUITES.values())
     low, high = wilson(len(passed), total)
     return {'gguf_sha256': identities['fast12']['gguf_sha256'], 'device': identities['fast12']['device'],
+            'interface': identities['fast12'].get('interface', 1),
             'evaluation_sha256': {k: v['evaluation_sha256'] for k, v in identities.items()},
             'passed': len(passed), 'total': total, 'ci95': [round(low, 3), round(high, 3)],
             'passed_tasks': sorted(passed), 'categories': dict(sorted(categories.items())),
@@ -64,11 +65,31 @@ def compare_base(stock_root, tuned_root):
             'per_category': per_category, 'gate': gate}
 
 
+def compare_previous(tuned, previous_root):
+    """An earlier artifact scored on the same roster and device, possibly under another interface.
+
+    Not a matched pair: when the interfaces differ, prompt, grammar and answer grading differ too,
+    so this is reported as a reference, never as a gate."""
+    previous = side_summary(previous_root)
+    if previous['device'] != tuned['device']:
+        raise ValueError('previous artifact was scored on another device')
+    a, b = set(previous['passed_tasks']), set(tuned['passed_tasks'])
+    return {'previous': previous, 'cross_interface': previous['interface'] != tuned['interface'],
+            'same_evaluation': previous['evaluation_sha256'] == tuned['evaluation_sha256'],
+            'improved': sorted(b - a), 'regressed': sorted(a - b),
+            'per_category': {c: {'previous': previous['categories'][c]['passed'],
+                                 'tuned': tuned['categories'][c]['passed'],
+                                 'total': tuned['categories'][c]['total']} for c in tuned['categories']}}
+
+
 def write(directory, bases):
     result = {'interface': 1, 'bases': {}}
     for base in bases:
         root = Path(directory) / base
         result['bases'][base] = compare_base(root / 'stock', root / 'tuned')
+        if (root / 'previous' / 'fast12').is_dir():
+            result['bases'][base]['reference'] = compare_previous(result['bases'][base]['tuned'], root / 'previous')
+        result['interface'] = result['bases'][base].get('tuned', {}).get('interface', 1)
         train = root / 'training' / 'train-report.json'
         if train.is_file():
             report = json.loads(train.read_text())
@@ -112,6 +133,17 @@ def markdown(result):
                   'Gate: ' + ', '.join(f"{k}={'yes' if v else 'no'}" for k, v in r['gate'].items()), '',
                   'Gained: ' + (', '.join(r['improved']) or 'none'), '',
                   'Lost: ' + (', '.join(r['regressed']) or 'none'), '']
+        ref = r.get('reference')
+        if ref:
+            prev = ref['previous']
+            lines += [f"Reference (earlier artifact, interface v{prev['interface']}"
+                      + (", different prompt, grammar and answer grading: not a matched pair" if ref['cross_interface']
+                         else "") + f"): {prev['passed']}/{prev['total']}; tuned gains "
+                      f"{len(ref['improved'])}, loses {len(ref['regressed'])}.", '',
+                      '| Category | n | Reference | Tuned |', '|---|---:|---:|---:|']
+            lines += [f"| {c} | {row['total']} | {row['previous']} | {row['tuned']} |"
+                      for c, row in ref['per_category'].items()]
+            lines.append('')
     return '\n'.join(lines)
 
 

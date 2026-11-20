@@ -21,7 +21,7 @@ V1_SAFETY_CASES = frozenset(
 )
 
 
-def fast12_identity(model, server, *, extra_sources=()):
+def fast12_identity(model, server, *, extra_sources=(), interface=INTERFACE_VERSION):
     def sha(path):
         with path.open('rb') as stream:
             return hashlib.file_digest(stream, 'sha256').hexdigest()
@@ -31,7 +31,9 @@ def fast12_identity(model, server, *, extra_sources=()):
     sources.extend(sorted((ROOT / 'lilguy').rglob('*.py')))
     inputs = {str(p.relative_to(ROOT)): sha(p) for p in sources}
     inputs['llama-server'] = sha(server)
-    return {'gguf_sha256': sha(model), 'evaluation_inputs': inputs,
+    if interface != 1:  # v1 identities keep their historical evaluation hashes
+        inputs['interface'] = str(interface)
+    return {'gguf_sha256': sha(model), 'interface': interface, 'evaluation_inputs': inputs,
             'evaluation_sha256': hashlib.sha256(json.dumps(inputs, sort_keys=True).encode()).hexdigest()}
 
 
@@ -116,16 +118,16 @@ def execute(directory, stages, *, required_cases=None):
     return 0
 
 
-def run_development(directory, suite, gguf, server, device):
+def run_development(directory, suite, gguf, server, device, interface=INTERFACE_VERSION):
     if suite == 'broad':
         from dev.broad_runner import SOURCES
         runner, sources = 'dev.broad_runner', SOURCES
     else:
         runner, sources = 'dev.fast12_runner', ()
-    identity = {**fast12_identity(gguf, server, extra_sources=sources), 'device': device}
+    identity = {**fast12_identity(gguf, server, extra_sources=sources, interface=interface), 'device': device}
     (directory / 'identity.json').write_text(json.dumps(identity, indent=2, sort_keys=True) + '\n')
     return execute(directory, [('dev-suite', ['.venv/bin/python', '-m', runner,
-        server.resolve(), gguf.resolve(), directory], None)])
+        server.resolve(), gguf.resolve(), directory, '--interface', str(interface)], None)])
 
 
 def main():
@@ -150,6 +152,8 @@ def main():
     parser.add_argument('--arm', action='append', default=[], metavar='NAME=DATA',
                         help='pilot: matched experiment arms control=DIR then treatment=DIR (replaces --data)')
     parser.add_argument('--max-epochs', type=int, help='pilot: declared training epoch cap per base')
+    parser.add_argument('--previous', action='append', default=[], metavar='BASE=GGUF@INTERFACE',
+                        help='pilot: also score an earlier artifact under its own interface (reference only)')
     parser.add_argument('--stock-from', type=Path,
                         help='pilot: reuse stock scores from a previous pilot job when artifact and evaluation match')
     parser.add_argument('--server', type=Path, default=Path(os.environ.get('LLAMA_SERVER', Path.home() / 'programs/llama.cpp/build/bin/llama-server')))
@@ -225,8 +229,10 @@ def main():
             from dev import factory_pilot
             minutes = {b: float(dict(m.split('=', 1) for m in args.minutes).get(b, args.max_minutes))
                        for b in args.base}
-            evaluate = lambda out, suite, gguf: run_development(out, suite, gguf, args.server, device)  # noqa: E731
+            evaluate = lambda out, suite, gguf, interface: run_development(  # noqa: E731
+                out, suite, gguf, args.server, device, interface)
             try:
+                previous = factory_pilot.parse_previous(args.previous)
                 if args.arm:
                     from dev import v2_report
                     if args.data or args.resume:
@@ -240,7 +246,8 @@ def main():
                     return 0
                 factory_pilot.run(directory, bases=args.base, data=args.data, server=args.server, device=device,
                                   gate=gate, stock_from=args.stock_from, max_minutes=minutes,
-                                  max_epochs=args.max_epochs, resume=bool(args.resume), evaluate=evaluate)
+                                  max_epochs=args.max_epochs, resume=bool(args.resume), evaluate=evaluate,
+                                  previous=previous)
             except (RuntimeError, ValueError, OSError, KeyError) as exc:
                 parser.exit(1, f'Pilot stopped: {exc}; see {directory}\n')
             print(directory / 'comparison.json', flush=True)

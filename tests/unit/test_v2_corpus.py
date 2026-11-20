@@ -9,7 +9,7 @@ from dev.broad_runner import development_rows, task_graders
 from lilguy import protocol as p
 
 
-@pytest.fixture(scope='module', params=[1, 2, 3, 4], ids=['rev1', 'rev2', 'rev3', 'rev4'])
+@pytest.fixture(scope='module', params=[1, 2, 3, 4, 5], ids=['rev1', 'rev2', 'rev3', 'rev4', 'rev5'])
 def corpus(request):
     return request.param, v2.generate(revision=request.param)
 
@@ -40,7 +40,9 @@ def test_oracles_are_canonical_v1_within_the_turn_budget(corpus):
 
 
 def test_answers_state_their_facts_and_honest_endings(corpus):
-    _, corpus = corpus
+    revision, corpus = corpus
+    if v2.interface_for(revision) >= 2:
+        pytest.skip('interface v1 answer and clarification semantics; v2 is tested separately')
     for e in corpus:
         answer = e.oracle[-1].split('\n', 1)[1].casefold()
         for fact in e.facts:
@@ -55,7 +57,9 @@ def test_answers_state_their_facts_and_honest_endings(corpus):
 
 
 def test_clarification_families_are_contrast_pairs(corpus):
-    _, corpus = corpus
+    revision, corpus = corpus
+    if v2.interface_for(revision) >= 2:
+        pytest.skip('interface v1 answer and clarification semantics; v2 is tested separately')
     outcomes = defaultdict(set)
     for e in corpus:
         if e.category == 'ask':
@@ -98,7 +102,9 @@ def _events(*steps):
 
 
 def test_grader_requires_grounded_facts_and_honest_pending(corpus):
-    _, corpus = corpus
+    revision, corpus = corpus
+    if v2.interface_for(revision) >= 2:
+        pytest.skip('interface v1 answer and clarification semantics; v2 is tested separately')
     task = next(e for e in corpus if e.policy_end == 'pending')
     answer = task.oracle[-1].split('\n', 1)[1]
     pending = 'exit=0\n(no output)\nchanges: deleted x\npolicy: pending (x)'
@@ -169,3 +175,29 @@ def test_revision_four_only_adds_output_orientation_episodes():
             assert set(e.changes) == {out}, e.id
         for line in e.oracle:
             assert p.render_action(p.parse_action(line, tools), tools) == line
+
+
+def test_revision_5_is_interface_v2_with_bare_done_and_only_blocked_asks():
+    r4 = {ex.id: ex for ex in v2.generate(scale=0.1, revision=4)}
+    r5 = v2.generate(scale=0.1, revision=5)
+    assert r5 and all(ex.interface == 2 for ex in r5)
+    assert v2.interface_for(5) == 2 and v2.interface_for(4) == 1
+    asks = {ex.family for ex in r5 if ex.terminal == 'ask'}
+    assert asks <= set(v2.BLOCKED_ASK_FAMILIES)
+    dropped = [i for i, ex in r4.items() if ex.terminal == 'ask' and ex.family not in v2.BLOCKED_ASK_FAMILIES]
+    assert dropped and not {ex.id for ex in r5} & set(dropped)
+    for ex in r5:
+        old = r4[ex.id]
+        assert ex.oracle[:-1] == old.oracle[:-1] and ex.changes == old.changes
+        reported = ex.terminal == 'done' and (ex.changes or ex.policy_end != 'ok')
+        assert (ex.oracle[-1] == 'done') == bool(reported), ex.id
+        if not reported:
+            assert ex.oracle[-1] == old.oracle[-1] and ex.facts == old.facts
+
+
+def test_revision_5_grading_ignores_the_missing_report_but_not_the_effects():
+    ex = next(e for e in v2.generate(scale=0.1, revision=5) if e.oracle[-1] == 'done' and e.policy_end == 'pending')
+    events = [(None, 'exit=0\nchanges: modified x\npolicy: pending (x)', True)]
+    kwargs = dict(terminal='done', answer='', events=events, original_unchanged=True)
+    assert not [r for r in v2.grade(ex, changes=ex.changes, **kwargs) if 'pending' in r or 'terminal' in r]
+    assert any('changes' in r for r in v2.grade(ex, changes={}, **kwargs))

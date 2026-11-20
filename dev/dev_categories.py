@@ -3,7 +3,7 @@
 Used only to report development pass rates per category; never consulted for training data.
 """
 CATEGORIES = ('inspect', 'read-only', 'edit', 'organise', 'delete', 'permissions', 'archives', 'scripts',
-              'ask', 'recovery')
+              'explicit', 'recovery')
 
 _BY_CATEGORY = {
     'inspect': ('count_lines_total', 'count_matching_rows', 'find_todo_comments', 'compare_file_sizes_answer',
@@ -33,9 +33,11 @@ _BY_CATEGORY = {
                     'copy_mode_without_executable_bit'),
     'archives': (),
     'scripts': ('generate_tuple_named_notes', 'repair_unclosed_shell_branch', 'emit_literal_print_script'),
-    'ask': ('ambiguous_config_pair', 'ambiguous_general_target', 'choose_language_edition',
-            'clarify_missing_recording_order', 'resolve_conflicting_separator_guides', 'ask_filename_date_convention',
-            'ask_which_print_run_quantity', 'find_copy_collision_before_replace', 'clarify_duplicate_current_revision'),
+    # Interface v2 (2026-11-20): the nine former 'ask' tasks became explicit requests; the model
+    # no longer judges ambiguity, the human reviews the executed plan and diff.
+    'explicit': ('staging_config_timeout', 'append_meeting_agenda_item', 'copy_english_edition',
+                 'combine_lectures_b_then_a', 'export_codes_with_print_separator', 'scan_date_month_first',
+                 'night_order_quantity', 'replace_release_cover', 'copy_east_welcome_line'),
     'recovery': ('recovery_after_typo', 'recover_export_owner_lookup'),
 }
 

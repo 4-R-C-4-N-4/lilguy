@@ -87,7 +87,23 @@ def run_arms(directory, arms, bases, run_one, compare, **kwargs):
     return summary
 
 
-def reusable_stock(previous, base, gguf, server, device):
+def parse_previous(values):
+    """`BASE=GGUF@INTERFACE` (repeatable): an earlier artifact to score on the same roster under
+    the interface it was trained for, as a cross-interface reference (not a matched pair)."""
+    previous = {}
+    for value in values or ():
+        base, sep, rest = value.partition('=')
+        path, at, interface = rest.rpartition('@')
+        if not (sep and at and base and path and interface.isdigit()) or base in previous:
+            raise ValueError(f'expected one BASE=GGUF@INTERFACE per base, got {value!r}')
+        gguf = Path(path)
+        if not gguf.is_file():
+            raise ValueError(f'no such GGUF: {gguf}')
+        previous[base] = (gguf.resolve(), int(interface))
+    return previous
+
+
+def reusable_stock(previous, base, gguf, server, device, interface=1):
     """A previous job's stock scores count only if the artifact, evaluation inputs and device match."""
     from dev.broad_runner import SOURCES
     from dev.factory import fast12_identity
@@ -97,7 +113,7 @@ def reusable_stock(previous, base, gguf, server, device):
     try:
         for suite, sources in (('fast12', ()), ('broad', SOURCES)):
             old = json.loads((root / suite / 'identity.json').read_text())
-            now = fast12_identity(gguf, server, extra_sources=sources)
+            now = fast12_identity(gguf, server, extra_sources=sources, interface=interface)
             if (old['gguf_sha256'], old['evaluation_sha256'], old['device']) != (
                     now['gguf_sha256'], now['evaluation_sha256'], device):
                 return None
@@ -107,7 +123,7 @@ def reusable_stock(previous, base, gguf, server, device):
 
 
 def run(directory, *, bases, data, server, device, gate, evaluate, max_minutes, stock_from=None, build_seed=None,
-        resume=False, max_epochs=None):
+        resume=False, max_epochs=None, previous=None):
     """With `resume`, stages whose outputs already exist in `directory` are kept, not repeated."""
     from dev import v2_train
     preflight()
@@ -128,6 +144,8 @@ def run(directory, *, bases, data, server, device, gate, evaluate, max_minutes, 
     plan['data'] = {'path': str(data), 'train_sha256': sha256(data / 'train.jsonl'),
                     'effects_sha256': sha256(data / 'effects.json'),
                     'datacard': json.loads((data / 'datacard.json').read_text())['stages']}
+    interface = json.loads((data / 'meta.json').read_text())['interface']
+    plan['interface'] = interface
     stage.save()
     trainpy = ROOT / 'dev/trainpy.sh'
     for base in bases:
@@ -155,12 +173,19 @@ def run(directory, *, bases, data, server, device, gate, evaluate, max_minutes, 
                                                   'tuned_q8_0_sha256': sha256(tuned_gguf),
                                                   'convert_args': spec['convert_args']}
         stage.save()
-        reused = reusable_stock(stock_from, base, stock_gguf, server, device)
+        reused = reusable_stock(stock_from, base, stock_gguf, server, device, interface)
         sides = (('tuned', tuned_gguf),) if reused else (('stock', stock_gguf), ('tuned', tuned_gguf))
+        sides = tuple((side, gguf, interface) for side, gguf in sides)
         if reused:
             shutil.copytree(reused, out / 'stock', symlinks=True)
             plan['artifacts'][base]['stock_scores_reused_from'] = str(reused)
-        for side, gguf in sides:
+        if previous and base in previous:
+            earlier, earlier_interface = previous[base]
+            sides += (('previous', earlier, earlier_interface),)
+            plan['artifacts'][base]['previous'] = {'gguf': str(earlier), 'sha256': sha256(earlier),
+                                                   'interface': earlier_interface}
+            stage.save()
+        for side, gguf, side_interface in sides:
             for suite in ('fast12', 'broad'):
                 folder = out / side / suite
                 if resume and (folder / f'{suite}.json').is_file():
@@ -170,7 +195,7 @@ def run(directory, *, bases, data, server, device, gate, evaluate, max_minutes, 
                 folder.mkdir(parents=True)
                 print(f'{base}: {side} {suite}', flush=True)
                 started = time.monotonic()
-                rc = evaluate(folder, suite, gguf)
+                rc = evaluate(folder, suite, gguf, side_interface)
                 plan['stages'].append({'name': f'{base}-{side}-{suite}', 'exit': rc,
                                        'seconds': round(time.monotonic() - started, 1)})
                 stage.save()

@@ -166,26 +166,25 @@ def _task(task_id):
     return next(t for t in fast12.TASKS if t.id == task_id)
 
 
-def test_ambiguous_config_pair_rejects_a_guess_instead_of_asking():
-    task = _task("ambiguous_config_pair")
-    guess = (
+def test_staging_config_timeout_rejects_the_production_file_and_an_ask():
+    task = _task("staging_config_timeout")
+    wrong = (
         "tool fs.edit\npath: config/production.yaml\nold: timeout: 10\nnew: timeout: 30",
-        "done\nSet timeout: 30 in config/production.yaml.",
+        "done\nSet timeout: 30 in config/staging.yaml.",
     )
-    reasons = _run_and_grade(task, guess)
-    assert reasons
-    assert any("terminal" in r for r in reasons)
+    assert any("changes mismatch" in r for r in _run_and_grade(task, wrong))
+    asked = ("tool fs.list\npath: config", "ask\nWhich config file?")
+    assert any("terminal" in r for r in _run_and_grade(task, asked))
 
 
-def test_ambiguous_general_target_rejects_a_guess():
-    task = _task("ambiguous_general_target")
-    guess = (
-        "tool fs.edit\npath: meeting_notes.md\nold: # Meeting Notes\n"
-        "new <<<\n# Meeting Notes\nagenda\n>>>",
-        "done\nUpdated meeting_notes.md with the agenda.",
+def test_append_meeting_agenda_item_rejects_the_other_notes_file():
+    task = _task("append_meeting_agenda_item")
+    wrong = (
+        "tool fs.edit\npath: task_notes.md\nold <<<\n# Task Notes\n>>>\n"
+        "new <<<\n# Task Notes\n- review budget\n>>>",
+        "done\nAdded it.",
     )
-    reasons = _run_and_grade(task, guess)
-    assert reasons
+    assert any("changes mismatch" in r for r in _run_and_grade(task, wrong))
 
 
 def test_named_config_specific_rejects_touching_the_wrong_file():

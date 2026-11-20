@@ -14,21 +14,24 @@ TRAINABLE = ('done', 'ask')
 
 
 def to_messages(saved: dict, tools) -> list[dict]:
-    if saved.get('version') != p.INTERFACE_VERSION:
-        raise ValueError(f"episode is interface v{saved.get('version')!r}, not v{p.INTERFACE_VERSION}")
-    if saved.get('terminal') not in TRAINABLE or not saved.get('answer'):
+    """The episode in the interface version it was recorded under (v1 data stays v1)."""
+    version = saved.get('version')
+    if version not in p.SUPPORTED_VERSIONS:
+        raise ValueError(f"episode is interface v{version!r}, not one of {p.SUPPORTED_VERSIONS}")
+    bare_done = version >= 2 and saved.get('terminal') == 'done' and saved.get('answer') == ''
+    if saved.get('terminal') not in TRAINABLE or not (saved.get('answer') or bare_done):
         raise ValueError(f"episode ended {saved.get('terminal')!r}; only finished done/ask episodes train")
-    messages = [{'role': 'system', 'content': p.system_prompt(tools)},
+    messages = [{'role': 'system', 'content': p.system_prompt(tools, version)},
                 {'role': 'user', 'content': saved['request']}]
     for turn in saved['turns']:
         action = p.Action(**turn['action'])
         if action.kind not in ('run', 'tool'):
             raise ValueError('a terminal action appears before the end of the episode')
-        messages.append({'role': 'assistant', 'content': p.render_action(action, tools)})
+        messages.append({'role': 'assistant', 'content': p.render_action(action, tools, version)})
         messages.append({'role': 'user', 'content': p.observation_message(turn['observation'])})
     final = p.Action(saved['terminal'], text=saved['answer'])
-    messages.append({'role': 'assistant', 'content': p.render_action(final, tools)})
+    messages.append({'role': 'assistant', 'content': p.render_action(final, tools, version)})
     for message in messages:
         if message['role'] == 'assistant':
-            p.parse_action(message['content'], tools)  # raises ProtocolError on any drift
+            p.parse_action(message['content'], tools, version)  # raises ProtocolError on any drift
     return messages

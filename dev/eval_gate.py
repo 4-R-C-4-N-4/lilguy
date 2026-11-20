@@ -25,7 +25,7 @@ def verify(held_path, pin, candidate_path):
         # are field-specific and apply only to the exact two-member dev groups.
         recovery_pair = frozenset(('recovery_after_typo', 'rename_status_flag'))
         result = audit(rows, dev_request_pairs=[recovery_pair],
-                       dev_fixture_pairs=[recovery_pair, frozenset(('ambiguous_config_pair', 'named_config_specific'))])
+                       dev_fixture_pairs=[recovery_pair, frozenset(('staging_config_timeout', 'named_config_specific'))])
         if not result.ok:
             return fail('split audit detected overlap')
         return {'ok': True, 'held_out_count': len(held), 'candidate_count': len(other), 'held_out_sha256': pin}

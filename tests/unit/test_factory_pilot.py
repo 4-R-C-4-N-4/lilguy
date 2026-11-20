@@ -43,3 +43,28 @@ def test_arms_require_exactly_control_and_treatment(tmp_path):
         factory_pilot.run_arms(tmp_path, {'control': Path('/c')}, ['minicpm'], None, None)
     with pytest.raises(ValueError):
         factory_pilot.run_arms(tmp_path, {'a': Path('/c'), 'b': Path('/t')}, ['minicpm'], None, None)
+
+
+def test_previous_artifacts_name_their_base_and_interface(tmp_path):
+    gguf = tmp_path / 'old.gguf'
+    gguf.write_bytes(b'x')
+    assert factory_pilot.parse_previous([f'minicpm={gguf}@1']) == {'minicpm': (gguf.resolve(), 1)}
+    for bad in (f'minicpm={gguf}', f'={gguf}@1', f'minicpm={tmp_path / "missing.gguf"}@1', f'minicpm={gguf}@v1'):
+        with pytest.raises(ValueError):
+            factory_pilot.parse_previous([bad])
+    with pytest.raises(ValueError):
+        factory_pilot.parse_previous([f'minicpm={gguf}@1', f'minicpm={gguf}@2'])
+
+
+def test_cross_interface_reference_is_reported_but_never_a_gate(monkeypatch):
+    from dev import v2_report
+
+    def side(passed, interface, evaluation):
+        cats = {'edit': {'passed': len(passed), 'total': 3}}
+        return {'passed_tasks': passed, 'device': 'RTX 3090', 'interface': interface,
+                'evaluation_sha256': evaluation, 'categories': cats, 'passed': len(passed), 'total': 3}
+    monkeypatch.setattr(v2_report, 'side_summary', lambda root: side(['a'], 1, {'fast12': 'old'}))
+    ref = v2_report.compare_previous(side(['a', 'b'], 2, {'fast12': 'new'}), Path('/prev'))
+    assert ref['cross_interface'] and not ref['same_evaluation']
+    assert ref['improved'] == ['b'] and ref['regressed'] == [] and 'gate' not in ref
+    assert ref['per_category'] == {'edit': {'previous': 1, 'tuned': 2, 'total': 3}}

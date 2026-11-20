@@ -1,4 +1,4 @@
-"""Interface v1: the one definition of what the model writes and what it sees back."""
+"""Interface syntax shared by v1 and v2; the frozen v1 prompt and empty-terminal rules use version=1."""
 from pathlib import Path
 
 import pytest
@@ -17,7 +17,7 @@ COMMANDS = [
 
 
 def test_version_and_served_tools_are_fixed():
-    assert p.INTERFACE_VERSION == 1
+    assert 1 in p.SUPPORTED_VERSIONS
     assert tuple(TOOLS) == ("fs.list", "fs.find", "fs.read", "fs.grep", "fs.edit")
 
 
@@ -71,7 +71,7 @@ def test_tool_actions_round_trip_with_typed_and_multiline_values():
 ])
 def test_malformed_actions_are_refused_with_a_reason(text, reason):
     with pytest.raises(p.ProtocolError, match=reason):
-        p.parse_action(text, TOOLS)
+        p.parse_action(text, TOOLS, version=1)
 
 
 def test_only_the_first_line_decides_the_action():
@@ -111,19 +111,19 @@ def test_turns_are_wrapped_the_same_way_everywhere():
 
 
 def test_system_prompt_names_every_action_tool_and_habit():
-    prompt = p.system_prompt(TOOLS)
+    prompt = p.system_prompt(TOOLS, version=1)
     for word in ("run", "tool <name>", "ask", "done", "pending", "rejected", *TOOLS):
         assert word in prompt
 
 
 def test_system_prompt_is_frozen_for_version_1():
-    assert p.system_prompt(TOOLS) == GOLDEN.read_text(encoding="utf8"), (
+    assert p.system_prompt(TOOLS, version=1) == GOLDEN.read_text(encoding="utf8"), (
         "The v1 system prompt changed. If intended, bump INTERFACE_VERSION, regenerate the golden "
         "file and regenerate every dataset; models trained on v1 will not match.")
 
 
 def test_grammar_constrains_to_the_four_actions_and_served_tools():
-    grammar = p.grammar(TOOLS)
+    grammar = p.grammar(TOOLS, version=1)
     assert grammar.startswith("root ::= run | tool | ask | done")
     for name in TOOLS:
         assert f'"{name}"' in grammar

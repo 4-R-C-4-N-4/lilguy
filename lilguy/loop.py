@@ -83,15 +83,16 @@ class Record:
 
 # `call_tool(action) -> (observation_text, is_error)`, async; the caller owns the live session.
 def replay_lines(saved: dict, tools) -> list[str]:
-    """Decode a completed v1 recording into actions; grants no execution authority."""
-    if saved.get('version') != p.INTERFACE_VERSION or saved.get('terminal') not in ('ask', 'done'):
-        raise p.ProtocolError('expected a completed interface-v1 recording')
+    """Decode a completed recording into actions; grants no execution authority."""
+    version = saved.get('version')
+    if version not in p.SUPPORTED_VERSIONS or saved.get('terminal') not in ('ask', 'done'):
+        raise p.ProtocolError('expected a completed recording of a supported interface version')
     actions = [p.Action(**turn['action']) for turn in saved['turns']]
     if any(action.kind not in ('tool', 'run') for action in actions):
         raise p.ProtocolError('unexpected terminal action inside recording')
     actions.append(p.Action(saved['terminal'], text=saved['answer']))
-    lines = [p.render_action(action, tools) for action in actions]
-    if any(p.parse_action(line, tools) != action for line, action in zip(lines, actions)):
+    lines = [p.render_action(action, tools, version) for action in actions]
+    if any(p.parse_action(line, tools, version) != action for line, action in zip(lines, actions)):
         raise p.ProtocolError('recording contains a non-round-tripping action')
     return lines
 

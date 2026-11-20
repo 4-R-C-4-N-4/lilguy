@@ -49,3 +49,16 @@ def test_other_interface_versions_are_refused():
     saved['version'] = p.INTERFACE_VERSION + 1
     with pytest.raises(ValueError):
         episodes.to_messages(saved, TOOLS)
+
+
+def test_v1_episodes_keep_the_v1_prompt_and_v2_allows_a_bare_done():
+    v1 = record()
+    v1['version'] = 1
+    assert episodes.to_messages(v1, TOOLS)[0]['content'] == p.system_prompt(TOOLS, version=1)
+    bare = record(answer='')
+    messages = episodes.to_messages(bare, TOOLS)
+    assert messages[0]['content'] == p.system_prompt(TOOLS, version=2)
+    assert messages[-1]['content'] == 'done'
+    v1['answer'] = ''
+    with pytest.raises(ValueError):
+        episodes.to_messages(v1, TOOLS)

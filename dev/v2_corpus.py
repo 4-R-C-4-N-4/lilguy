@@ -18,7 +18,7 @@ from __future__ import annotations
 import argparse
 from collections import Counter
 from concurrent.futures import ProcessPoolExecutor
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 import hashlib
 import io
 import json
@@ -63,6 +63,7 @@ class Example:
     # Indices of assistant actions that are deliberate, reasonable-looking slips (for example acting
     # before looking) kept only so the recovery after them is real; they are never training targets.
     train_skip: tuple = ()
+    interface: int = 1  # protocol version the episode is recorded and trained under
     meta: dict = field(default_factory=dict, compare=False, hash=False)
 
     def manifest(self):
@@ -1443,6 +1444,27 @@ def fam_orient_output(g, n):
 
 FAMILIES_R4 = {'orient_output': (fam_orient_output, 120)}
 
+# Revision 5 is revision 4 recorded under interface v2 (Ivy, 2026-11-20): the model does simple,
+# explicit work and the human reviews lilguy's executed plan and diff. A `done` that ends a change,
+# a pending handoff or a rejection is bare; a question's answer or a no-op report keeps its text.
+# Asking is kept only where the request cannot be done with the workspace (a named input is
+# absent); asks that judged ambiguity are dropped.
+BLOCKED_ASK_FAMILIES = ('recover_absent',)
+_INTERFACE = {1: 1, 2: 1, 3: 1, 4: 1, 5: 2}
+
+
+def interface_for(revision):
+    return _INTERFACE[revision]
+
+
+def _to_interface_v2(ex):
+    if ex.terminal == 'ask' and ex.family not in BLOCKED_ASK_FAMILIES:
+        return None
+    reported = ex.terminal == 'done' and (ex.changes or ex.policy_end != 'ok')
+    if reported:
+        return replace(ex, oracle=(*ex.oracle[:-1], 'done'), facts=(), interface=2)
+    return replace(ex, interface=2)
+
 
 def generate(seed=DEFAULT_SEED, scale=1.0, families=None, revision=1):
     global _REV
@@ -1458,6 +1480,8 @@ def generate(seed=DEFAULT_SEED, scale=1.0, families=None, revision=1):
             spec['oracle'] = tuple(_canon(line) for line in spec['oracle'])
             spec['changes'] = dict(sorted(spec['changes'].items()))
             out.append(Example(**spec))
+    if interface_for(revision) >= 2:
+        out = [ex for ex in map(_to_interface_v2, out) if ex is not None]
     return out
 
 
@@ -1484,7 +1508,8 @@ def grade(task, *, terminal, answer, changes, events, original_unchanged):
         reasons.append('original workspace changed')
     if changes != task.changes:
         reasons.append(f'changes {changes!r} != expected {task.changes!r}')
-    if terminal != task.terminal or not answer:
+    bare = task.interface >= 2 and task.oracle[-1] == 'done'
+    if terminal != task.terminal or not (answer or bare):
         reasons.append(f'terminal {terminal!r} != {task.terminal!r}')
     if not events:
         reasons.append('no inspection before the terminal action')
@@ -1497,6 +1522,8 @@ def grade(task, *, terminal, answer, changes, events, original_unchanged):
     if loop.policy_of(events[-1][1]) != task.policy_end:
         reasons.append(f'final policy {loop.policy_of(events[-1][1])} != {task.policy_end}')
     low = (answer or '').casefold()
+    if bare:  # interface v2: lilguy reports the change, pending handoff or rejection
+        return reasons
     if task.policy_end == 'pending' and PENDING not in low:
         reasons.append('pending change not reported as awaiting approval')
     if task.policy_end == 'rejected' and 'rejected' not in low:
@@ -1517,7 +1544,7 @@ def grade(task, *, terminal, answer, changes, events, original_unchanged):
 # --- verification pipeline -------------------------------------------------------------------
 
 def _record(task, reference):
-    return dict(version=protocol.INTERFACE_VERSION, request=task.request, terminal=reference['terminal'],
+    return dict(version=task.interface, request=task.request, terminal=reference['terminal'],
                 answer=reference['answer'], turns=reference['events'])
 
 
@@ -1613,7 +1640,7 @@ def build(out, *, seed=DEFAULT_SEED, scale=1.0, families=None, workers=12, revis
     stages['episodes'] = len(evidence)
     stages['next_action_rows'] = len(rows)
     out.mkdir(mode=0o700, parents=True, exist_ok=False)
-    meta = dict(corpus_version=CORPUS_VERSION, interface=protocol.INTERFACE_VERSION, seed=seed, scale=scale,
+    meta = dict(corpus_version=CORPUS_VERSION, interface=interface_for(revision), seed=seed, scale=scale,
                 families=sorted(families) if families else None, revision=revision, split_gate=split)
     (out / 'meta.json').write_text(json.dumps(meta, indent=2) + '\n')
     (out / 'train.jsonl').write_text(''.join(json.dumps(row) + '\n' for row in rows), encoding='utf8')
@@ -1646,7 +1673,7 @@ def verified_rows(path):
     """
     path = Path(path)
     meta = json.loads((path / 'meta.json').read_text())
-    if meta.get('corpus_version') != CORPUS_VERSION or meta.get('interface') != protocol.INTERFACE_VERSION:
+    if meta.get('corpus_version') != CORPUS_VERSION or meta.get('interface') != interface_for(meta.get('revision', 1)):
         raise ValueError('corpus or interface version mismatch')
     examples = {ex.id: ex for ex in generate(meta['seed'], meta['scale'], meta['families'], meta.get('revision', 1))}
     evidence = json.loads((path / 'effects.json').read_text())
@@ -1691,7 +1718,7 @@ def main(argv=None):
     parser.add_argument('--scale', type=float, default=1.0)
     parser.add_argument('--families', help='comma-separated subset (debugging)')
     parser.add_argument('--workers', type=int, default=12)
-    parser.add_argument('--revision', type=int, default=1, choices=(1, 2, 3, 4))
+    parser.add_argument('--revision', type=int, default=1, choices=tuple(_INTERFACE))
     args = parser.parse_args(argv)
     families = set(args.families.split(',')) if args.families else None
     card = build(args.out, seed=args.seed, scale=args.scale, families=families, workers=args.workers,

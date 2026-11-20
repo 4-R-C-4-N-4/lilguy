@@ -94,8 +94,8 @@
       "invoice_draft.md": "# invoice (draft)\n",
       "invoice_final.md": "# invoice (final)\n"
     },
-    "id": "holdout_b_ambiguous_00",
-    "request": "Mark the invoice as sent.",
+    "id": "holdout_b_missing_named_00",
+    "request": "Open invoice_void.md. Mark it as sent.",
     "split": "held-out",
     "template_id": "holdout-b"
   },
@@ -104,8 +104,8 @@
       "recipe_v1.md": "# recipe (v1)\n",
       "recipe_v2.md": "# recipe (v2)\n"
     },
-    "id": "holdout_b_ambiguous_01",
-    "request": "Double the recipe quantities.",
+    "id": "holdout_b_missing_named_01",
+    "request": "Open recipe_v3.md. Double the quantities.",
     "split": "held-out",
     "template_id": "holdout-b"
   },
@@ -114,8 +114,8 @@
       "playlist_evening.md": "# playlist (evening)\n",
       "playlist_morning.md": "# playlist (morning)\n"
     },
-    "id": "holdout_b_ambiguous_02",
-    "request": "Add a new track to the playlist.",
+    "id": "holdout_b_missing_named_02",
+    "request": "Open playlist_midnight.md. Add a new track to it.",
     "split": "held-out",
     "template_id": "holdout-b"
   },
@@ -124,8 +124,8 @@
       "roadmap_backend.md": "# roadmap (backend)\n",
       "roadmap_frontend.md": "# roadmap (frontend)\n"
     },
-    "id": "holdout_b_ambiguous_03",
-    "request": "Push the roadmap deadline back a week.",
+    "id": "holdout_b_missing_named_03",
+    "request": "Open roadmap_mobile.md. Push its deadline back a week.",
     "split": "held-out",
     "template_id": "holdout-b"
   },
@@ -134,8 +134,8 @@
       "contract_client.md": "# contract (client)\n",
       "contract_vendor.md": "# contract (vendor)\n"
     },
-    "id": "holdout_b_ambiguous_04",
-    "request": "Update the contract's effective date.",
+    "id": "holdout_b_missing_named_04",
+    "request": "Open contract_partner.md. Update its effective date.",
     "split": "held-out",
     "template_id": "holdout-b"
   },
@@ -144,8 +144,8 @@
       "budget_engineering.md": "# budget (engineering)\n",
       "budget_marketing.md": "# budget (marketing)\n"
     },
-    "id": "holdout_b_ambiguous_05",
-    "request": "Increase the budget by 10 percent.",
+    "id": "holdout_b_missing_named_05",
+    "request": "Open budget_legal.md. Increase it by 10 percent.",
     "split": "held-out",
     "template_id": "holdout-b"
   },
@@ -154,8 +154,8 @@
       "itinerary_paris.md": "# itinerary (paris)\n",
       "itinerary_tokyo.md": "# itinerary (tokyo)\n"
     },
-    "id": "holdout_b_ambiguous_06",
-    "request": "Add a free day to the itinerary.",
+    "id": "holdout_b_missing_named_06",
+    "request": "Open itinerary_lima.md. Add a free day to it.",
     "split": "held-out",
     "template_id": "holdout-b"
   },
@@ -164,8 +164,8 @@
       "proposal_external.md": "# proposal (external)\n",
       "proposal_internal.md": "# proposal (internal)\n"
     },
-    "id": "holdout_b_ambiguous_07",
-    "request": "Fix the typo in the proposal's title.",
+    "id": "holdout_b_missing_named_07",
+    "request": "Open proposal_joint.md. Fix the typo in its title.",
     "split": "held-out",
     "template_id": "holdout-b"
   },
@@ -174,8 +174,8 @@
       "checklist_launch.md": "# checklist (launch)\n",
       "checklist_rollback.md": "# checklist (rollback)\n"
     },
-    "id": "holdout_b_ambiguous_08",
-    "request": "Check off the first item on the checklist.",
+    "id": "holdout_b_missing_named_08",
+    "request": "Open checklist_audit.md. Check off its first item.",
     "split": "held-out",
     "template_id": "holdout-b"
   },
@@ -184,8 +184,8 @@
       "agenda_retro.md": "# agenda (retro)\n",
       "agenda_standup.md": "# agenda (standup)\n"
     },
-    "id": "holdout_b_ambiguous_09",
-    "request": "Add one more topic to the agenda.",
+    "id": "holdout_b_missing_named_09",
+    "request": "Open agenda_offsite.md. Add one more topic to it.",
     "split": "held-out",
     "template_id": "holdout-b"
   },

@@ -45,13 +45,15 @@ def main(argv=None):
     parser.add_argument('server')
     parser.add_argument('gguf')
     parser.add_argument('out', type=Path)
+    parser.add_argument('--interface', type=int, default=protocol.INTERFACE_VERSION,
+                        choices=protocol.SUPPORTED_VERSIONS)
     args = parser.parse_args(argv)
     tools = protocol.load_tools()
     verdicts = []
     with fast12_runner.managed_server(args.server, args.gguf, args.out) as (port, opener):
         for task, grade in task_graders():
             with tempfile.TemporaryDirectory() as tmp:
-                verdict = fast12_runner.judge_task(Path(tmp), task, tools, port, opener, grade)
+                verdict = fast12_runner.judge_task(Path(tmp), task, tools, port, opener, grade, args.interface)
             verdicts.append(verdict)
             (args.out / f'task_{task.id}.json').write_text(json.dumps(verdict, indent=2) + '\n')
     return write_summary(args.out, verdicts)

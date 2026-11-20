@@ -1,4 +1,4 @@
-"""lilguy interface v1: the one definition of what the model writes and what it sees back.
+"""lilguy interface: the one definition of what the model writes and what it sees back.
 
 Everything that talks to the model imports this module: the agent loop, the tool server's
 descriptions, the training-data generator, the evaluator, the trainer and the model server. A
@@ -17,6 +17,12 @@ A value of several lines is written `name <<<`, the lines, then a `>>>` line; it
 lines each ending in a newline, so `old` and `new` should both be blocks or both single lines.
 
 Only the first line decides the action. Everything after it is that action's text or arguments.
+
+Version 2 (current) keeps the action syntax and observations of version 1 and changes what the
+terminal actions mean: `done` ends the task and its text is only an answer to a question the
+user asked (it may be empty: the user reviews lilguy's executed plan and diff, not the model's
+summary), and `ask` is only for being blocked, not for judging ambiguity. Version 1 is kept so
+its datasets and models stay reproducible: pass `version=1`.
 """
 from __future__ import annotations
 
@@ -28,7 +34,8 @@ import yaml
 
 from .digest import digest
 
-INTERFACE_VERSION = 1
+INTERFACE_VERSION = 2
+SUPPORTED_VERSIONS = (1, 2)
 TOOLSET = Path(__file__).resolve().parent.parent / "toolset.yaml"
 # Typed tools served in v1. The text tools in toolset.yaml are thin wrappers that `run` already
 # covers; whether typed tools earn their place is measured later (plan step 5/7 ablation).
@@ -81,7 +88,7 @@ class Action:
         return cls("ask", text=question)
 
     @classmethod
-    def done(cls, summary):
+    def done(cls, summary=""):
         return cls("done", text=summary)
 
     @classmethod
@@ -108,8 +115,18 @@ def load_tools(toolset=TOOLSET, names=TOOLS_V1):
 
 # --- actions ------------------------------------------------------------------------------------
 
-def parse_action(text, tools):
+def _check_version(version):
+    if version not in SUPPORTED_VERSIONS:
+        raise ProtocolError(f"unsupported interface version {version!r}")
+
+
+def _empty_allowed(keyword, version):
+    return keyword == "done" and version >= 2
+
+
+def parse_action(text, tools, version=INTERFACE_VERSION):
     """Parse one model turn into an Action, or raise ProtocolError with a reason the model can read."""
+    _check_version(version)
     if len(text) > MAX_ACTION_CHARS:
         raise ProtocolError(f"action is too long (over {MAX_ACTION_CHARS} characters)")
     lines = text.replace("\r\n", "\n").replace("\r", "\n").strip("\n").split("\n")
@@ -120,6 +137,8 @@ def parse_action(text, tools):
     if keyword in ("run", "ask", "done"):
         content = "\n".join(([rest] if rest.strip() else []) + body).strip("\n").rstrip()
         if not content.strip():
+            if _empty_allowed(keyword, version):
+                return Action(keyword, text="")
             raise ProtocolError(f"empty {keyword}: write the {_WHAT[keyword]} on the next line")
         return Action(keyword, text=content)
     if keyword == "tool":
@@ -198,14 +217,17 @@ def _convert(key, arg, value):
     return value
 
 
-def render_action(action, tools=None):
+def render_action(action, tools=None, version=INTERFACE_VERSION):
     """The canonical text of an action: what training targets and conversation history contain.
 
     With `tools`, tool arguments are checked and put in the tool's argument order, which is the
     order the grammar accepts. Data generators must pass `tools`.
     """
+    _check_version(version)
     if action.kind in ("run", "ask", "done"):
         if not action.text.strip():
+            if _empty_allowed(action.kind, version):
+                return action.kind
             raise ProtocolError(f"empty {action.kind}")
         return f"{action.kind}\n{action.text}"
     if action.kind != "tool":
@@ -264,7 +286,7 @@ def invalid_action_message(reason):
 
 # --- prompt and grammar -------------------------------------------------------------------------
 
-_HEADER = """\
+_HEADER_V1 = """\
 You are lilguy, a careful shell assistant. You work in a sandboxed copy of the user's workspace: \
 nothing you do reaches their real files until they approve it. Paths are relative to the workspace.
 
@@ -296,6 +318,42 @@ Habits:
 
 Tools:"""
 
+_HEADER_V2 = """\
+You are lilguy, a shell assistant for simple file and text tasks. You work in a sandboxed copy \
+of the user's workspace: nothing you do reaches their real files until they approve it. Paths \
+are relative to the workspace.
+
+Reply with exactly one action per turn. Its first line says which action it is.
+
+run, then the shell command on the next line (several lines for a short script). For example:
+run
+ls -la src
+
+tool <name>, then one argument per line. For example:
+tool fs.read
+path: notes.md
+For a value of several lines, write the argument name and <<<, then the lines, then a line with >>>.
+
+done, when the task is finished. If the user asked a question, put the answer on the next line. \
+Do not describe your changes: the user sees every command you ran and the exact changes.
+
+ask, then on the next line what is missing, only when you cannot do the request with what is in \
+the workspace.
+
+After each action you get an observation: the exit code, the output, the files that changed, \
+and the policy result (ok; pending: waiting for the user's approval; rejected: not allowed).
+
+Habits:
+- Look before you act: list, find or read before you change anything.
+- Use a tool below when it fits; otherwise use run.
+- Check each result before going on. If a step failed, find out why and fix it.
+- If the policy says pending, stop and say done; the user decides.
+- If the policy says rejected, do not try the same thing again.
+
+Tools:"""
+
+_HEADERS = {1: _HEADER_V1, 2: _HEADER_V2}
+
 
 def _describe(arg):
     if arg.type == "enum":
@@ -310,8 +368,9 @@ def _describe(arg):
     return f"{kind}, optional"
 
 
-def system_prompt(tools):
-    lines = [_HEADER]
+def system_prompt(tools, version=INTERFACE_VERSION):
+    _check_version(version)
+    lines = [_HEADERS[version]]
     for spec in tools.values():
         lines.append(f"- {spec.name}: {spec.description}")
         lines.append("    " + "; ".join(f"{k} ({_describe(a)})" for k, a in spec.args.items()))
@@ -322,13 +381,14 @@ def _rule(*parts):
     return "-".join(re.sub(r"[^a-zA-Z0-9]+", "-", part) for part in parts)
 
 
-def grammar(tools):
+def grammar(tools, version=INTERFACE_VERSION):
     """GBNF for llama.cpp: only well-formed v1 actions, tool arguments in canonical order."""
+    _check_version(version)
     rules = [
         "root ::= run | tool | ask | done",
         'run ::= "run\\n" text',
         'ask ::= "ask\\n" text',
-        'done ::= "done\\n" text',
+        'done ::= "done\\n" text' if version == 1 else 'done ::= "done" ("\\n" text)?',
         "text ::= [^\\n]+ (\"\\n\" [^\\n]*)*",
         "line ::= [^\\n]*",
         "nonempty ::= [^\\n]+",
