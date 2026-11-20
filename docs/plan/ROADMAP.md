@@ -311,6 +311,25 @@ failure). `tests/unit/test_holdout_corpus.py` gained regression tests per
 family; the full unit suite (holdout, eval_gate, split_audit, factory_job,
 fast12) and `ruff check` pass against the new pin.
 
+#### 2026-11-20 — Held-out re-freeze for interface v2 (authorised by Ivy)
+
+Reason: interface v2 changes what the terminal actions mean. `done` is no longer a report and
+`ask` is only for being blocked, so v1 graders that expected an ambiguity question or a written
+change summary would grade the wrong behaviour. No model had been run on the held-out suite, and
+no training data was ever generated from it, so the re-freeze carries no leakage.
+
+- Family B, `ambiguous_two_candidates`, became `missing_named_file`: the request names a file that
+  is not in the workspace (two similar files are), so nothing may change and the reply must name
+  the missing file (`ask` or `done` accepted).
+- Answer-wording checks now apply only where an answer is the deliverable (no staged change, no
+  policy stop). This uses the same `interface_grade` wrapper as the development suites; effect,
+  terminal, policy and evidence checks are unchanged.
+- `tests/sandbox/test_holdout_v2_live.py` calibrates all 100 tasks on fresh guarded fixtures:
+  the scripted oracle passes and an immediate false `done` fails.
+
+Old `dev/holdout_manifest.sha256`: `f9d408a410c03e7a54275b94522c745f5cfd11fba52ad342c9ab83e8d586325f`
+New `dev/holdout_manifest.sha256`: `e10789bc44b20463af249f3a398bf7fc27b1a114fbcc9a719bc38465f8b8c93f`
+
 ### Step 5: Baselines through the real interface
 
 Deliverables: untuned candidates run through lilguy on the dev suite (SCOPE
