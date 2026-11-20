@@ -73,7 +73,7 @@ These are the rows where an ask/act episode first commits after only looking.
 
 ### Runtime parity on the same 477 prompts
 
-The deployed path reproduces the training-runtime decisions:
+The deployed path reproduces the broad failure pattern, not exact decisions on every prompt:
 
 - MiniCPM R2 Q8_0 asks correctly on 108 of 237 ask rows; HF teacher forcing gets 116. It agrees
   with HF generation on 13 of 16 sampled ask rows.
@@ -84,9 +84,12 @@ The deployed path reproduces the training-runtime decisions:
 
 ## Findings
 
-1. **No runtime mismatch.** The grammar-constrained Q8_0 llama-server path makes the same
-   training-row decisions as the HF runtime.
-2. **Poor fit is real only for MiniCPM round 2, and it is a regression.**
+1. **A runtime difference is measured, but is not a sufficient explanation.** MiniCPM has
+   108/237 correct server asks versus 116/237 teacher-forced asks and 13/16 generated agreement.
+   Qwen agrees on the sampled asks. HF and Q8_0 both show MiniCPM's ask-fit deficit; this does
+   not establish universal runtime parity or rule out smaller quantization/decoding effects.
+2. **Ask underfit is clear for MiniCPM round 2, and it is a regression.** Other action classes
+   also remain below perfect fit, including on Qwen; high ask fit is not complete model fit.
    - R2 asks correctly on 116 of 237 decision points; R1 got 215, despite never training on the
      revision-2 ask families.
    - Every revision-2 family except `ask_collision` went 0 or nearly 0 for R2: `ask_after_read`
@@ -99,7 +102,7 @@ The deployed path reproduces the training-runtime decisions:
    source, yet it claims "different content". The same sequence ends in an "identical" report in
    the same family. Every tuned model fails all 20 of these rows. The 200-episode agent audit
    marked every item correct and missed this; I found it from the 0/20 diagnostic.
-4. **The dominant development failure is a context shortcut, not fit.**
+4. **A context shortcut is a supported development-failure hypothesis, not a proven sole cause.**
    - Qwen R2 fits training asks at 91–97% but clarified 1/9 development tasks.
    - Development traces show both bases entering states the corpus never contains:
      - probing the output path the request names (for example `count.txt` or
@@ -127,9 +130,10 @@ The single treatment variable is training-data coverage of the observed off-dist
     state is trained without teaching the probe or an "X does not exist" question.
   - Asks and acts are balanced, and every episode is replay-verified.
 
-Class-balanced sampling was rejected as the main lever. Qwen and MiniCPM R1 already fit ask at
-91%+ and still clarified poorly on the development tasks. Its only measured benefit would be the
-MiniCPM R2 regression, which the training-fit evidence attributes to its second epoch.
+Class-balanced sampling was not selected as the main lever: Qwen and MiniCPM R1 already fit
+ask well on the contrast points but still clarified poorly on development. It remains an
+untested alternative, not a disproven remedy. The association between MiniCPM R2's second epoch
+and poorer fit does not isolate constant learning rate, data mix, or another cause.
 
 Recipe held equal across arms: final-action loss, decision weight 5, rank 16, learning rate 2e-4,
 seed 42, and the same batching. Training exposure is declared before the run:

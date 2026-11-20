@@ -1,6 +1,6 @@
 # Status
 
-Updated 2026-11-19. This is the one place for current state; the plan and its gates are in [plan/ROADMAP.md](plan/ROADMAP.md). Run evidence lives under `reports/` (gitignored, local).
+Updated 2026-11-20. This is the one place for current state; the plan and its gates are in [plan/ROADMAP.md](plan/ROADMAP.md). Run evidence lives under `reports/` (gitignored, local).
 
 ## Summary
 
@@ -11,8 +11,8 @@ Updated 2026-11-19. This is the one place for current state; the plan and its ga
 | 3. Shared loop and recorder | Done | `292a28b`; `lilguy/loop.py`, `lilguy/do.py`, `tests/sandbox/test_loop_live.py` |
 | 4. Protected evaluation | Split gate passes; development suite at 80 of 150 | Held-out pin `f9d408a4…`; the model runner and training gate share the development roster |
 | 5. Baselines and family choice | MiniCPM5-2B is the main experimental base, Qwen3.5-0.8B the same-corpus control; no shipping selection | `reports/factory/pilot-w74u7u0b/comparison.json` |
-| 6. Verified training data | v2 R1: 1,342 episodes / 3,957 rows; R2: 1,799 / 5,266; human audit still open | [Data card](data/CORPUS-V2.md), [family counts](data/CORPUS-V2-COUNTS.md) |
-| 7. Train, iterate on development failures | Two rounds completed for both bases; no promotion | [v2 pilot report](data/LORA-V2-PILOT.md) |
+| 6. Verified training data | R3 control: 1,799 episodes / 5,286 rows; R4 treatment: 1,919 / 5,586; replay/split gates passed, human audit open | [Controlled data/result](data/DECISION-CONTROLLED-RESULT.md), [earlier data card](data/CORPUS-V2.md) |
+| 7. Train, iterate on development failures | Diagnosis and four-run control/treatment experiment complete; no promotion; final semantic/artifact reviews pending | [Diagnosis](data/DECISION-DIAGNOSIS.md), [controlled result](data/DECISION-CONTROLLED-RESULT.md) |
 | 8. Ship: quantize, held-out once, latency, model card | Not started | |
 
 Step numbers follow the roadmap. The recurring work list numbers them 1–5: tool server = 2, shared loop = 3, evaluation = 4, base choice = 5–6, one-job iteration = 7–8.
@@ -22,7 +22,39 @@ Step numbers follow the roadmap. The recurring work list numbers them 1–5: too
 1. **Latency reference.** Qwen3.8-27B Q4_K_XL had the highest Fast12 score in this batch (9/12); its IQ2_XXS counterpart was ~20% faster in model time and lost one task (`create_new_file`). Treat that pair as a quantization comparison, not an automatic change to the 30B+ reference requirement. Pick the reference and latency metric before shipping evaluation. No small model was under 10% of either Qwen3.8 quant's median episode time.
 2. **Shipping family.** MiniCPM5-2B and Qwen3.5-0.8B now both have v2 LoRAs. MiniCPM leads absolute stock capability, but neither has satisfied the promotion gates. Keep both experimental; do not treat the highest development total as a shipping selection.
 
-## Corpus v2 and two-base LoRA pilot
+## Decision-learning sprint: controlled experiment
+
+The output-orientation intervention improves clarification but does not meet the promotion targets:
+
+| Base | Stock | Control | Treatment | Correct clarification: control → treatment |
+|---|---:|---:|---:|---|
+| MiniCPM5-2B | 26/80 | 35/80 | 42/80 | 0/9 → 5/9 |
+| Qwen3.5-0.8B | 2/80 | 28/80 | 31/80 | 1/9 → 4/9 |
+
+Both run the fixed 12+68 task roster with matched Q8_0 artifacts/device/evaluation fingerprints.
+Neither meets the 48/80 or 36/80 target, nor the 6/9 clarification target. Treatment regresses on
+MiniCPM editing/organising and Qwen inspection/organising. Qwen makes new unsafe ambiguity choices
+(including writing an order where its control correctly asked). Guard containment is not model safety.
+No shipping candidate is selected. The recipe limit is reached: no further training in this sprint.
+
+Diagnosis measured per-class teacher-forced/generation fit on verified rows, found a shared
+collision-label grounding defect and missing output-orientation contexts. Revision 3 corrects the
+label in both arms; revision 4 adds 120 episodes. Both corpora pass replay and split gates. The
+200-example revision-2 audit is an agent audit, not human approval, and missed the later defect.
+HF/Q8_0 MiniCPM decisions are not identical (108 vs 116/237 correct ask rows; 13/16 sampled
+generation agreement), but the runtime difference does not explain away the measured ask underfit.
+
+Evidence: `reports/factory/pilot-_jk0eppk/arms.json`, `arms-report.md`, and
+`reports/diagnosis/decision-sprint/`. [Full result](data/DECISION-CONTROLLED-RESULT.md)
+records fit, exposure, regressions and remaining gates. Independent semantic and artifact reviews
+are pending. Current verification: 762 unit tests, 87 real sandbox corpus-variant tests, lint clean,
+frozen protocol/golden prompt unchanged. The earlier pilot results below are historical context.
+
+Cosine warmup/decay is approved as a separate future experiment, not part of these results. Its
+implementation is parked in `stash@{0}`; none of these four runs used it. Keep dropout and other
+factors fixed if that experiment is resumed after this sprint.
+
+## Corpus v2 and two-base LoRA pilot (earlier sprint)
 
 The deployed task remains everyday shell/file work through frozen interface v1: `run` plus
 `fs.list`, `fs.find`, `fs.read`, `fs.grep`, `fs.edit`. The guarded harness and recorder are separate
@@ -71,13 +103,14 @@ Its teacher-forced decision accuracy was 89.1% after epoch 1 and 88.4% after epo
 rows: it did not reach the 99% fit threshold. More epochs and the larger corpus did not produce a
 monotonic development gain. `ask` is only 287/5,266 target rows (5.45%) in revision 2; the larger
 ask/selection episode count does not mean balanced decisions. Per-action-class fit diagnostics
-remain a useful next step; class imbalance is a measured property, not yet a proven root cause.
+are now complete in the decision-learning sprint; imbalance alone is not a proven root cause.
 Qwen R2 completed one epoch at 2,463 training tokens/s, 9,074 MiB peak allocated GPU memory,
 and 90.4% teacher-forced decision accuracy; it also stopped on the time budget, not the fit target.
 
 The revision-1 200-example audit is an **agent audit for Ivy to confirm**: the subagent said
 200/200; the author's review downgraded four debatable asks to 196/200 (98%). Those two family
-ambiguities were corrected in revision 2; revision 2 has no new 200-example audit yet.
+ambiguities were corrected in revision 2. Its subsequent 200-example agent audit initially found
+no defects, but missed the collision-label grounding defect later corrected in revision 3.
 
 ### Host-memory incident
 
@@ -99,11 +132,11 @@ had 95 GiB available after that cleanup, above the 30 GiB floor.
 
 ### Next work
 
-1. Diagnose training fit by action class (`ask`, `done`, `run`, each typed tool), then inspect
-   sampled row-level decision probabilities before buying a longer run or switching bases.
-2. Audit revision-2 labels and the decision context: teaching an action keyword is insufficient
-   if ambiguous cases still produce actions, pending effects get overstated, or answers contradict
-   tool output. Add examples only after replay and semantic review, not just to increase volume.
+1. Finish independent semantic/artifact reviews and finalize the controlled result; do not train
+   a third recipe per base in this sprint.
+2. In a separate experiment, test the agreed 3% warmup/cosine schedule against a fixed-data
+   constant-rate control. Do not change dropout, base or data simultaneously; preserve a fixed
+   training-fit probe when comparing fit across recipes.
 3. Install rsync and complete the exact 18-case safety gate before calling the tool server accepted.
 4. Expand the shared development roster toward 150, including a distinct archive category, and
    rerun matched stock/tuned comparisons after its fingerprint changes.
