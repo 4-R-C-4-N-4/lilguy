@@ -6,13 +6,13 @@ Updated 2026-11-20. This is the one place for current state; the plan and its ga
 
 | Step | State | Evidence |
 |---|---|---|
-| 1. Interface v1 frozen | Done | `5392523`; `lilguy/protocol.py`, golden prompt `tests/unit/interface_v1_system_prompt.txt` |
+| 1. Interface | v2 current (bare `done`, `ask` only when blocked); v1 kept reproducible | `0091f2e`; `lilguy/protocol.py`, golden prompts `tests/unit/interface_v{1,2}_system_prompt.txt` |
 | 2. Guarded tool server | Scope fixed; full safety acceptance blocked by missing rsync | `reports/factory/check-4hy_n9nc/result.json`; the gate requires all 18 cases |
 | 3. Shared loop and recorder | Done | `292a28b`; `lilguy/loop.py`, `lilguy/do.py`, `tests/sandbox/test_loop_live.py` |
-| 4. Protected evaluation | Split gate passes; development suite at 80 of 150 | Held-out pin `f9d408a4…`; the model runner and training gate share the development roster |
+| 4. Protected evaluation | Re-frozen for v2 (pin `e10789bc…`), oracle 100/100, null 0/100; development suite at 80 of 150 | [Roadmap re-freeze note](plan/ROADMAP.md); no model has run on held-out |
 | 5. Baselines and family choice | MiniCPM5-2B is the main experimental base, Qwen3.5-0.8B the same-corpus control; no shipping selection | `reports/factory/pilot-w74u7u0b/comparison.json` |
 | 6. Verified training data | R3 control: 1,799 episodes / 5,286 rows; R4 treatment: 1,919 / 5,586; replay/split gates passed, human audit open | [Controlled data/result](data/DECISION-CONTROLLED-RESULT.md), [earlier data card](data/CORPUS-V2.md) |
-| 7. Train, iterate on development failures | Decision sprint complete: controlled gains, failed targets and new unsafe behavior; no promotion | [Diagnosis](data/DECISION-DIAGNOSIS.md), [controlled result](data/DECISION-CONTROLLED-RESULT.md), [agent audit](data/DECISION-SEMANTIC-AUDIT.json) |
+| 7. Train, iterate on development failures | v2 adapters: MiniCPM 43/80, Qwen 36/80 on the v2 roster; missing answers and unsafe input edits remain; no promotion | [v2 result](data/INTERFACE-V2-RESULT.md), [decision sprint](data/DECISION-CONTROLLED-RESULT.md) |
 | 8. Ship: quantize, held-out once, latency, model card | Not started | |
 
 Step numbers follow the roadmap. The recurring work list numbers them 1–5: tool server = 2, shared loop = 3, evaluation = 4, base choice = 5–6, one-job iteration = 7–8.
@@ -22,7 +22,29 @@ Step numbers follow the roadmap. The recurring work list numbers them 1–5: too
 1. **Latency reference.** Qwen3.8-27B Q4_K_XL had the highest Fast12 score in this batch (9/12); its IQ2_XXS counterpart was ~20% faster in model time and lost one task (`create_new_file`). Treat that pair as a quantization comparison, not an automatic change to the 30B+ reference requirement. Pick the reference and latency metric before shipping evaluation. No small model was under 10% of either Qwen3.8 quant's median episode time.
 2. **Shipping family.** MiniCPM5-2B and Qwen3.5-0.8B now both have v2 LoRAs. MiniCPM leads absolute stock capability, but neither has satisfied the promotion gates. Keep both experimental; do not treat the highest development total as a shipping selection.
 
-## Decision-learning sprint: controlled experiment
+## Interface v2 (current)
+
+Ivy's decision (2026-11-20): the small model does simple, explicit work, not reasoning. Review
+happens at the commit stage. `lilguy do | diff | approve | commit` show the executed plan, every
+command from the trusted audit log, and the changed lines of each text file. The model's `done`
+text is an unverified note. In v2, `done` needs no summary and `ask` is only for a missing input.
+
+On the v2 development roster (12 Fast12 + 68 broad, nine former ambiguity tasks now explicit):
+
+| Base | Stock v2 | v2 adapter | v1 reference (last sprint's best, own interface) |
+|---|---:|---:|---:|
+| MiniCPM5-2B | 19/80 | 43/80 | 43/80 |
+| Qwen3.5-0.8B | 5/80 | 36/80 | 32/80 |
+
+- Matched Q8_0 stock/tuned pairs, same evaluation, RTX 3090; 480/480 originals preserved.
+- No change summaries to contradict. New failures:
+  - missing answers on question tasks (MiniCPM 5, Qwen 7);
+  - staged edits of inputs in read-only tasks (MiniCPM 1, Qwen 4; reference 0 and 1).
+- The guard contained all of them, and the review shows them. No promotion.
+- These totals are not comparable with the v1-roster numbers below.
+- [Full result](data/INTERFACE-V2-RESULT.md).
+
+## Decision-learning sprint: controlled experiment (v1, historical)
 
 The output-orientation intervention improves clarification but does not meet the promotion targets:
 
@@ -137,8 +159,8 @@ had 95 GiB available after that cleanup, above the 30 GiB floor.
 
 ### Next work
 
-1. This sprint is complete with no promoted adapter. Do not train a third recipe per base in it.
-   Preserve the negative result and agent-audit caveats rather than treating aggregate gains as safety.
+1. v2 data fixes: every question episode ends with its answer (rebalance against the 2:1 bare
+   `done`), and add read-only contrast episodes that inspect without writing.
 2. In a separate experiment, test the agreed 3% warmup/cosine schedule against a fixed-data
    constant-rate control. Do not change dropout, base or data simultaneously; preserve a fixed
    training-fit probe when comparing fit across recipes.
