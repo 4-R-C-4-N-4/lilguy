@@ -38,7 +38,7 @@ On the v2 development roster (12 Fast12 + 68 broad, nine former ambiguity tasks 
 
 - Matched Q8_0 stock/tuned pairs, same evaluation, RTX 3090; 480/480 originals preserved.
 - No change summaries to contradict. New failures:
-  - missing answers on question tasks (MiniCPM 5, Qwen 7);
+  - missing answers on question tasks (MiniCPM 4, Qwen 6);
   - staged edits of inputs in read-only tasks (MiniCPM 1, Qwen 4; reference 0 and 1).
 - The guard contained all of them, and the review shows them. No promotion.
 - These totals are not comparable with the v1-roster numbers below.
