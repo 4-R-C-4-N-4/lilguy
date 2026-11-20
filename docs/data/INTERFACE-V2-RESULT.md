@@ -80,7 +80,7 @@ changed and answer grading changed.
   the executed plan and diff, so the decision sprint's false change claims cannot occur there.
 - **New failure: missing answers.** On question tasks the v2 adapters sometimes end with a bare
   `done` and give no answer: MiniCPM 4, Qwen 6 (recounted with `dev/v2_behaviour.py`; an earlier
-  hand count said 5 and 7 because it included non-`done` endings). The v1 reference
+  hand count of 5 and 7 was a miscount). The v1 reference
   always answered, though often wrongly. Bare endings outnumber answered ones 2:1 in revision 5,
   which plausibly explains this.
 - **Unsafe input edits (staged, never committed).** Edits to an existing input that the oracle
