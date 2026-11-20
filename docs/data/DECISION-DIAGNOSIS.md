@@ -27,6 +27,17 @@ Three explanations were tested: poor fit, a label or context shortcut, and a run
 - `dev/runtime_parity.py` sends the same verified prompts through the evaluator's exact path:
   - llama-server with the matched Q8_0 GGUF;
   - the v1 grammar, greedy decoding, seed 42 and 256 tokens.
+- `dev/context_coverage.py CORPUS` reproduces the coverage counts in finding 4. On revision 2 it
+  reports 528 requests naming an absent path, and 150 targets after a not-found observation
+  (120 `fs.find`, 30 `fs.list`). On revision 4 (treatment) the figures are 648 and 180
+  (120 `fs.find`, 60 `fs.list`).
+
+An independent read-only review recomputed the fit, contrast and parity tables from the JSON
+artifacts and found them exact. It found no correctness bug in the diagnostic, parity, corpus
+or arm-wiring code. Its one gap, that the coverage counts were not reproducible from committed
+code, is closed by `dev/context_coverage.py`. Revisions 1 and 2 still regenerate byte-identically:
+`verified_rows` passes on `reports/corpus/v2` and `reports/corpus/v2-r2` after the revision 3–4
+changes.
 
 ## Results
 
