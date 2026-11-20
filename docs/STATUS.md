@@ -10,9 +10,9 @@ Updated 2026-11-19. This is the one place for current state; the plan and its ga
 | 2. Guarded tool server | Scope fixed; full safety acceptance blocked by missing rsync | `reports/factory/check-4hy_n9nc/result.json`; the gate requires all 18 cases |
 | 3. Shared loop and recorder | Done | `292a28b`; `lilguy/loop.py`, `lilguy/do.py`, `tests/sandbox/test_loop_live.py` |
 | 4. Protected evaluation | Split gate passes; development suite at 80 of 150 | Held-out pin `f9d408a4…`; the model runner and training gate share the development roster |
-| 5. Baselines and family choice | One-command development screen verified; shipping base and reference not selected | `reports/factory/screen-z35__7ab/comparison.json` |
-| 6. Verified training data | Recovery and handoff profiles each have 28 replay-verified episodes; neither is a production corpus | [Licence audit](data/LICENCE-AUDIT.md); pilot `data/effects.json` |
-| 7. Train, iterate on development failures | Three 0.8B pilots ran; none promoted | `reports/factory/pilot-v1-k0k3fQ/comparison.json` |
+| 5. Baselines and family choice | MiniCPM5-2B is the main experimental base, Qwen3.5-0.8B the same-corpus control; no shipping selection | `reports/factory/pilot-w74u7u0b/comparison.json` |
+| 6. Verified training data | v2 R1: 1,342 episodes / 3,957 rows; R2: 1,799 / 5,266; human audit still open | [Data card](data/CORPUS-V2.md), [family counts](data/CORPUS-V2-COUNTS.md) |
+| 7. Train, iterate on development failures | Trainer v2 and one-command two-base factory exercised; no promotion | v2 pilot results below |
 | 8. Ship: quantize, held-out once, latency, model card | Not started | |
 
 Step numbers follow the roadmap. The recurring work list numbers them 1–5: tool server = 2, shared loop = 3, evaluation = 4, base choice = 5–6, one-job iteration = 7–8.
@@ -20,7 +20,87 @@ Step numbers follow the roadmap. The recurring work list numbers them 1–5: too
 ## Decisions needed
 
 1. **Latency reference.** Qwen3.8-27B Q4_K_XL had the highest Fast12 score in this batch (9/12); its IQ2_XXS counterpart was ~20% faster in model time and lost one task (`create_new_file`). Treat that pair as a quantization comparison, not an automatic change to the 30B+ reference requirement. Pick the reference and latency metric before shipping evaluation. No small model was under 10% of either Qwen3.8 quant's median episode time.
-2. **Model family to fine-tune.** MiniCPM5-2B led the stock screen, but did not ask for clarification on Fast12. The first 0.8B pilot did not close the gap. MiniCPM is the next challenger, not the selected shipping family.
+2. **Shipping family.** MiniCPM5-2B and Qwen3.5-0.8B now both have v2 LoRAs. MiniCPM leads absolute stock capability, but neither has satisfied the promotion gates. Keep both experimental; do not treat the highest development total as a shipping selection.
+
+## Corpus v2 and two-base LoRA pilot
+
+The deployed task remains everyday shell/file work through frozen interface v1: `run` plus
+`fs.list`, `fs.find`, `fs.read`, `fs.grep`, `fs.edit`. The guarded harness and recorder are separate
+from the model learning which action to choose. Training now covers ten roadmap categories,
+including clarification, recovery and approval stops, rather than the old 28-episode tracer slice.
+The fixtures are still synthetic, short and template-generated; this is not daily-driver evidence.
+
+Current development accounting is **80 total tasks: 12 Fast12 + 68 broad**, not 80 broad plus
+Fast12. The sprint wording called for 80 broad tasks; that coverage target was not met, and these
+runs must not be reported as a 92-task evaluation. Older tables below use earlier rosters and
+quantizations and must not be compared directly.
+Both new stock/tuned pairs are matched Q8_0 exports, on the RTX 3090, with matching per-suite
+evaluation fingerprints. Development failures shaped revision 2, so these scores are tuning
+evidence, not an unbiased estimate of generalization.
+
+| Base | Stock Fast12 / broad | R1 tuned Fast12 / broad | R2 tuned Fast12 / broad |
+|---|---|---|---|
+| MiniCPM5-2B | 6/12 + 20/68 = 26/80 | 10/12 + 29/68 = 39/80 | 9/12 + 25/68 = 34/80 |
+| Qwen3.5-0.8B | 0/12 + 2/68 = 2/80 | 9/12 + 21/68 = 30/80 | In progress |
+
+Round 1: `reports/factory/pilot-w74u7u0b/`; round 2: `reports/factory/pilot-kqfyui0g/`.
+The per-category Wilson 95% intervals, task gains/regressions, safety counters and median
+model/episode times are in each job's `comparison.json` and `report.md`.
+
+No candidate has earned a held-out run. MiniCPM R2 gets 0/9 required clarifications right and
+increases policy-stop observations from 3 to 7. A trace inspection confirms a false answer after
+a failed `cmp`: it says two files are identical even though `cmp` reports EOF on the shorter file.
+The guarded runs preserve originals, but containment is not correct model behavior.
+Inspection of all nine clarification traces found three `ask` terminals, but they ask about
+invented missing paths rather than the fixture's actual ambiguity; the remaining six act or
+exhaust their budgets. The 0/9 score is not simply a refusal to accept otherwise correct questions.
+
+Metric caveat: the legacy `false_done` counter means **failed tasks ending in `done`**, not a
+count of proven false-success claims. Policy stops also include expected approval stops.
+Do not infer semantic safety from either aggregate alone.
+
+Training uses final-action-only loss, decision-token weight 5, rank 16 all-linear LoRA, pinned
+bases/templates/end tokens, length-bucketed batches and training-fit stopping bounded by time.
+MiniCPM R2 ran two epochs at 2,474 training tokens/s, with 11,262 MiB peak allocated GPU memory.
+Its teacher-forced decision accuracy was 89.1% after epoch 1 and 88.4% after epoch 2 on 800 training
+rows: it did not reach the 99% fit threshold. More epochs and the larger corpus did not produce a
+monotonic development gain. `ask` is only 287/5,266 target rows (5.45%) in revision 2; the larger
+ask/selection episode count does not mean balanced decisions. Per-action-class fit diagnostics
+remain a useful next step; class imbalance is a measured property, not yet a proven root cause.
+
+The revision-1 200-example audit is an **agent audit for Ivy to confirm**: the subagent said
+200/200; the author's review downgraded four debatable asks to 196/200 (98%). Those two family
+ambiguities were corrected in revision 2; revision 2 has no new 200-example audit yet.
+
+### Host-memory incident
+
+Kernel logs confirm cgroup OOM kills at 18:13 (Baloo extractor started by the cleanup worker),
+18:27 (training smoke Python), and 18:53 (first pilot Python). The first pilot's saved adapter
+was recovered by reloading and merging, not retraining; unavailable training counters are null
+in its report rather than reconstructed. The failed Akonadi/crash-collector services date to
+November 15 and the Claimbase evaluation failures to November 17, not this incident.
+
+The resumed pilot and round 2 run in dedicated user scopes with `MemoryMax=20G` and
+`MemorySwapMax=1G`; these live limits were verified. No unrelated service was restarted.
+An Ollama process appeared on the 3090 during Qwen R2 training; latency measurements from this
+session are development observations, not uncontended release benchmarks.
+
+Superseded round-1 merged checkpoints and GGUFs were removed after their reports were written
+(12.62 GiB apparent size); adapters, model hashes and scored traces remain, with the removal
+inventory in `pilot-w74u7u0b/artifact-cleanup.json`. Round-2 artifacts are retained. The filesystem
+had 95 GiB available after that cleanup, above the 30 GiB floor.
+
+### Next work
+
+1. Diagnose training fit by action class (`ask`, `done`, `run`, each typed tool), then inspect
+   sampled row-level decision probabilities before buying a longer run or switching bases.
+2. Audit revision-2 labels and the decision context: teaching an action keyword is insufficient
+   if ambiguous cases still produce actions, pending effects get overstated, or answers contradict
+   tool output. Add examples only after replay and semantic review, not just to increase volume.
+3. Install rsync and complete the exact 18-case safety gate before calling the tool server accepted.
+4. Expand the shared development roster toward 150, including a distinct archive category, and
+   rerun matched stock/tuned comparisons after its fingerprint changes.
+5. Choose the shipping reference/latency metric; run held-out only when the promotion gates pass.
 
 ## 0.8B LoRA pilots: not promoted
 
@@ -75,7 +155,7 @@ Full table with terminals, policy stops and per-task passes: `reports/factory/ba
 - **Safety corpus #17** is unverified: rsync is absent from the sandbox's executable path. `factory check` now stops at `safety-prerequisites` rather than deselecting the case. The historical 17-case report does not satisfy the full gate.
 - **The development suite** has 80 sandbox-calibrated tasks: Fast12 plus six batches registered in `dev/broad_runner.py`. The new text-workflow batch covers script syntax, literal quoting, byte-level comparison, and packaging manifests. Its scripted controls passed and immediate false completions failed on separate guarded fixtures. Fast12 itself is unchanged. The target is 150.
 - **The held-out suite** has 100 tasks from 10 template families. It was re-frozen once on 2026-11-19, before any model ran on it, to fix three grader defects found on development evidence (see roadmap). It has been checked by unit tests only; its first live run is the shipping evaluation.
-- **No production training or release evaluation has run.** Earlier adapters under `reports/archive/pilots/` predate interface v1. The first v1 pilot above is feasibility evidence only.
+- **No release evaluation has run.** Corpus v2 training and matched deployed-artifact development evaluation have run, but no adapter has qualified for promotion. Earlier adapters under `reports/archive/pilots/` predate interface v1.
 
 ## Fixes made while running baselines
 

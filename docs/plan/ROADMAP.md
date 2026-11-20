@@ -325,6 +325,23 @@ Gate: Ivy picks the model family from the report.
 
 ### Step 6: Training data in the lilguy interface (P6)
 
+Status (2026-11-19): corpus v2 is built ([data card](../data/CORPUS-V2.md)). Revision 2 has 36
+generator groups / 68 emitted family labels, with original fixtures plus tldr-pages patterns
+(CC BY 4.0, pinned):
+
+- revision 1: 1,342 episodes and 3,957 next-action rows;
+- revision 2: 1,799 episodes and 5,266 rows.
+
+Every episode is gold-run, then replayed on a fresh guarded fixture, deduplicated against the
+development tasks, and passed through the frozen held-out split gate. The gate passed for both
+revisions. Gate items still open:
+
+- The audit is an agent audit. The subagent marked 200/200 correct; my own review downgraded 4
+  debatable asks, giving 98%. A human audit is still needed.
+- Dedup rejected 37 / 68 generated examples in revisions 1 / 2; all remaining examples passed
+  the split, gold and replay gates in the final builds. The data card records earlier generator
+  development rejections separately.
+
 Deliverables:
 1. **[Licence audit](../data/LICENCE-AUDIT.md)** of the public sources. Only
    cleared sources go forward.
@@ -360,6 +377,20 @@ Gate:
 - the yield per stage is reported.
 
 ### Step 7: Train and iterate (P8)
+
+Status (2026-11-19): `python -m dev.factory pilot --base minicpm --base qwen08 [--data DIR]` runs
+the whole loop as one job:
+
+- corpus verification;
+- chat-template parity against llama-server;
+- trainer v2 (`dev/v2_train.py`: final-action loss, decision-token weight 5, fit-set stopping,
+  time box);
+- a matched Q8_0 export of stock and tuned;
+- both development suites for both artifacts;
+- `comparison.json` and `report.md`.
+
+Results are in [STATUS.md](../STATUS.md). No candidate has yet beaten its stock base in every
+category, so the held-out suite has not been run.
 
 Deliverables: LoRA SFT on the chosen base with the pilot recipe:
 - loss on the final action only;

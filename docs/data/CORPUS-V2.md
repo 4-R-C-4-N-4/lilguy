@@ -58,6 +58,11 @@ This is why there are fewer rows than assistant turns.
 - **Terminals:** done 1,512, ask 287. **Final policy:** ok 1,613, pending 146, rejected 40.
 - **tldr-attributed examples:** 810.
 
+Action-row balance matters separately from episode categories: revision 2 has 287 `ask` targets
+out of 5,266 rows (5.45%), despite 496 episodes being categorized as clarification/selection
+tasks. Revision 1 has 212/3,957 (5.36%). Aggregate teacher-forced accuracy is not evidence that
+the model learned to ask; report decision fit by class before choosing more training time.
+
 Revision 1 (1,342 episodes):
 
 - **Categories:** ask 325, edit 273, recovery 180, inspect 144, delete 102, organise 102,
