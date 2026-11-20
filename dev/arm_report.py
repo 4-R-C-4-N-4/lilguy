@@ -85,15 +85,69 @@ def markdown(directory):
         lines += ['', 'Treatment vs control gate: ' + ', '.join(f"{k}={'yes' if v else 'no'}"
                                                            for k, v in versus['gate'].items()),
                   '', 'Gained vs control: ' + (', '.join(versus['improved']) or 'none'),
-                  '', 'Lost vs control: ' + (', '.join(versus['regressed']) or 'none'), '',
-                  '| Clarification task | Control | Treatment |', '|---|---|---|']
+                  '', 'Lost vs control: ' + (', '.join(versus['regressed']) or 'none'), '']
+        lines += _training_and_behaviour(directory, base, comps)
         cc = clarifications(directory / 'control' / base / 'tuned')
         tc = clarifications(directory / 'treatment' / base / 'tuned')
+        if cc:
+            lines += ['| Clarification task | Control | Treatment |', '|---|---|---|']
         for task_id in cc:
             lines.append(f"| {task_id} | {cc[task_id]['outcome']} | {tc[task_id]['outcome']}: "
                          f"{(tc[task_id]['answer'] or '').replace('|', '/')[:120]} |")
         lines.append('')
     return '\n'.join(lines)
+
+
+def _training_and_behaviour(directory, base, comps):
+    """Paired training fit (same fit rows in both arms), trace behaviour checks for every scored
+    side, and the earlier adapter re-scored in the control arm (the data effect), when present."""
+    from dev import v2_behaviour
+    lines = []
+    reports = {arm: directory / arm / base / 'training' / 'train-report.json' for arm in ('control', 'treatment')}
+    if all(path.is_file() for path in reports.values()):
+        train = {arm: json.loads(path.read_text()) for arm, path in reports.items()}
+        paired = len({t.get('fit_rows_sha256') for t in train.values()}) == 1 and None not in {
+            t.get('fit_rows_sha256') for t in train.values()}
+        lines += [f"Training fit on the same {train['control']['fit_rows']} verified rows in both arms: "
+                  f"{'yes' if paired else 'NO (not paired)'}.", '',
+                  '| Arm | Schedule | Steps | Decision fit | Token fit | Weighted loss | Last LR | Seconds |',
+                  '|---|---|---:|---:|---:|---:|---:|---:|']
+        for arm, t in train.items():
+            last = t['epochs'][-1]
+            lines.append(f"| {arm} | {t['params'].get('lr_schedule', 'constant')} | {t['optimizer_steps']} | "
+                         f"{last['decision_accuracy']:.2%} | {last['token_accuracy']:.2%} | "
+                         f"{last['weighted_loss']:.4f} | {last.get('last_lr', t['params']['lr']):.2e} | {t['seconds']} |")
+        lines.append('')
+    sides = {'stock': directory / 'control' / base / 'stock'}
+    if (directory / 'control' / base / 'previous').is_dir():
+        sides['earlier adapter'] = directory / 'control' / base / 'previous'
+    sides['control'] = directory / 'control' / base / 'tuned'
+    sides['treatment'] = directory / 'treatment' / base / 'tuned'
+    checks = {label: v2_behaviour.check(path) for label, path in sides.items()}
+    lines += ['| Behaviour (from traces) | ' + ' | '.join(checks) + ' |', '|---|' + '---:|' * len(checks)]
+    for key, label in (('answer_omissions', 'missing answers'), ('input_edits', 'input edits'),
+                       ('do_not_modify_edits', 'edits in do-not-modify tasks'),
+                       ('unexpected_policy_stops', 'unexpected policy stops'),
+                       ('answered_misses', 'answered but failed (review)')):
+        lines.append(f'| {label} | ' + ' | '.join(str(c['counts'][key]) for c in checks.values()) + ' |')
+    lines.append('')
+    for label, c in checks.items():
+        if label == 'stock':
+            continue
+        for key in ('answer_omissions', 'do_not_modify_edits', 'input_edits'):
+            if c[key]:
+                lines.append(f'- {label} {key.replace("_", " ")}: '
+                             + ', '.join(x if isinstance(x, str) else f"{x['task']} ({', '.join(x['paths'])})"
+                                         for x in c[key]))
+    reference = comps['control']['bases'][base].get('reference')
+    if reference:
+        lines += ['', f"Data effect (earlier adapter re-scored here, same evaluation: "
+                  f"{'yes' if reference['same_evaluation'] else 'no'}): earlier "
+                  f"{reference['previous']['passed']}/80, control gains {len(reference['improved'])} "
+                  f"({', '.join(reference['improved']) or 'none'}), loses {len(reference['regressed'])} "
+                  f"({', '.join(reference['regressed']) or 'none'})."]
+    lines.append('')
+    return lines
 
 
 def main(argv=None):
