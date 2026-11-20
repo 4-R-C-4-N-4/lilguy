@@ -275,6 +275,50 @@ def train(key, base_dir, data, out, *, verifier='dev.v2_corpus:verified_rows', p
     return report
 
 
+def merge_only(key, base_dir, out, log_path, data):
+    """Finish a run whose adapter was saved but whose merge or report did not complete.
+
+    Reloads the pinned base and the saved adapter, merges, saves, and writes the report from the
+    per-epoch JSON lines the interrupted run printed (marked `resumed_merge`).
+    """
+    base = check_base(key, base_dir)
+    out = Path(out)
+    if not (out / 'adapter' / 'adapter_config.json').is_file() or (out / 'train-report.json').exists():
+        raise ValueError('merge-only needs a saved adapter and no train-report.json')
+    history = [json.loads(line) for line in Path(log_path).read_text().splitlines()
+               if line.startswith('{"epoch"')]
+    if not history:
+        raise ValueError('no epoch records in the training log')
+    os.environ.update(HF_HUB_OFFLINE='1', TRANSFORMERS_OFFLINE='1')
+    import peft
+    import torch
+    import transformers
+    versions = {'torch': torch.__version__, 'transformers': transformers.__version__, 'peft': peft.__version__}
+    if versions != VERSIONS:
+        raise ValueError(f'training dependency mismatch: {versions}')
+    start = time.monotonic()
+    tokenizer = transformers.AutoTokenizer.from_pretrained(base_dir, local_files_only=True)
+    model = getattr(transformers, base['model_class']).from_pretrained(base_dir, local_files_only=True,
+                                                                     dtype=torch.bfloat16)
+    model = peft.PeftModel.from_pretrained(model, out / 'adapter')
+    merged = model.merge_and_unload()
+    import shutil
+    shutil.rmtree(out / 'merged', ignore_errors=True)
+    merged.save_pretrained(out / 'merged')
+    tokenizer.save_pretrained(out / 'merged')
+    data_path = Path(data) / 'train.jsonl'
+    report = {'base': key, 'repo': base['repo'], 'revision': base['revision'], 'licence': base['licence'],
+              'params': PARAMS, 'versions': versions, 'verifier': 'dev.v2_corpus:verified_rows',
+              'rows': None, 'training_sha256': hashlib.sha256(data_path.read_bytes()).hexdigest(),
+              'epochs': history, 'stop_reason': 'time_budget (resumed_merge: the original process was killed '
+              'after saving the adapter)', 'optimizer_steps': None, 'train_tokens_per_second': None,
+              'peak_gpu_mib': None, 'seconds': round(sum(h['seconds'] for h in history) + time.monotonic() - start, 1),
+              'device': 'RTX 3090', 'resumed_merge': True}
+    (out / 'train-report.json').write_text(json.dumps(report, indent=2) + '\n')
+    print(json.dumps({'base': key, 'resumed_merge': True, 'epochs': len(history)}), flush=True)
+    return report
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__.split('\n\n')[0])
     parser.add_argument('base_key', choices=sorted(BASES))
@@ -288,7 +332,11 @@ def main(argv=None):
     parser.add_argument('--seed', type=int, default=PARAMS['seed'])
     parser.add_argument('--max-rows', type=int, help='random subset of rows (throughput smoke only)')
     parser.add_argument('--no-gradient-checkpointing', action='store_true')
+    parser.add_argument('--merge-only-from-log', type=Path, help='finish an interrupted run from its saved adapter')
     args = parser.parse_args(argv)
+    if args.merge_only_from_log:
+        merge_only(args.base_key, args.base_dir, args.out, args.merge_only_from_log, args.data)
+        return 0
     train(args.base_key, args.base_dir, args.data, args.out, verifier=args.verifier,
           params={'max_minutes': args.max_minutes, 'max_epochs': args.max_epochs,
                   'decision_weight': args.decision_weight, 'seed': args.seed, 'max_rows': args.max_rows,

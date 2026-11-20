@@ -144,6 +144,9 @@ def main():
     parser.add_argument('--base', action='append', default=[], help='pilot base key (repeat): minicpm, qwen08')
     parser.add_argument('--data', type=Path, help='pilot: reuse a built corpus v2 directory (default: build one)')
     parser.add_argument('--max-minutes', type=float, default=25.0, help='pilot: training time box per base')
+    parser.add_argument('--minutes', action='append', default=[], metavar='BASE=M',
+                        help='pilot: per-base training time box overriding --max-minutes')
+    parser.add_argument('--resume', type=Path, help='pilot: continue an interrupted pilot job directory')
     parser.add_argument('--stock-from', type=Path,
                         help='pilot: reuse stock scores from a previous pilot job when artifact and evaluation match')
     parser.add_argument('--server', type=Path, default=Path(os.environ.get('LLAMA_SERVER', Path.home() / 'programs/llama.cpp/build/bin/llama-server')))
@@ -199,7 +202,12 @@ def main():
             fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
         except BlockingIOError:
             parser.exit(2, 'Another factory job owns the sandbox gate.\n')
-        directory = Path(tempfile.mkdtemp(prefix=args.job + '-', dir=base))
+        if args.job == 'pilot' and args.resume:
+            directory = args.resume.resolve()
+            if directory.parent != base.resolve() or not (directory / 'plan.json').is_file():
+                parser.exit(1, 'resume needs an existing pilot job directory under reports/factory\n')
+        else:
+            directory = Path(tempfile.mkdtemp(prefix=args.job + '-', dir=base))
         print(directory, flush=True)
         if models is not None:
             from dev import factory_screen
@@ -214,7 +222,10 @@ def main():
             from dev import factory_pilot
             try:
                 factory_pilot.run(directory, bases=args.base, data=args.data, server=args.server, device=device,
-                                  gate=gate, max_minutes=args.max_minutes, stock_from=args.stock_from,
+                                  gate=gate, stock_from=args.stock_from,
+                                  max_minutes={b: float(dict(m.split('=', 1) for m in args.minutes).get(b, args.max_minutes))
+                                               for b in args.base},
+                                  resume=bool(args.resume),
                                   evaluate=lambda out, suite, gguf: run_development(out, suite, gguf, args.server,
                                                                                     device))
             except (RuntimeError, ValueError, OSError, KeyError) as exc:

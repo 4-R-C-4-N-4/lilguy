@@ -39,6 +39,7 @@ TLDR_LICENCE = 'https://creativecommons.org/licenses/by/4.0/'
 ROOT = Path(__file__).resolve().parents[1]
 CORPUS_VERSION = 2
 DEFAULT_SEED = 20261119
+_REV = 1  # generator revision being produced; set by generate(), read by revision-gated families
 CATEGORIES = ('inspect', 'edit', 'organise', 'delete', 'permissions', 'archives', 'scripts',
               'ask', 'recovery', 'read-only')
 _HEADER = re.compile(r'^(stdout|stderr) \(\d+ lines?\):$')
@@ -526,7 +527,8 @@ def fam_copy(g, n):
             src, dest = f'{thing}.txt', g.choice(('archive', 'backup', 'shared', place))
             text = f'{thing} for {place}\n'
             req = g.choice(('Copy {src} into {dest}/ and keep the original.', 'Put a copy of {src} in {dest}/.',
-                            'Back up {src} into a {dest} folder.')).format(src=src, dest=dest)
+                            'Back up {src} into a {dest} folder.' if _REV < 2
+                            else 'Back up {src} into a folder named {dest}.')).format(src=src, dest=dest)
             yield dict(id=f'copy-mkdir-{i}', family='copy_new_dir', category='organise', behaviour='look-then-act',
                        request=req, files={src: text, f'{place}.md': '# notes\n'}, source_page='cp',
                        oracle=(ls(), run(f'mkdir -p {dest} && cp {src} {dest}/'),
@@ -761,6 +763,8 @@ def fam_scripts(g, n):
         kind = i % 4
         folder = g.choice(('notes', 'photos', 'drafts', place))
         script = g.choice(('backup', 'tally', 'pack', 'scan')) + f'-{folder}.sh'
+        if _REV >= 2:
+            script = ('backup', 'tally', 'pack', 'scan')[kind] + f'-{folder}.sh'
         if kind == 0:
             body = f'#!/bin/sh\nset -eu\ncp -r {folder} {folder}.bak\n'
             req = f'Write a small script {script} that copies the {folder} folder to {folder}.bak.'
@@ -824,7 +828,8 @@ def fam_ask_notes(g, n):
         head = f'# {thing.title()} notes\n'
         if i % 2 == 0:
             a, b = g.choice(((f'{thing}-notes-monday.md', f'{thing}-notes-friday.md'),
-                             (f'{thing}-notes.md', f'old/{thing}-notes.md'),
+                             (f'{thing}-notes.md', f'old/{thing}-notes.md') if _REV < 2
+                             else (f'north/{thing}-notes.md', f'south/{thing}-notes.md'),
                              (f'team/{thing}-notes.md', f'personal/{thing}-notes.md')))
             files = {a: head, b: head, f'{g.choice(PLACES)}.md': '# misc\n'}
             yield dict(id=f'ask-notes-{i}', family='ask_notes', category='ask', behaviour='ask-ambiguous',
@@ -852,7 +857,11 @@ def fam_ask_value(g, n):
         req = g.choice(('What is the {key} in the {p} settings?', 'Tell me the {key} from the {p} settings.')).format(
             key=key, p=place)
         if i % 2 == 0:
-            a, b = (f'{place}/settings.ini', f'{place}/settings.backup.ini')
+            if _REV >= 2:  # two equally current files; a '.backup' twin made asking debatable
+                left, right = g.choice((('east', 'west'), ('home', 'office'), ('summer', 'winter'), ('lab', 'field')))
+                a, b = f'{place}/settings-{left}.ini', f'{place}/settings-{right}.ini'
+            else:
+                a, b = (f'{place}/settings.ini', f'{place}/settings.backup.ini')
             files = {a: f'{key}={v1}\n', b: f'{key}={v2}\n'}
             yield dict(id=f'ask-value-{i}', family='ask_value', category='ask', behaviour='ask-ambiguous',
                        request=req, files=files,
@@ -1025,9 +1034,368 @@ FAMILIES = {
 }
 
 
-def generate(seed=DEFAULT_SEED, scale=1.0, families=None):
+# --- revision 2 families: development-failure targeted (decided after the round-1 pilot) ----------
+
+STYLE_RULES = {
+    'letter case': {'lower case': ("tr 'A-Z' 'a-z' < {s} > {o}", lambda rows: [r.lower() for r in rows]),
+                    'upper case': ("tr 'a-z' 'A-Z' < {s} > {o}", lambda rows: [r.upper() for r in rows])},
+    'separator': {'semicolons': ("paste -sd ';' {s} > {o}", lambda rows: [';'.join(rows)]),
+                  'pipes': ("paste -sd '|' {s} > {o}", lambda rows: ['|'.join(rows)]),
+                  'commas': ("paste -sd ',' {s} > {o}", lambda rows: [','.join(rows)])},
+    'order': {'ascending': ('sort {s} > {o}', sorted),
+              'descending': ('sort -r {s} > {o}', lambda rows: sorted(rows, reverse=True))},
+}
+
+
+def fam_ask_conflict(g, n):
+    """Two guides disagree on a required parameter: ask. When only one guide sets it: follow it."""
+    for i in range(n):
+        thing = g.pick(THINGS)
+        place = g.pick(PLACES)
+        aspect = g.choice(sorted(STYLE_RULES))
+        x, y = g.rng.sample(sorted(STYLE_RULES[aspect]), 2)
+        src, out = f'{thing}.txt', f'{thing}-{place}.txt'
+        rows = [f'{g.choice(WORDS).title()} {g.choice(PEOPLE)}' for _ in range(g.int(3, 5))]
+        req = g.choice(('Prepare {o} from {s} using the {a} the {p} guides ask for.',
+                        'Make {o} out of {s}, with whatever {a} the {p} guides specify.')).format(
+                            o=out, s=src, a=aspect, p=place)
+        ga, gb = f'guides/{place}-style.md', f'guides/{place}-print.md'
+        label = aspect.capitalize()
+        if i % 2 == 0:
+            files = {src: _lines(rows), ga: f'# Style\n{label}: {x}\n', gb: f'# Print\n{label}: {y}\n'}
+            yield dict(id=f'ask-conflict-{i}', family='ask_conflict', category='ask', behaviour='ask-ambiguous',
+                       request=req, files=files,
+                       oracle=(grep(label, path='guides'),
+                               ask(f'The guides disagree: {ga} says {x} but {gb} says {y}. Which {aspect} should {out} use?')),
+                       changes={}, terminal='ask', facts=(x, y))
+        else:
+            files = {src: _lines(rows), ga: f'# Style\n{label}: {x}\n', gb: '# Print\nMargins: wide\n'}
+            command, transform = STYLE_RULES[aspect][x]
+            yield dict(id=f'act-conflict-{i}', family='ask_conflict', category='ask', behaviour='act-unambiguous',
+                       request=req, files=files,
+                       oracle=(grep(label, path='guides'), run(command.format(s=src, o=out)), read(out),
+                               done(f'Only {ga} sets the {aspect} ({x}), so {out} follows it.')),
+                       changes={out: _lines(transform(rows))}, facts=(x,))
+
+
+def fam_ask_collision(g, n):
+    """A copy would replace a different existing file: ask first. A free or identical target: act."""
+    for i in range(n):
+        thing = g.pick(THINGS)
+        dest = g.choice(('release', 'public', 'outbox', 'print'))
+        src = f'{thing}-v2.txt'
+        target = f'{dest}/{thing}.txt'
+        new = f'{thing} revised {g.choice(WORDS)}\n'
+        old = f'{thing} earlier {g.choice(WORDS)}\n'
+        req = g.choice(('Copy {s} into {d}/ as {t}.', 'Publish {s} to {d}/ under the name {t}.')).format(
+            s=src, d=dest, t=f'{thing}.txt')
+        mode = i % 3
+        if mode == 0:
+            files = {src: new, target: old}
+            yield dict(id=f'ask-collision-{i}', family='ask_collision', category='ask', behaviour='ask-ambiguous',
+                       request=req, files=files,
+                       oracle=(ls(dest), read(target),
+                               ask(f'{target} already exists with different content (\"{old.strip()}\"). '
+                                   'Should I overwrite it?')),
+                       changes={}, terminal='ask', facts=(old.strip(),))
+        elif mode == 1:
+            files = {src: new, f'{dest}/README': 'drop zone\n'}
+            yield dict(id=f'act-collision-{i}', family='ask_collision', category='ask', behaviour='act-unambiguous',
+                       request=req, files=files,
+                       oracle=(ls(dest), run(f'cp {src} {target}'), done(f'Copied {src} to {target}; nothing was there before.')),
+                       changes={target: new})
+        else:
+            files = {src: new, target: new}
+            yield dict(id=f'same-collision-{i}', family='ask_collision', category='ask', behaviour='honest-done',
+                       request=req, files=files,
+                       oracle=(ls(dest), run(f'cmp {src} {target} && echo identical'),
+                               done(f'{target} already has exactly the same content as {src} (cmp: identical), '
+                                    'so nothing needed copying.')),
+                       changes={}, facts=('identical',))
+
+
+def fam_idempotent(g, n):
+    """'Only if not already': read first; report an unchanged file honestly."""
+    for i in range(n):
+        place = g.pick(PLACES)
+        key = g.choice(KEYS)
+        cur = _value_for(g, key)
+        path = g.choice((f'{place}.ini', f'conf/{place}.ini'))
+        other = g.choice([k for k in KEYS if k != key])
+        text = f'{other}=1\n{key}={cur}\n'
+        if i % 2 == 0:
+            req = g.choice(('Set {k} to {v} in {p} unless it already is. Tell me whether you changed it.',
+                            'Make sure {k} is {v} in {p}; only edit if needed.')).format(k=key, v=cur, p=path)
+            yield dict(id=f'idem-same-{i}', family='idempotent_edit', category='edit', behaviour='honest-done',
+                       request=req, files={path: text},
+                       oracle=(read(path), done(f'{key} is already {cur} in {path}, so I left the file unchanged.')),
+                       changes={}, facts=(cur,))
+        else:
+            new = _other_value(g, key, cur)
+            req = g.choice(('Set {k} to {v} in {p} unless it already is. Tell me whether you changed it.',
+                            'Make sure {k} is {v} in {p}; only edit if needed.')).format(k=key, v=new, p=path)
+            yield dict(id=f'idem-change-{i}', family='idempotent_edit', category='edit', behaviour='look-then-act',
+                       request=req, files={path: text},
+                       oracle=(read(path), edit(path, f'{key}={cur}', f'{key}={new}'),
+                               done(f'{key} was {cur}, so I changed it to {new} in {path}.')),
+                       changes={path: f'{other}=1\n{key}={new}\n'}, facts=(cur,))
+
+
+def fam_conditional_copy(g, n):
+    """Act only if a marker line matches exactly; a non-match is reported, not forced."""
+    for i in range(n):
+        thing = g.pick(THINGS)
+        marker = g.choice(('READY', 'APPROVED', 'GO', 'SIGNED'))
+        flag = g.choice(('status.flag', 'state.txt', 'gate.txt'))
+        src, dest = f'{thing}.txt', f'outgoing/{thing}.txt'
+        text = f'{thing} {g.choice(WORDS)}\n'
+        req = g.choice(("Copy {s} to {d} only if {f} has a line that is exactly {m}.",
+                        "If {f} contains the exact line {m}, copy {s} to {d}; otherwise leave everything.")).format(
+                            s=src, d=dest, f=flag, m=marker)
+        if i % 2 == 0:
+            files = {src: text, flag: f'note\n{marker}\n', 'outgoing/README': 'out\n'}
+            yield dict(id=f'cond-yes-{i}', family='conditional_copy', category='organise', behaviour='look-then-act',
+                       request=req, files=files, source_page='grep',
+                       oracle=(run(f'grep -x -- {marker} {flag}'), run(f'cp {src} {dest}'),
+                               done(f'{flag} has the exact line {marker}, so I copied {src} to {dest}.')),
+                       changes={dest: text}, facts=(marker,))
+        else:
+            files = {src: text, flag: f'note\n{marker}-PENDING\nnot {marker.lower()}\n', 'outgoing/README': 'out\n'}
+            yield dict(id=f'cond-no-{i}', family='conditional_copy', category='organise', behaviour='honest-failure',
+                       request=req, files=files, source_page='grep',
+                       oracle=(run(f'grep -x -- {marker} {flag}'), read(flag),
+                               done(f'{flag} has no line that is exactly {marker} (only {marker}-PENDING), '
+                                    f'so I did not copy {src}.')),
+                       changes={}, error_turns=(0,), facts=(f'{marker}-PENDING',))
+
+
+def fam_awk_sum(g, n):
+    for i in range(n):
+        thing = g.pick(THINGS)
+        path = f'{thing}.tsv'
+        names = g.shuffle(WORDS)[:g.int(3, 7)]
+        vals = [g.int(-40, 300) for _ in names]
+        header = g.int(0, 1)
+        body = ''.join(f'{w}\t{v}\n' for w, v in zip(names, vals))
+        text = ('item\tamount\n' + body) if header else body
+        prog = "NR>1 {s+=$2} END {print s}" if header else "{s+=$2} END {print s}"
+        total = sum(vals)
+        req = g.choice(('What is the total of the amounts in {p}?', 'Add up the second column of {p} for me.')).format(p=path)
+        yield dict(id=f'awk-sum-{i}', family='awk_sum', category='inspect', behaviour='factual-answer',
+                   request=req, files={path: text}, source_page='awk',
+                   oracle=(read(path), run(f"awk -F'\\t' '{prog}' {path}"),
+                           done(f'The amounts in {path} add up to {total}.')),
+                   changes={}, facts=(str(total),))
+
+
+def fam_set_diff(g, n):
+    for i in range(n):
+        thing = g.pick(THINGS)
+        old, new = f'{thing}-before.txt', f'{thing}-after.txt'
+        base = g.shuffle(PEOPLE)[:g.int(3, 6)]
+        added = [p for p in g.shuffle(PEOPLE) if p not in base][:g.int(1, 3)]
+        newlist = g.shuffle(base[1:] + added)
+        if i % 2 == 0:
+            out = f'{thing}-added.txt'
+            req = f'Write the names that are in {new} but not in {old} to {out}, keeping their order.'
+            result = [p for p in newlist if p not in base]
+            yield dict(id=f'diff-added-{i}', family='set_diff', category='edit', behaviour='verify-before-done',
+                       request=req, files={old: _lines(base), new: _lines(newlist)}, source_page='grep',
+                       oracle=(run(f'grep -vxF -f {old} {new} > {out}'), read(out),
+                               done(f'{out} lists {", ".join(result)}, the names only in {new}.')),
+                       changes={out: _lines(result)}, facts=tuple(result))
+        else:
+            gone = base[0]
+            req = f'Which names from {old} are missing in {new}? Do not create any files.'
+            yield dict(id=f'diff-gone-{i}', family='set_diff', category='inspect', behaviour='factual-answer',
+                       request=req, files={old: _lines(base), new: _lines(newlist)}, source_page='grep',
+                       oracle=(run(f'grep -vxF -f {new} {old}'), done(f'Only {gone} is in {old} but not in {new}.')),
+                       changes={}, facts=(gone,))
+
+
+def fam_text_misc(g, n):
+    for i in range(n):
+        thing = g.pick(THINGS)
+        mode = i % 4
+        src = f'{thing}.txt'
+        if mode == 0:
+            rows = [f'{g.choice(WORDS)} {g.choice(PEOPLE)}' for _ in range(g.int(3, 5))]
+            out = f'{thing}-unix.txt'
+            req = f'Make {out}, a copy of {src} with Windows CRLF line endings turned into plain LF.'
+            yield dict(id=f'crlf-{i}', family='text_crlf', category='edit', behaviour='verify-before-done',
+                       request=req, files={src: ''.join(r + '\r\n' for r in rows)}, source_page='tr',
+                       oracle=(run(f"tr -d '\\r' < {src} > {out}"), run(f'od -c {out} | head -n 2'),
+                               done(f'Wrote {out} with LF endings only; od shows no \\r left.')),
+                       changes={out: _lines(rows)}, facts=())
+        elif mode == 1:
+            rows = [g.choice(WORDS) for _ in range(g.int(5, 9))]
+            a, b = g.int(2, 3), g.int(4, 5)
+            out = f'{thing}-lines-{a}-{b}.txt'
+            req = f'Save lines {a} to {b} of {src} (inclusive) as {out}.'
+            yield dict(id=f'sed-range-{i}', family='text_range', category='edit', behaviour='verify-before-done',
+                       request=req, files={src: _lines(rows)}, source_page='sed',
+                       oracle=(run(f"sed -n '{a},{b}p' {src} > {out}"), read(out),
+                               done(f"Wrote lines {a}-{b} of {src} to {out}, starting with '{rows[a - 1]}'.")),
+                       changes={out: _lines(rows[a - 1:b])}, facts=(rows[a - 1],))
+        elif mode == 2:
+            vals = g.shuffle(WORDS)[:g.int(3, 5)]
+            col = [g.choice(vals) for _ in range(g.int(6, 10))]
+            rows = [f'{j},{v}' for j, v in enumerate(col, 1)]
+            path = f'{thing}.csv'
+            distinct = len(set(col))
+            req = f'How many distinct values are in the second column of {path}?'
+            yield dict(id=f'distinct-{i}', family='text_distinct', category='inspect', behaviour='factual-answer',
+                       request=req, files={path: _lines(rows)}, source_page='cut',
+                       oracle=(run(f'cut -d, -f2 {path} | sort -u'),
+                               done(f'{path} has {distinct} distinct values in its second column: {", ".join(sorted(set(col)))}.')),
+                       changes={}, facts=tuple(sorted(set(col))))
+        else:
+            word = g.choice(('BEGIN', 'Total', 'TODO', 'CANCELLED'))
+            path = f'{thing}.log'
+            rows = [f'{g.choice(PEOPLE)} {g.choice(WORDS)}' for _ in range(g.int(3, 6))]
+            has = i % 8 == 3
+            if has:
+                rows.insert(g.int(0, len(rows)), f'{word} {g.choice(WORDS)}')
+            req = f'Does any line of {path} start with {word}? Do not change the file.'
+            if has:
+                hit = next(r for r in rows if r.startswith(word))
+                yield dict(id=f'starts-yes-{i}', family='text_starts', category='read-only', behaviour='factual-answer',
+                           request=req, files={path: _lines(rows)}, source_page='grep',
+                           oracle=(run(f"grep -n '^{word}' {path}"), done(f"Yes: '{hit}' starts with {word}.")),
+                           changes={}, facts=(hit,))
+            else:
+                yield dict(id=f'starts-no-{i}', family='text_starts', category='read-only', behaviour='honest-failure',
+                           request=req, files={path: _lines(rows)}, source_page='grep',
+                           oracle=(run(f"grep -n '^{word}' {path}"), read(path),
+                                   done(f'No, no line of {path} starts with {word}; the file is unchanged.')),
+                           changes={}, error_turns=(0,))
+
+
+def fam_ask_after_read(g, n):
+    """The ambiguity only shows inside a file: two equally valid entries mean ask; one valid entry, act."""
+    for i in range(n):
+        thing = g.pick(THINGS)
+        a, b = g.pick(PEOPLE, 2)
+        qa, qb = g.int(20, 400), g.int(401, 900)
+        orders = f'{thing}-orders.txt'
+        out = f'{thing}-quantity.txt'
+        req = g.choice(('Put the approved {t} quantity in {o} as a single number.',
+                        'Write the signed-off {t} quantity to {o}, just the number.')).format(t=thing, o=out)
+        if i % 2 == 0:
+            text = f'order A: {qa} units, approved by {a}\norder B: {qb} units, approved by {b}\n'
+            yield dict(id=f'ask-read-{i}', family='ask_after_read', category='ask', behaviour='ask-ambiguous',
+                       request=req, files={orders: text},
+                       oracle=(read(orders), ask(f'{orders} has two approved orders: {qa} units ({a}) and {qb} units '
+                                                 f'({b}). Which quantity should go in {out}?')),
+                       changes={}, terminal='ask', facts=(str(qa), str(qb)))
+        else:
+            text = f'order A: {qa} units, approved by {a}\norder B: {qb} units, rejected by {b}\n'
+            yield dict(id=f'act-read-{i}', family='ask_after_read', category='ask', behaviour='act-unambiguous',
+                       request=req, files={orders: text},
+                       oracle=(read(orders), run(f"printf '%s\\n' {qa} > {out}"),
+                               done(f'Only order A is approved, so {out} contains {qa}.')),
+                       changes={out: f'{qa}\n'}, facts=(str(qa),))
+
+
+def fam_inspect_misc(g, n):
+    """Read-only checks answered from command output, never guessed."""
+    for i in range(n):
+        thing = g.pick(THINGS)
+        mode = i % 4
+        if mode == 0:
+            a, b = f'old/{thing}.txt', f'new/{thing}.txt'
+            text = f'{thing} {g.choice(WORDS)}\n'
+            same = i % 8 == 0
+            other = text if same else text.rstrip('\n') + ' \n'
+            req = f'Are {a} and {b} byte-for-byte identical? Leave both files alone.'
+            if same:
+                yield dict(id=f'cmp-same-{i}', family='inspect_cmp', category='inspect', behaviour='factual-answer',
+                           request=req, files={a: text, b: other}, source_page='cmp',
+                           oracle=(run(f'cmp {a} {b} && echo identical'), done(f'Yes, cmp reports {a} and {b} identical.')),
+                           changes={}, facts=('identical',))
+            else:
+                yield dict(id=f'cmp-diff-{i}', family='inspect_cmp', category='inspect', behaviour='factual-answer',
+                           request=req, files={a: text, b: other}, source_page='cmp',
+                           oracle=(run(f'cmp {a} {b}'), run(f'cmp -l {a} {b} | head -n 3; wc -c {a} {b}'),
+                                   done(f'No, they differ: cmp found a difference, and {b} is one byte longer.')),
+                           changes={}, error_turns=(0,), facts=('differ',))
+        elif mode == 1:
+            rows = []
+            for _ in range(g.int(4, 9)):
+                rows.append('' if g.int(0, 2) == 0 else f'{g.choice(WORDS)} {g.choice(PEOPLE)}')
+            if all(rows):
+                rows[1] = ''
+            path = f'{thing}-journal.txt'
+            count = sum(1 for r in rows if r)
+            req = f'How many non-blank lines does {path} have?'
+            yield dict(id=f'nonblank-{i}', family='inspect_nonblank', category='inspect', behaviour='factual-answer',
+                       request=req, files={path: _lines(rows)}, source_page='grep',
+                       oracle=(run(f"grep -c '[^[:space:]]' {path}"), done(f'{path} has {count} non-blank lines.')),
+                       changes={}, facts=(str(count),))
+        elif mode == 2:
+            path = f'{thing}-snippet.txt'
+            body = ' '.join(g.shuffle(WORDS)[:3])
+            ends = i % 8 == 2
+            text = body + ('\n' if ends else '')
+            req = f'Does {path} end with a newline? Do not modify it.'
+            answer = (f'Yes: the last byte of {path} is a newline (od shows \\n).' if ends
+                      else f"No: {path} ends with '{body[-1]}', not a newline.")
+            yield dict(id=f'lastbyte-{i}', family='inspect_lastbyte', category='inspect', behaviour='factual-answer',
+                       request=req, files={path: text}, source_page='tail',
+                       oracle=(run(f'tail -c 1 {path} | od -c'), done(answer)),
+                       changes={}, facts=())
+        else:
+            folder = g.choice(('profile', 'home', 'settings'))
+            key = g.choice(('theme', 'accent', 'layout'))
+            value = g.choice(WORDS)
+            hidden = f'{folder}/.{thing}rc'
+            files = {hidden: f'{key}={value}\n', f'{folder}/README': f'{folder} files\n'}
+            req = g.choice(('The {k} is set in a hidden file under {f}/. What is it? Do not change anything.',
+                            'Find the {k} value in the dotfile inside {f}/ and tell me.')).format(k=key, f=folder)
+            yield dict(id=f'hidden-{i}', family='inspect_hidden', category='read-only', behaviour='factual-answer',
+                       request=req, files=files,
+                       oracle=(f'tool fs.list\npath: {folder}\nshow_hidden: true', read(hidden),
+                               done(f'{hidden} sets {key}={value}.')),
+                       changes={}, facts=(value,))
+
+
+def fam_verify_fix(g, n):
+    """Check the output; if the first attempt kept a header row, fix it before saying done."""
+    for i in range(n):
+        thing = g.pick(THINGS)
+        src = f'{thing}.csv'
+        col = g.choice(('email', 'city', 'code'))
+        def value(person):
+            word = g.choice(WORDS)
+            return {'email': f'{person}@{word}.org', 'city': word.title(), 'code': f'{word[:3].upper()}{g.int(10, 99)}'}[col]
+        rows = [(p, value(p)) for p in g.shuffle(PEOPLE)[:g.int(3, 5)]]
+        text = f'name,{col}\n' + ''.join(f'{a},{b}\n' for a, b in rows)
+        out = f'{thing}-{col}s.txt'
+        req = g.choice(('Write the {c} column of {s} to {o}, one value per line, without the header.',
+                        'Extract the {c} values from {s} into {o} (no header line).')).format(c=col, s=src, o=out)
+        result = [b for _, b in rows]
+        yield dict(id=f'verify-fix-{i}', family='verify_fix', category='edit', behaviour='verify-before-done',
+                   request=req, files={src: text}, source_page='cut',
+                   oracle=(read(src), run(f'cut -d, -f2 {src} > {out}'), read(out),
+                           run(f'tail -n +2 {src} | cut -d, -f2 > {out}'), read(out),
+                           done(f'The first try kept the {col} header, so I redid it; {out} now starts with {result[0]}.')),
+                   changes={out: _lines(result)}, facts=(result[0],), train_skip=(1,))
+
+
+FAMILIES_R2 = {
+    'ask_conflict': (fam_ask_conflict, 60), 'ask_collision': (fam_ask_collision, 60),
+    'idempotent': (fam_idempotent, 40), 'conditional_copy': (fam_conditional_copy, 40),
+    'awk_sum': (fam_awk_sum, 30), 'set_diff': (fam_set_diff, 40), 'text_misc': (fam_text_misc, 64),
+    'ask_after_read': (fam_ask_after_read, 60), 'inspect_misc': (fam_inspect_misc, 64), 'verify_fix': (fam_verify_fix, 30),
+}
+
+
+def generate(seed=DEFAULT_SEED, scale=1.0, families=None, revision=1):
+    global _REV
+    _REV = revision
     out = []
-    for name, (fn, count) in FAMILIES.items():
+    table = {**FAMILIES, **(FAMILIES_R2 if revision >= 2 else {})}
+    for name, (fn, count) in table.items():
         if families and name not in families:
             continue
         g = Gen(seed, name)
@@ -1157,8 +1525,8 @@ def next_action_rows(messages, skip=()):
     return [messages[:i + 1] for n, i in enumerate(targets) if n not in skip]
 
 
-def build(out, *, seed=DEFAULT_SEED, scale=1.0, families=None, workers=12):
-    generated = generate(seed, scale, families)
+def build(out, *, seed=DEFAULT_SEED, scale=1.0, families=None, workers=12, revision=1):
+    generated = generate(seed, scale, families, revision)
     stages = {'generated': len(generated)}
     kept, dup_ids = dedup(generated)
     stages['dedup'] = len(kept)
@@ -1192,7 +1560,7 @@ def build(out, *, seed=DEFAULT_SEED, scale=1.0, families=None, workers=12):
     stages['next_action_rows'] = len(rows)
     out.mkdir(mode=0o700, parents=True, exist_ok=False)
     meta = dict(corpus_version=CORPUS_VERSION, interface=protocol.INTERFACE_VERSION, seed=seed, scale=scale,
-                families=sorted(families) if families else None, split_gate=split)
+                families=sorted(families) if families else None, revision=revision, split_gate=split)
     (out / 'meta.json').write_text(json.dumps(meta, indent=2) + '\n')
     (out / 'train.jsonl').write_text(''.join(json.dumps(row) + '\n' for row in rows), encoding='utf8')
     (out / 'effects.json').write_text(json.dumps(evidence, indent=1) + '\n', encoding='utf8')
@@ -1226,7 +1594,7 @@ def verified_rows(path):
     meta = json.loads((path / 'meta.json').read_text())
     if meta.get('corpus_version') != CORPUS_VERSION or meta.get('interface') != protocol.INTERFACE_VERSION:
         raise ValueError('corpus or interface version mismatch')
-    examples = {ex.id: ex for ex in generate(meta['seed'], meta['scale'], meta['families'])}
+    examples = {ex.id: ex for ex in generate(meta['seed'], meta['scale'], meta['families'], meta.get('revision', 1))}
     evidence = json.loads((path / 'effects.json').read_text())
     tools = _tools()
     accepted, expected = [], []
@@ -1269,9 +1637,11 @@ def main(argv=None):
     parser.add_argument('--scale', type=float, default=1.0)
     parser.add_argument('--families', help='comma-separated subset (debugging)')
     parser.add_argument('--workers', type=int, default=12)
+    parser.add_argument('--revision', type=int, default=1, choices=(1, 2))
     args = parser.parse_args(argv)
     families = set(args.families.split(',')) if args.families else None
-    card = build(args.out, seed=args.seed, scale=args.scale, families=families, workers=args.workers)
+    card = build(args.out, seed=args.seed, scale=args.scale, families=families, workers=args.workers,
+                 revision=args.revision)
     print(json.dumps(card['stages']), flush=True)
     return 0 if card['stages']['episodes'] else 1
 

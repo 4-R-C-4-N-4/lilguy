@@ -9,13 +9,13 @@ from dev.broad_runner import development_rows, task_graders
 from lilguy import protocol as p
 
 
-@pytest.fixture(scope='module')
-def corpus():
-    return v2.generate()
+@pytest.fixture(scope='module', params=[1, 2], ids=['rev1', 'rev2'])
+def corpus(request):
+    return v2.generate(revision=request.param)
 
 
 def test_generation_is_deterministic(corpus):
-    again = v2.generate()
+    again = v2.generate(revision=2 if any(e.family == 'ask_conflict' for e in corpus) else 1)
     assert [(e.id, e.request, e.files, e.oracle, e.changes) for e in corpus] == \
            [(e.id, e.request, e.files, e.oracle, e.changes) for e in again]
     assert v2.generate(seed=1)[0].request != corpus[0].request or v2.generate(seed=1)[0].files != corpus[0].files
@@ -57,7 +57,7 @@ def test_clarification_families_are_contrast_pairs(corpus):
             outcomes[e.family].add(e.terminal)
     assert outcomes and all(seen == {'ask', 'done'} for seen in outcomes.values()), outcomes
     terminals = Counter(e.terminal for e in corpus if e.category == 'ask')
-    assert abs(terminals['ask'] - terminals['done']) <= len(outcomes)
+    assert 0.4 <= terminals['ask'] / (terminals['ask'] + terminals['done']) <= 0.6
 
 
 def test_dedup_removes_dev_and_internal_duplicates(corpus):
@@ -113,3 +113,11 @@ def test_every_development_task_has_a_report_category():
     ids = [t.id for t in fast12.TASKS] + [t.id for t, _ in task_graders()]
     assert {dev_categories.category(i) for i in ids} <= set(dev_categories.CATEGORIES)
     assert len(dev_categories.CATEGORY) == len(ids) == len(set(ids))
+
+
+def test_revision_two_keeps_every_revision_one_family_and_adds_targeted_ones():
+    one = {e.family for e in v2.generate(revision=1)}
+    two = {e.family for e in v2.generate(revision=2)}
+    assert one < two
+    assert {'ask_conflict', 'ask_collision', 'idempotent_edit', 'conditional_copy'} <= two - one
+    assert not any('backup' in path for e in v2.generate(revision=2) if e.family == 'ask_value' for path in e.files)

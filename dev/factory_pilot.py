@@ -82,11 +82,14 @@ def reusable_stock(previous, base, gguf, server, device):
     return root
 
 
-def run(directory, *, bases, data, server, device, gate, evaluate, max_minutes, stock_from=None, build_seed=None):
+def run(directory, *, bases, data, server, device, gate, evaluate, max_minutes, stock_from=None, build_seed=None,
+        resume=False):
+    """With `resume`, stages whose outputs already exist in `directory` are kept, not repeated."""
     from dev import v2_train
     preflight()
+    old = json.loads((directory / 'plan.json').read_text()) if resume and (directory / 'plan.json').is_file() else {}
     plan = {'job': 'pilot-v2', 'bases': bases, 'device': device, 'split_gate': gate, 'max_minutes': max_minutes,
-            'llama_cpp': LLAMA_REVISION, 'stages': []}
+            'llama_cpp': LLAMA_REVISION, 'stages': old.get('stages', []), 'resumed': bool(resume)}
     stage = Stage(directory, plan)
     if data is None:
         data = directory / 'data'
@@ -105,15 +108,25 @@ def run(directory, *, bases, data, server, device, gate, evaluate, max_minutes, 
     for base in bases:
         spec = v2_train.BASES[base]
         out = directory / base
-        out.mkdir()
-        stock_gguf = export(stage, f'{base}-export-stock', spec['snapshot'], out / 'stock-q8_0.gguf',
-                            spec['convert_args'])
-        stage(f'{base}-template-parity', [trainpy, 'dev.v2_template_check', base, spec['snapshot'], stock_gguf,
-                                          server, data, out / 'parity'])
-        stage(f'{base}-train', [trainpy, 'dev.v2_train', base, spec['snapshot'], data, out / 'training',
-                                '--max-minutes', max_minutes])
-        tuned_gguf = export(stage, f'{base}-export-tuned', out / 'training/merged', out / 'tuned-q8_0.gguf',
-                            spec['convert_args'])
+        out.mkdir(exist_ok=resume)
+        stock_gguf = out / 'stock-q8_0.gguf'
+        if not (resume and stock_gguf.is_file()):
+            export(stage, f'{base}-export-stock', spec['snapshot'], stock_gguf, spec['convert_args'])
+        parity = out / 'parity/template-parity.json'
+        if not (resume and parity.is_file() and json.loads(parity.read_text())['ok']):
+            stage(f'{base}-template-parity', [trainpy, 'dev.v2_template_check', base, spec['snapshot'], stock_gguf,
+                                              server, data, out / 'parity'])
+        training = out / 'training'
+        if resume and (training / 'adapter/adapter_config.json').is_file() and not (training / 'train-report.json').is_file():
+            stage(f'{base}-merge-resume', [trainpy, 'dev.v2_train', base, spec['snapshot'], data, training,
+                                           '--merge-only-from-log', directory / f'{base}-train.log'])
+        if not (resume and (training / 'train-report.json').is_file()):
+            minutes = max_minutes[base] if isinstance(max_minutes, dict) else max_minutes
+            stage(f'{base}-train', [trainpy, 'dev.v2_train', base, spec['snapshot'], data, training,
+                                    '--max-minutes', minutes])
+        tuned_gguf = out / 'tuned-q8_0.gguf'
+        if not (resume and tuned_gguf.is_file()):
+            export(stage, f'{base}-export-tuned', training / 'merged', tuned_gguf, spec['convert_args'])
         plan.setdefault('artifacts', {})[base] = {'stock_q8_0_sha256': sha256(stock_gguf),
                                                   'tuned_q8_0_sha256': sha256(tuned_gguf),
                                                   'convert_args': spec['convert_args']}
@@ -126,6 +139,10 @@ def run(directory, *, bases, data, server, device, gate, evaluate, max_minutes, 
         for side, gguf in sides:
             for suite in ('fast12', 'broad'):
                 folder = out / side / suite
+                if resume and (folder / f'{suite}.json').is_file():
+                    continue
+                if folder.exists():
+                    shutil.rmtree(folder)
                 folder.mkdir(parents=True)
                 print(f'{base}: {side} {suite}', flush=True)
                 started = time.monotonic()
