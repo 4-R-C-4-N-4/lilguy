@@ -392,6 +392,21 @@ the whole loop as one job:
 Results are in [STATUS.md](../STATUS.md). No candidate has yet beaten its stock base in every
 category, so the held-out suite has not been run.
 
+For a long run launched by Hermes on this host, use a dedicated memory-bounded scope rather
+than its small default worker cgroup. For example, the revision-2 experiment used:
+
+```bash
+systemd-run --user --scope --collect -p MemoryMax=20G -p MemorySwapMax=1G \
+  env CUDA_DEVICE_ORDER=PCI_BUS_ID CUDA_VISIBLE_DEVICES=0 \
+  .venv/bin/python -m dev.factory pilot --base minicpm --base qwen08 \
+  --data reports/corpus/v2-r2 --minutes minicpm=62 --minutes qwen08=30 \
+  --stock-from reports/factory/pilot-w74u7u0b
+```
+
+The 62-minute MiniCPM allowance was an explicit second-round extension, not a demonstration
+that two epochs fit the original 25-minute target. Verify scope limits and host memory/disk
+headroom for each job; these limits are machine-specific, not portable defaults.
+
 Deliverables: LoRA SFT on the chosen base with the pilot recipe:
 - loss on the final action only;
 - decision-token weighting;

@@ -12,7 +12,7 @@ Updated 2026-11-19. This is the one place for current state; the plan and its ga
 | 4. Protected evaluation | Split gate passes; development suite at 80 of 150 | Held-out pin `f9d408a4…`; the model runner and training gate share the development roster |
 | 5. Baselines and family choice | MiniCPM5-2B is the main experimental base, Qwen3.5-0.8B the same-corpus control; no shipping selection | `reports/factory/pilot-w74u7u0b/comparison.json` |
 | 6. Verified training data | v2 R1: 1,342 episodes / 3,957 rows; R2: 1,799 / 5,266; human audit still open | [Data card](data/CORPUS-V2.md), [family counts](data/CORPUS-V2-COUNTS.md) |
-| 7. Train, iterate on development failures | Trainer v2 and one-command two-base factory exercised; no promotion | v2 pilot results below |
+| 7. Train, iterate on development failures | Two rounds completed for both bases; no promotion | [v2 pilot report](data/LORA-V2-PILOT.md) |
 | 8. Ship: quantize, held-out once, latency, model card | Not started | |
 
 Step numbers follow the roadmap. The recurring work list numbers them 1–5: tool server = 2, shared loop = 3, evaluation = 4, base choice = 5–6, one-job iteration = 7–8.
@@ -41,17 +41,22 @@ evidence, not an unbiased estimate of generalization.
 | Base | Stock Fast12 / broad | R1 tuned Fast12 / broad | R2 tuned Fast12 / broad |
 |---|---|---|---|
 | MiniCPM5-2B | 6/12 + 20/68 = 26/80 | 10/12 + 29/68 = 39/80 | 9/12 + 25/68 = 34/80 |
-| Qwen3.5-0.8B | 0/12 + 2/68 = 2/80 | 9/12 + 21/68 = 30/80 | In progress |
+| Qwen3.5-0.8B | 0/12 + 2/68 = 2/80 | 9/12 + 21/68 = 30/80 | 9/12 + 18/68 = 27/80 |
 
 Round 1: `reports/factory/pilot-w74u7u0b/`; round 2: `reports/factory/pilot-kqfyui0g/`.
 The per-category Wilson 95% intervals, task gains/regressions, safety counters and median
-model/episode times are in each job's `comparison.json` and `report.md`.
+model/episode times are in each job's `comparison.json` and `report.md`, and the committed
+[pilot report](data/LORA-V2-PILOT.md). Both rounds are complete. All compared runs preserved
+originals and had zero infrastructure failures; stock-score reuse was fingerprint-checked.
+Neither model improved in round 2 relative to its first-round result.
 
 No candidate has earned a held-out run. MiniCPM R2 gets 0/9 required clarifications right and
 increases policy-stop observations from 3 to 7. A trace inspection confirms a false answer after
 a failed `cmp`: it says two files are identical even though `cmp` reports EOF on the shorter file.
 The guarded runs preserve originals, but containment is not correct model behavior.
-Inspection of all nine clarification traces found three `ask` terminals, but they ask about
+Qwen R2 gets 1/9 required clarifications right (R1: 4/9), still has no script-category passes,
+and increases failed-task `done` endings from stock's 8 to 30. It also fails promotion.
+Inspection of all nine MiniCPM R2 clarification traces found three `ask` terminals, but they ask about
 invented missing paths rather than the fixture's actual ambiguity; the remaining six act or
 exhaust their budgets. The 0/9 score is not simply a refusal to accept otherwise correct questions.
 
@@ -67,6 +72,8 @@ rows: it did not reach the 99% fit threshold. More epochs and the larger corpus 
 monotonic development gain. `ask` is only 287/5,266 target rows (5.45%) in revision 2; the larger
 ask/selection episode count does not mean balanced decisions. Per-action-class fit diagnostics
 remain a useful next step; class imbalance is a measured property, not yet a proven root cause.
+Qwen R2 completed one epoch at 2,463 training tokens/s, 9,074 MiB peak allocated GPU memory,
+and 90.4% teacher-forced decision accuracy; it also stopped on the time budget, not the fit target.
 
 The revision-1 200-example audit is an **agent audit for Ivy to confirm**: the subagent said
 200/200; the author's review downgraded four debatable asks to 196/200 (98%). Those two family
@@ -101,6 +108,15 @@ had 95 GiB available after that cleanup, above the 30 GiB floor.
 4. Expand the shared development roster toward 150, including a distinct archive category, and
    rerun matched stock/tuned comparisons after its fingerprint changes.
 5. Choose the shipping reference/latency metric; run held-out only when the promotion gates pass.
+
+### Verification
+
+- `pytest -q tests/unit`: 693 passed.
+- `pytest -q tests/sandbox/test_v2_corpus_live.py`: 59 passed through real gold runs and replay.
+- `ruff check dev tests/unit tests/sandbox/test_v2_corpus_live.py`: passed.
+- Both corpus row verifiers and the frozen split gate passed again after the generator changes.
+- `lilguy/protocol.py` and the golden v1 prompt are unchanged from the interface-freeze commit.
+- rsync is still absent: full 18-case safety acceptance remains blocked, not passed by omission.
 
 ## 0.8B LoRA pilots: not promoted
 
