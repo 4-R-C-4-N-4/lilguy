@@ -68,7 +68,10 @@ class GuardedSession:
         from ..sandbox import persist
         return persist.session_lock(self.session.directory)
 
-    def run(self, spec: RunSpec, *, typed_tool: str | None = None) -> GuardedResult:
+    def run(self, spec: RunSpec, *, typed_tool: str | None = None,
+            tool_args: list | None = None) -> GuardedResult:
+        """`tool_args` is the typed call as the human review shows it; callers redact free-text
+        literals before passing it (see mcp_server.audit_args). It is never used to execute."""
         if self.session.closed:
             raise ValueError("session is closed")
         with self._lock():
@@ -81,7 +84,7 @@ class GuardedSession:
                     # deny/rollback happened elsewhere; our in-memory layer list is stale.
                     return _refused(self.session, "SESSION_CHANGED",
                                     "session changed in another process; reopen it to continue")
-            outcome = self._run_locked(spec, typed_tool)
+            outcome = self._run_locked(spec, typed_tool, tool_args)
             if self.persisted:
                 self.generation = persist.record_step(self.session)
             return outcome
@@ -103,7 +106,8 @@ class GuardedSession:
         return _refused(self.session, "NETWORK_APPROVAL_REQUIRED",
                         "this command needs network; a human must allow it (lilguy approve)")
 
-    def _run_locked(self, spec: RunSpec, typed_tool: str | None = None) -> GuardedResult:
+    def _run_locked(self, spec: RunSpec, typed_tool: str | None = None,
+                    tool_args: list | None = None) -> GuardedResult:
         if self.pending:
             approval_path = self.session.directory / "approval.json"
             approved = json.loads(approval_path.read_text()) if approval_path.exists() else {}
@@ -120,7 +124,10 @@ class GuardedSession:
         # network grant that was not for this step.
         for name in ("approval.json", "approval-request.json", "network-request.json", "network-grant.json"):
             (self.session.directory / name).unlink(missing_ok=True)
-        command = asdict(spec) if typed_tool is None else {"tool": typed_tool}
+        if typed_tool is None:
+            command = asdict(spec)
+        else:
+            command = {"tool": typed_tool} if tool_args is None else {"tool": typed_tool, "args": tool_args}
         before = len(self.session.uppers)
         cwd = self.session.cwd
         result = self.backend.run(self.session, spec)

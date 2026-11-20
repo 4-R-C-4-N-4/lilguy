@@ -225,10 +225,11 @@ def describe_handoff(session_dir: Path | None) -> str:
     try:
         with persist.session_lock(session_dir, wait=False):
             session = persist.load_session(session_dir)
+            steps = approval.render_steps(session_dir) + "\n\n"
             if (session_dir / approval.REQUEST).exists():
                 body = approval.summarize(session)
                 return (
-                    "A change is staged and WAITING FOR YOUR DECISION; nothing has reached "
+                    steps + "A change is staged and WAITING FOR YOUR DECISION; nothing has reached "
                     f"your workspace.\n\n{body}\n\n"
                     f"Review:  lilguy diff {session_dir}\n"
                     f"Approve: lilguy approve {session_dir}\n"
@@ -236,10 +237,10 @@ def describe_handoff(session_dir: Path | None) -> str:
                 )
             entries = sandbox_diff.session_diff(session)
             if not entries:
-                return "Nothing staged; the session made no changes. Nothing to review or commit."
+                return steps + "Nothing staged; the session made no changes. Nothing to review or commit."
             body = approval.render_changes([asdict(e) for e in entries])
             return (
-                "Changes are staged (no approval threshold was crossed); nothing has reached "
+                steps + "Changes are staged (no approval threshold was crossed); nothing has reached "
                 f"your workspace.\n\n{body}\n\n"
                 f"Review: lilguy diff {session_dir}\n"
                 f"Commit: lilguy commit {session_dir}"
@@ -333,7 +334,9 @@ def main(argv: list[str] | None = None) -> int:
     try:
         session_id = session_dir.name if session_dir is not None else "no-session"
         record_path = save_record(state_dir, session_id, args.request, workspace, record)
-        print(f"[{record.terminal}] {record.answer or ''}")
+        # The model's own words are a note, not the report: the executed plan and the diff
+        # below are rebuilt from the session's trusted state.
+        print(f"[{record.terminal}] model's note (unverified): {record.answer or ''}")
         print(f"Record saved: {record_path}")
         print()
         print(describe_handoff(session_dir))

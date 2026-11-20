@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import functools
 import json
 from pathlib import Path, PurePosixPath
 
@@ -153,6 +154,23 @@ def build_v1_tools() -> dict[str, types.Tool]:
     return tools
 
 
+@functools.lru_cache(maxsize=1)
+def _v1_arg_types() -> dict:
+    return {name: {arg: spec.type for arg, spec in tool.args.items()}
+            for name, tool in protocol.load_tools().items()}
+
+
+def audit_args(name: str, arguments: dict) -> list:
+    """A typed call as recorded for human review: paths, numbers, flags and enum choices as
+    given, free-text literals (edit contents, patterns, globs) only by length, so the audit log
+    shows what ran without keeping file contents. A list of [name, value] pairs in the tool's
+    interface order, because the audit log is written with sorted keys."""
+    types_ = _v1_arg_types().get(name, {})
+    order = list(types_) + sorted(set(arguments) - set(types_))
+    return [[key, arguments[key] if types_.get(key) in ("path", "int", "bool", "enum")
+             else f"<{len(str(arguments[key]))} chars>"] for key in order if key in arguments]
+
+
 class InterfaceV1:
     """Serves `run` plus the typed tools from protocol.load_tools() through one GuardedSession.
 
@@ -197,7 +215,11 @@ class InterfaceV1:
         try:
             if self.guarded is None:
                 self.guarded = self.open_guarded()
-            outcome = self.guarded.run(spec, typed_tool=typed_tool)
+            if typed_tool is None:
+                outcome = self.guarded.run(spec, typed_tool=None)
+            else:
+                outcome = self.guarded.run(spec, typed_tool=typed_tool,
+                                           tool_args=audit_args(typed_tool, arguments))
         except (OSError, RuntimeError, ValueError):
             return _reply("Unable to execute the sandboxed step", error=True)
         result = outcome.result

@@ -11,6 +11,7 @@ from dataclasses import asdict
 from pathlib import Path
 
 LIMIT = 20
+STEP_LIMIT = 50
 
 
 def _parser(prog, help_text):
@@ -33,6 +34,13 @@ def _fail(message) -> int:
     return 1
 
 
+def _print_steps(session, args) -> None:
+    """The executed plan comes first, so the human reads what ran before the resulting diff."""
+    from . import approval
+    print(approval.render_steps(session.directory, limit=None if args.all else STEP_LIMIT))
+    print()
+
+
 def _errors():
     from ..sandbox import persist
     from .commit import CommitError
@@ -45,6 +53,7 @@ def diff_main(argv=None) -> int:
     from . import approval
     try:
         with _open(args) as session:
+            _print_steps(session, args)
             if (session.directory / approval.REQUEST).exists():
                 print(approval.summarize(session, limit=10**9 if args.all else LIMIT))
             else:
@@ -65,6 +74,7 @@ def approve_main(argv=None) -> int:
         with _open(args) as session:
             if _network_only(session):
                 return _approve_network(session, args)
+            _print_steps(session, args)
             print(approval.summarize(session, limit=10**9 if args.all else LIMIT))
             expected = approval.load_request(session)["diff_hash"]
             if args.diff_hash and args.diff_hash != expected:
@@ -158,6 +168,7 @@ def commit_main(argv=None) -> int:
                 print("Nothing to commit.")
                 return 0
             expected = commitmod.diff_hash(entries, session, layers.resolve)
+            _print_steps(session, args)
             print(f"Changes to write into {session.workspace}:")
             print(approval.render_changes([dataclasses.asdict(e) for e in entries],
                                           limit=10**9 if args.all else LIMIT))

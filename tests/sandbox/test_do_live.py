@@ -177,7 +177,9 @@ def test_cli_do_main_prints_the_handoff_and_saves_the_record(tmp_path, monkeypat
     code = do.main(["change status to ready", "--workspace", str(workspace), "--state-dir", str(state)])
     out = capsys.readouterr().out
     assert code == 0
-    assert "[done] changed status to ready" in out
+    assert "[done] model's note (unverified): changed status to ready" in out
+    assert "fs.edit path=notes.txt old=<13 chars> new=<13 chars>" in out
+    assert "status: draft" not in out  # typed edit literals are not kept in the audit log
     assert "Record saved:" in out
     assert "lilguy diff" in out
     records = list((state / "records").glob("*.json"))

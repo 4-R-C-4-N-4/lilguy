@@ -193,6 +193,79 @@ def render_changes(changes, *, limit: int = 20) -> str:
     return "\n".join(lines)
 
 
+# --- the executed plan: every step, from the trusted audit log ---------------------------------
+
+_STEP_DECISIONS = {"ok": "ok", "pending": "pending", "reject": "rejected, rolled back"}
+
+
+def _command_lines(record) -> list[str]:
+    args = record.get("args") or {}
+    if record.get("tool") != "exec":
+        pairs = args.get("args") or []
+        pairs = pairs.items() if isinstance(pairs, dict) else pairs
+        shown = " ".join(f"{key}={value}" for key, value in pairs)
+        return [_clean(f"{args.get('tool', record.get('tool'))} {shown}".rstrip())]
+    import shlex
+    if args.get("shell") is not None:
+        lines = str(args["shell"]).split("\n")
+        return [_clean(lines[0])] + [f"> {_clean(line)}" for line in lines[1:]]
+    if args.get("argv"):
+        return [_clean(shlex.join(args["argv"]))]
+    return [_clean(" | ".join(shlex.join(stage) for stage in args.get("pipe") or []))]
+
+
+def steps_text(records, *, limit: int | None = None, unreadable: int = 0) -> str:
+    """Number and render the executed steps in `records` (audit dicts, oldest first).
+
+    Commands come from the sandbox's own audit log, so this shows what ran, not what the model
+    claims ran. A pending step is marked approved or denied by later human decisions."""
+    steps = []
+    for record in records:
+        if record.get("tool") and record.get("decision") in _STEP_DECISIONS:
+            steps.append({"record": record, "status": _STEP_DECISIONS[record["decision"]]})
+        elif record.get("decision") == "approval_granted" and steps and steps[-1]["status"] == "pending":
+            steps[-1]["status"] = "pending, approved"
+        elif (record.get("decision") == "denied" and record.get("action") == "rollback_step"
+              and steps and steps[-1]["status"].startswith("pending")):
+            steps[-1]["status"] = "denied, rolled back"
+    count = f"{len(steps)} step" + ("" if len(steps) == 1 else "s")
+    lines = [f"Executed plan: {count} run in the sandbox (commands proposed by the model, "
+             "recorded by lilguy):"]
+    shown = steps if limit is None else steps[-limit:]
+    if len(shown) < len(steps):
+        lines.append(f"   ... {len(steps) - len(shown)} earlier step(s) (use --all)")
+    for number, step in enumerate(steps[len(steps) - len(shown):], len(steps) - len(shown) + 1):
+        record = step["record"]
+        command = _command_lines(record)
+        lines.append(f"  {number:>2}. [{step['status']}, exit {record.get('exit')}] $ {command[0]}")
+        lines += [f"        {line}" for line in command[1:]]
+        changed = [f"{c.get('op')} {_clean(c.get('path'))}" for c in record.get("step_diff") or []]
+        if changed:
+            label = "attempted" if "rolled back" in step["status"] else "changed"
+            lines.append(f"        {label}: " + "; ".join(changed[:10])
+                         + (f"; ... {len(changed) - 10} more" if len(changed) > 10 else ""))
+    if not steps:
+        lines.append("   (no commands were run)")
+    if unreadable:
+        lines.append(f"   WARNING: {unreadable} audit record(s) unreadable; this history may be incomplete. "
+                     "The diff below is still authoritative.")
+    return "\n".join(lines)
+
+
+def render_steps(directory, *, limit: int | None = None) -> str:
+    """The executed plan of a session directory, from its private audit.jsonl."""
+    path = directory / "audit.jsonl"
+    if not path.is_file():
+        return "Executed plan: no step history recorded for this session."
+    records, unreadable = [], 0
+    for line in path.read_text(encoding="utf8", errors="replace").splitlines():
+        try:
+            records.append(json.loads(line))
+        except ValueError:
+            unreadable += 1
+    return steps_text(records, limit=limit, unreadable=unreadable)
+
+
 
 # --- network for one step -------------------------------------------------------------------
 

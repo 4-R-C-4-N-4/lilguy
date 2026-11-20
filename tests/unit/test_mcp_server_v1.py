@@ -63,7 +63,7 @@ def test_typed_tool_dispatches_through_typed_step_program_like_the_tracer():
     spec: RunSpec = guarded.run.call_args.args[0]
     assert spec.argv[:4] == ["/usr/bin/python3", "-I", "-c", spec.argv[3]]
     assert spec.argv[4:6] == ["fs.find", "--"]
-    assert guarded.run.call_args.kwargs == {"typed_tool": "fs.find"}
+    assert guarded.run.call_args.kwargs == {"typed_tool": "fs.find", "tool_args": [["path", "."]]}
 
 
 @pytest.mark.parametrize(("name", "args"), [
