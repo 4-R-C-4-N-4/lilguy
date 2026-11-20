@@ -147,6 +147,9 @@ def main():
     parser.add_argument('--minutes', action='append', default=[], metavar='BASE=M',
                         help='pilot: per-base training time box overriding --max-minutes')
     parser.add_argument('--resume', type=Path, help='pilot: continue an interrupted pilot job directory')
+    parser.add_argument('--arm', action='append', default=[], metavar='NAME=DATA',
+                        help='pilot: matched experiment arms control=DIR then treatment=DIR (replaces --data)')
+    parser.add_argument('--max-epochs', type=int, help='pilot: declared training epoch cap per base')
     parser.add_argument('--stock-from', type=Path,
                         help='pilot: reuse stock scores from a previous pilot job when artifact and evaluation match')
     parser.add_argument('--server', type=Path, default=Path(os.environ.get('LLAMA_SERVER', Path.home() / 'programs/llama.cpp/build/bin/llama-server')))
@@ -220,14 +223,24 @@ def main():
             return 0
         if args.job == 'pilot':
             from dev import factory_pilot
+            minutes = {b: float(dict(m.split('=', 1) for m in args.minutes).get(b, args.max_minutes))
+                       for b in args.base}
+            evaluate = lambda out, suite, gguf: run_development(out, suite, gguf, args.server, device)  # noqa: E731
             try:
+                if args.arm:
+                    from dev import v2_report
+                    if args.data or args.resume:
+                        parser.exit(1, '--arm replaces --data and cannot resume\n')
+                    arms = {name: Path(data) for name, data in (a.split('=', 1) for a in args.arm)}
+                    factory_pilot.run_arms(directory, arms, args.base, factory_pilot.run, v2_report.compare_base,
+                                           server=args.server, device=device, gate=gate,
+                                           stock_from=args.stock_from, max_minutes=minutes,
+                                           max_epochs=args.max_epochs, evaluate=evaluate)
+                    print(directory / 'arms.json', flush=True)
+                    return 0
                 factory_pilot.run(directory, bases=args.base, data=args.data, server=args.server, device=device,
-                                  gate=gate, stock_from=args.stock_from,
-                                  max_minutes={b: float(dict(m.split('=', 1) for m in args.minutes).get(b, args.max_minutes))
-                                               for b in args.base},
-                                  resume=bool(args.resume),
-                                  evaluate=lambda out, suite, gguf: run_development(out, suite, gguf, args.server,
-                                                                                    device))
+                                  gate=gate, stock_from=args.stock_from, max_minutes=minutes,
+                                  max_epochs=args.max_epochs, resume=bool(args.resume), evaluate=evaluate)
             except (RuntimeError, ValueError, OSError, KeyError) as exc:
                 parser.exit(1, f'Pilot stopped: {exc}; see {directory}\n')
             print(directory / 'comparison.json', flush=True)

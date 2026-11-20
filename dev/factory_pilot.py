@@ -63,6 +63,30 @@ def export(stage, name, src, outfile, convert_args):
     return outfile
 
 
+def train_argv(trainpy, base, snapshot, data, training, minutes, max_epochs):
+    argv = [trainpy, 'dev.v2_train', base, snapshot, data, training, '--max-minutes', minutes]
+    return argv + ['--max-epochs', max_epochs] if max_epochs else argv
+
+
+def run_arms(directory, arms, bases, run_one, compare, **kwargs):
+    """A matched control/treatment experiment: identical settings except the training corpus.
+
+    Each arm is a complete pilot job (stock and tuned, both development suites) under
+    `directory/<arm>`; afterwards the treatment's tuned artifact is compared with the control's.
+    """
+    if list(arms) != ['control', 'treatment']:
+        raise ValueError('arms must be exactly control then treatment')
+    results = {}
+    for arm, data in arms.items():
+        (directory / arm).mkdir(parents=True, exist_ok=True)
+        results[arm] = run_one(directory / arm, data=data, bases=bases, **kwargs)
+    summary = {'arms': {arm: str(data) for arm, data in arms.items()},
+               'treatment_vs_control': {base: compare(directory / 'control' / base / 'tuned',
+                                                      directory / 'treatment' / base / 'tuned') for base in bases}}
+    (directory / 'arms.json').write_text(json.dumps(summary, indent=2) + '\n')
+    return summary
+
+
 def reusable_stock(previous, base, gguf, server, device):
     """A previous job's stock scores count only if the artifact, evaluation inputs and device match."""
     from dev.broad_runner import SOURCES
@@ -83,13 +107,14 @@ def reusable_stock(previous, base, gguf, server, device):
 
 
 def run(directory, *, bases, data, server, device, gate, evaluate, max_minutes, stock_from=None, build_seed=None,
-        resume=False):
+        resume=False, max_epochs=None):
     """With `resume`, stages whose outputs already exist in `directory` are kept, not repeated."""
     from dev import v2_train
     preflight()
     old = json.loads((directory / 'plan.json').read_text()) if resume and (directory / 'plan.json').is_file() else {}
     plan = {'job': 'pilot-v2', 'bases': bases, 'device': device, 'split_gate': gate, 'max_minutes': max_minutes,
-            'llama_cpp': LLAMA_REVISION, 'stages': old.get('stages', []), 'resumed': bool(resume)}
+            'max_epochs': max_epochs, 'llama_cpp': LLAMA_REVISION, 'stages': old.get('stages', []),
+            'resumed': bool(resume)}
     stage = Stage(directory, plan)
     if data is None:
         data = directory / 'data'
@@ -122,8 +147,7 @@ def run(directory, *, bases, data, server, device, gate, evaluate, max_minutes, 
                                            '--merge-only-from-log', directory / f'{base}-train.log'])
         if not (resume and (training / 'train-report.json').is_file()):
             minutes = max_minutes[base] if isinstance(max_minutes, dict) else max_minutes
-            stage(f'{base}-train', [trainpy, 'dev.v2_train', base, spec['snapshot'], data, training,
-                                    '--max-minutes', minutes])
+            stage(f'{base}-train', train_argv(trainpy, base, spec['snapshot'], data, training, minutes, max_epochs))
         tuned_gguf = out / 'tuned-q8_0.gguf'
         if not (resume and tuned_gguf.is_file()):
             export(stage, f'{base}-export-tuned', training / 'merged', tuned_gguf, spec['convert_args'])

@@ -1092,6 +1092,14 @@ def fam_ask_collision(g, n):
         mode = i % 3
         if mode == 0:
             files = {src: new, target: old}
+            if _REV >= 3:  # revision 3: compare before claiming the existing file differs
+                yield dict(id=f'ask-collision-{i}', family='ask_collision', category='ask',
+                           behaviour='ask-ambiguous', request=req, files=files,
+                           oracle=(ls(dest), run(f'cmp {src} {target} && echo identical'), read(target),
+                                   ask(f'{target} already exists and cmp shows it differs from {src} '
+                                       f'(it contains \"{old.strip()}\"). Should I overwrite it?')),
+                           changes={}, terminal='ask', error_turns=(1,), facts=(old.strip(),))
+                continue
             yield dict(id=f'ask-collision-{i}', family='ask_collision', category='ask', behaviour='ask-ambiguous',
                        request=req, files=files,
                        oracle=(ls(dest), read(target),
@@ -1390,11 +1398,57 @@ FAMILIES_R2 = {
 }
 
 
+# --- revision 4: decision-sprint treatment (training-fit and trace diagnosis, 2026-11-19) -----------
+
+def fam_orient_output(g, n):
+    """The request names an output that does not exist yet. Missing output is expected: list the
+    inputs, then act on the only candidate or ask which of two candidates to use. Half the episodes
+    start with a masked slip that probes the output path, so the recovery state is trained without
+    teaching the probe itself or an 'X does not exist' question about an output."""
+    pairs = (('north', 'south'), ('spring', 'autumn'), ('day', 'night'), ('east', 'west'), ('blue', 'green'))
+    for i in range(n):
+        place, thing = g.pick(PLACES), g.pick(THINGS)
+        a, b = g.choice(pairs)
+        out = f'{place}-{thing}-{g.choice(("handout", "sheet", "final", "print"))}.txt'
+        rows = g.shuffle(WORDS)[:g.int(3, 5)]
+        sort = i % 8 >= 4
+        template = ('Write the {p} {t} list to {o}, sorted alphabetically.' if sort
+                    else 'Copy the {p} {t} list into {o}.')
+        req = template.format(p=place, t=thing, o=out)
+        first, second = f'{place}-{thing}-{a}.txt', f'{place}-{thing}-{b}.txt'
+        ambiguous, slip = i % 2 == 1, i % 4 >= 2
+        files = {first: _lines(rows), 'README.md': f'# {place}\n'}
+        if ambiguous:
+            files[second] = _lines(g.shuffle(WORDS)[:3])
+        prefix, errors = (), ()
+        if slip:
+            prefix = (read(out),) if i % 8 in (2, 3) else (find(out),)
+            errors = (0,) if prefix[0].startswith('tool fs.read') else ()
+        common = dict(family='orient_output', category='ask', request=req, files=files, error_turns=errors,
+                      train_skip=(0,) if slip else (), meta={'output': out})
+        if ambiguous:
+            yield dict(id=f'orient-ask-{i}', behaviour='ask-ambiguous', terminal='ask', changes={},
+                       oracle=prefix + (ls('.'), ask(f'There are two {place} {thing} lists, {first} and {second}. '
+                                                      f'Which one should go into {out}?')),
+                       facts=(first, second), **common)
+        else:
+            result = sorted(rows) if sort else rows
+            command = f'sort {first} > {out}' if sort else f'cp {first} {out}'
+            yield dict(id=f'orient-act-{i}', behaviour='act-unambiguous', changes={out: _lines(result)},
+                       oracle=prefix + (ls('.'), run(command),
+                                        done(f'{first} is the only {place} {thing} list; wrote it '
+                                             f'{"sorted " if sort else ""}to {out}.')),
+                       facts=(first,), **common)
+
+
+FAMILIES_R4 = {'orient_output': (fam_orient_output, 120)}
+
+
 def generate(seed=DEFAULT_SEED, scale=1.0, families=None, revision=1):
     global _REV
     _REV = revision
     out = []
-    table = {**FAMILIES, **(FAMILIES_R2 if revision >= 2 else {})}
+    table = {**FAMILIES, **(FAMILIES_R2 if revision >= 2 else {}), **(FAMILIES_R4 if revision >= 4 else {})}
     for name, (fn, count) in table.items():
         if families and name not in families:
             continue
@@ -1637,7 +1691,7 @@ def main(argv=None):
     parser.add_argument('--scale', type=float, default=1.0)
     parser.add_argument('--families', help='comma-separated subset (debugging)')
     parser.add_argument('--workers', type=int, default=12)
-    parser.add_argument('--revision', type=int, default=1, choices=(1, 2))
+    parser.add_argument('--revision', type=int, default=1, choices=(1, 2, 3, 4))
     args = parser.parse_args(argv)
     families = set(args.families.split(',')) if args.families else None
     card = build(args.out, seed=args.seed, scale=args.scale, families=families, workers=args.workers,
