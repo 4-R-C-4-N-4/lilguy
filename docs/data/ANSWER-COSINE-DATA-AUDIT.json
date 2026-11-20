@@ -1,0 +1,612 @@
+{
+  "auditor": "agent audit for Ivy to confirm",
+  "sample_seed": 61,
+  "items": [
+    {
+      "id": "v2-ro-check-10",
+      "family": "ro_check",
+      "verdict": "correct",
+      "reason": "fs.read shows priority=dune not cedar; done text truthfully says no and leaves file unchanged."
+    },
+    {
+      "id": "v2-awk-sum-50",
+      "family": "awk_sum",
+      "verdict": "correct",
+      "reason": "awk sum stdout is 637 and done text reports 637, no write."
+    },
+    {
+      "id": "v2-cmp-same-72",
+      "family": "inspect_cmp",
+      "verdict": "correct",
+      "reason": "cmp exit0 printed identical and done truthfully reports identical, no write."
+    },
+    {
+      "id": "v2-ro-exists-64",
+      "family": "ro_exists",
+      "verdict": "correct",
+      "reason": "fs.find located ration-station.md and done reports its path, no write occurred."
+    },
+    {
+      "id": "v2-count-lines-96",
+      "family": "count_lines",
+      "verdict": "correct",
+      "reason": "wc -l stdout is 14 and done reports 14 lines."
+    },
+    {
+      "id": "v2-read-value-114",
+      "family": "read_value",
+      "verdict": "correct",
+      "reason": "fs.read shows log_level=basil and done answers basil."
+    },
+    {
+      "id": "v2-ro-check-write-7",
+      "family": "ro_check",
+      "verdict": "correct",
+      "reason": "fs.edit changed interval to 818 as requested and done ends with no text after the write, matching staged effect."
+    },
+    {
+      "id": "v2-ro-exists-write-15",
+      "family": "ro_exists",
+      "verdict": "correct",
+      "reason": "touch created the empty file exactly as requested and done ends with no text, matching staged effect."
+    },
+    {
+      "id": "v2-ro-compare-diff-14",
+      "family": "ro_compare",
+      "verdict": "correct",
+      "reason": "diff shows a real difference (hana ginger vs hana elm), done reports it accurately, no write to either file."
+    },
+    {
+      "id": "v2-read-value-86",
+      "family": "read_value",
+      "verdict": "correct",
+      "reason": "fs.read shows limit=246 and done answers 246."
+    },
+    {
+      "id": "v2-ro-compare-same-8",
+      "family": "ro_compare",
+      "verdict": "correct",
+      "reason": "diff && echo same printed same, done truthfully reports files match, no write."
+    },
+    {
+      "id": "v2-cmp-diff-108",
+      "family": "inspect_cmp",
+      "verdict": "correct",
+      "reason": "cmp and wc -c show new/census.txt is one byte longer; done reports the difference accurately, no write."
+    },
+    {
+      "id": "v2-count-files-179",
+      "family": "count_files",
+      "verdict": "correct",
+      "reason": "fs.find listed 4 .txt files matching done's count and names."
+    },
+    {
+      "id": "v2-ro-compare-write-55",
+      "family": "ro_compare",
+      "verdict": "correct",
+      "reason": "cp overwrote copies/playlist.txt and verifying diff echoed same, matching the requested sync, done ends empty."
+    },
+    {
+      "id": "v2-awk-sum-35",
+      "family": "awk_sum",
+      "verdict": "correct",
+      "reason": "awk sum stdout is 314 and done reports 314."
+    },
+    {
+      "id": "v2-ro-count-write-79",
+      "family": "ro_count",
+      "verdict": "correct",
+      "reason": "grep wrote exactly the FAIL lines to hangar-fail.log and the verifying read confirms the content; done ends empty."
+    },
+    {
+      "id": "v2-ro-exists-write-9",
+      "family": "ro_exists",
+      "verdict": "correct",
+      "reason": "touch created the requested empty file archive/notebook-stable.md, done ends empty matching staged effect."
+    },
+    {
+      "id": "v2-count-matches-106",
+      "family": "count_matches",
+      "verdict": "correct",
+      "reason": "grep -c stdout is 1 and done reports 1 line containing retry."
+    },
+    {
+      "id": "v2-hidden-83",
+      "family": "inspect_hidden",
+      "verdict": "correct",
+      "reason": "fs.list with show_hidden found .schedulerc and fs.read shows layout=gannet, done answers it accurately."
+    },
+    {
+      "id": "v2-count-matches-151",
+      "family": "count_matches",
+      "verdict": "correct",
+      "reason": "grep -c stdout is 3 and done reports 3 queued lines."
+    },
+    {
+      "id": "v2-ro-count-26",
+      "family": "ro_count",
+      "verdict": "correct",
+      "reason": "grep -c stdout is 3 and done answers 3, no file written."
+    },
+    {
+      "id": "v2-ro-count-write-39",
+      "family": "ro_count",
+      "verdict": "correct",
+      "reason": "grep wrote exactly the FAIL lines to sanctuary-fail.log, verified by read; done ends empty."
+    },
+    {
+      "id": "v2-count-files-131",
+      "family": "count_files",
+      "verdict": "correct",
+      "reason": "fs.find listed 2 csv files matching done's answer."
+    },
+    {
+      "id": "v2-ro-exists-20",
+      "family": "ro_exists",
+      "verdict": "correct",
+      "reason": "fs.find located register-dockyard.md and done reports its path, no write."
+    },
+    {
+      "id": "v2-grep-find-49",
+      "family": "grep_find",
+      "verdict": "correct",
+      "reason": "fs.grep found docs/maple.py and done answers it correctly."
+    },
+    {
+      "id": "v2-ro-count-write-9",
+      "family": "ro_count",
+      "verdict": "correct",
+      "reason": "grep wrote the single FAIL line to terrace-fail.log, verified by read; done ends empty."
+    },
+    {
+      "id": "v2-ro-compare-write-41",
+      "family": "ro_compare",
+      "verdict": "correct",
+      "reason": "cp synced backup/docket.txt to docket.txt and verifying diff echoed same; done ends empty matching the update request."
+    },
+    {
+      "id": "v2-read-value-100",
+      "family": "read_value",
+      "verdict": "correct",
+      "reason": "fs.read shows font_size=848 and done answers 848."
+    },
+    {
+      "id": "v2-count-files-128",
+      "family": "count_files",
+      "verdict": "correct",
+      "reason": "fs.find listed 6 .log files matching done's count and names."
+    },
+    {
+      "id": "v2-read-value-71",
+      "family": "read_value",
+      "verdict": "correct",
+      "reason": "fs.read shows speed=121 and done answers 121."
+    },
+    {
+      "id": "v2-ro-compare-write-13",
+      "family": "ro_compare",
+      "verdict": "correct",
+      "reason": "cp synced copies/itinerary.txt and verifying diff echoed same, matching request; done ends empty."
+    },
+    {
+      "id": "v2-ro-count-62",
+      "family": "ro_count",
+      "verdict": "correct",
+      "reason": "grep -c stdout is 1 and done answers 1, no file written as requested."
+    },
+    {
+      "id": "v2-ro-count-write-13",
+      "family": "ro_count",
+      "verdict": "correct",
+      "reason": "grep wrote the single skipped line to market-skipped.log, verified by read; done ends empty."
+    },
+    {
+      "id": "v2-ro-check-write-29",
+      "family": "ro_check",
+      "verdict": "correct",
+      "reason": "fs.edit changed max_users to 279 exactly as requested; done ends empty matching staged effect."
+    },
+    {
+      "id": "v2-ro-check-write-69",
+      "family": "ro_check",
+      "verdict": "correct",
+      "reason": "fs.edit changed log_level to lynx exactly as requested; done ends empty matching staged effect."
+    },
+    {
+      "id": "v2-ro-compare-diff-22",
+      "family": "ro_compare",
+      "verdict": "correct",
+      "reason": "diff shows a real difference (carla dune vs carla amber), done reports it accurately, no write."
+    },
+    {
+      "id": "v2-ro-exists-write-33",
+      "family": "ro_exists",
+      "verdict": "correct",
+      "reason": "touch created the requested empty file, done ends empty matching staged effect."
+    },
+    {
+      "id": "v2-ro-compare-same-64",
+      "family": "ro_compare",
+      "verdict": "correct",
+      "reason": "diff && echo same confirms match, done truthfully reports same, no write."
+    },
+    {
+      "id": "v2-ro-exists-write-73",
+      "family": "ro_exists",
+      "verdict": "correct",
+      "reason": "touch created the requested empty file, done ends empty matching staged effect."
+    },
+    {
+      "id": "v2-ro-count-write-63",
+      "family": "ro_count",
+      "verdict": "correct",
+      "reason": "grep wrote exactly the skipped lines to keep-skipped.log, verified by read; done ends empty."
+    },
+    {
+      "id": "v2-lastbyte-90",
+      "family": "inspect_lastbyte",
+      "verdict": "correct",
+      "reason": "od -c shows trailing \\n and done correctly answers yes, no write."
+    },
+    {
+      "id": "v2-ro-count-50",
+      "family": "ro_count",
+      "verdict": "correct",
+      "reason": "grep -c stdout is 5 and done answers 5, no file written as requested."
+    },
+    {
+      "id": "v2-largest-38",
+      "family": "largest_file",
+      "verdict": "correct",
+      "reason": "wc -c sorted shows umber.csv largest at 349 bytes, matching done's answer."
+    },
+    {
+      "id": "v2-ro-check-write-1",
+      "family": "ro_check",
+      "verdict": "correct",
+      "reason": "fs.edit changed max_users to 213 exactly as requested; done ends empty matching staged effect."
+    },
+    {
+      "id": "v2-grep-find-51",
+      "family": "grep_find",
+      "verdict": "correct",
+      "reason": "fs.grep found notes/acorn.py and done answers it correctly."
+    },
+    {
+      "id": "v2-hidden-107",
+      "family": "inspect_hidden",
+      "verdict": "correct",
+      "reason": "fs.list with show_hidden found .charterrc and fs.read shows accent=clover, done answers correctly."
+    },
+    {
+      "id": "v2-grep-find-41",
+      "family": "grep_find",
+      "verdict": "correct",
+      "reason": "fs.grep found pavilion/juniper.md and done answers it correctly."
+    },
+    {
+      "id": "v2-ro-check-write-39",
+      "family": "ro_check",
+      "verdict": "correct",
+      "reason": "fs.edit changed colour to lilac exactly as requested; done ends empty matching staged effect."
+    },
+    {
+      "id": "v2-awk-sum-36",
+      "family": "awk_sum",
+      "verdict": "correct",
+      "reason": "awk NR>1 sum stdout is 1243 (matches 300+289+213+193+114+59+75), done reports 1243."
+    },
+    {
+      "id": "v2-awk-sum-54",
+      "family": "awk_sum",
+      "verdict": "correct",
+      "reason": "awk NR>1 sum stdout is 1331 (matches sum of amounts), done reports 1331."
+    },
+    {
+      "id": "v2-read-value-117",
+      "family": "read_value",
+      "verdict": "correct",
+      "reason": "fs.read shows threshold=467 and done answers 467."
+    },
+    {
+      "id": "v2-read-value-112",
+      "family": "read_value",
+      "verdict": "correct",
+      "reason": "fs.read shows window=276 and done answers 276."
+    },
+    {
+      "id": "v2-read-value-105",
+      "family": "read_value",
+      "verdict": "correct",
+      "reason": "fs.read shows depth=933 and done answers 933."
+    },
+    {
+      "id": "v2-read-value-76",
+      "family": "read_value",
+      "verdict": "correct",
+      "reason": "fs.read shows theme=garnet and done answers garnet."
+    },
+    {
+      "id": "v2-ro-compare-write-51",
+      "family": "ro_compare",
+      "verdict": "correct",
+      "reason": "cp synced mirror/agenda.txt and verifying diff echoed same, matching request; done ends empty."
+    },
+    {
+      "id": "v2-ro-exists-26",
+      "family": "ro_exists",
+      "verdict": "correct",
+      "reason": "fs.find returned no output so the file does not exist; done correctly answers no, no write."
+    },
+    {
+      "id": "v2-count-lines-132",
+      "family": "count_lines",
+      "verdict": "correct",
+      "reason": "wc -l stdout is 9 and done reports 9 lines."
+    },
+    {
+      "id": "v2-ro-exists-write-13",
+      "family": "ro_exists",
+      "verdict": "correct",
+      "reason": "touch created the requested empty file archive/manifest-bazaar.md, done ends empty matching staged effect."
+    },
+    {
+      "id": "v2-ro-compare-write-27",
+      "family": "ro_compare",
+      "verdict": "correct",
+      "reason": "cp synced mirror/schedule.txt and verifying diff echoed same, matching request; done ends empty."
+    },
+    {
+      "id": "v2-ro-count-write-3",
+      "family": "ro_count",
+      "verdict": "correct",
+      "reason": "grep wrote exactly the FAIL lines to smithy-fail.log, verified by read; done ends empty."
+    },
+    {
+      "id": "v2-read-value-99",
+      "family": "read_value",
+      "verdict": "correct",
+      "reason": "fs.read shows workers=813 and done answers 813."
+    },
+    {
+      "id": "v2-largest-59",
+      "family": "largest_file",
+      "verdict": "correct",
+      "reason": "wc -c sorted shows acorn.txt largest at 349 bytes, matching done's answer."
+    },
+    {
+      "id": "v2-ro-compare-diff-46",
+      "family": "ro_compare",
+      "verdict": "correct",
+      "reason": "diff shows a real difference (goran harvest vs goran marble), done reports it accurately, no write."
+    },
+    {
+      "id": "v2-count-matches-178",
+      "family": "count_matches",
+      "verdict": "correct",
+      "reason": "grep -c stdout is 8 and done reports 8 ERROR lines."
+    },
+    {
+      "id": "v2-count-files-92",
+      "family": "count_files",
+      "verdict": "correct",
+      "reason": "fs.find listed 4 .txt files matching done's answer."
+    },
+    {
+      "id": "v2-count-lines-135",
+      "family": "count_lines",
+      "verdict": "correct",
+      "reason": "wc -l stdout is 4 and done reports 4 lines."
+    },
+    {
+      "id": "v2-ro-check-write-23",
+      "family": "ro_check",
+      "verdict": "correct",
+      "reason": "fs.edit changed priority to iris exactly as requested; done ends empty matching staged effect."
+    },
+    {
+      "id": "v2-ro-check-54",
+      "family": "ro_check",
+      "verdict": "correct",
+      "reason": "fs.read shows volume=385 not 837; done truthfully answers no, no write."
+    },
+    {
+      "id": "v2-ro-compare-same-4",
+      "family": "ro_compare",
+      "verdict": "correct",
+      "reason": "diff && echo same confirms match, done truthfully reports same, no write to either file."
+    },
+    {
+      "id": "v2-lastbyte-122",
+      "family": "inspect_lastbyte",
+      "verdict": "correct",
+      "reason": "od -c shows trailing \\n and done correctly answers yes, no write."
+    },
+    {
+      "id": "v2-ro-check-write-49",
+      "family": "ro_check",
+      "verdict": "correct",
+      "reason": "fs.edit changed mode to oak exactly as requested; done ends empty matching staged effect."
+    },
+    {
+      "id": "v2-ro-count-52",
+      "family": "ro_count",
+      "verdict": "correct",
+      "reason": "grep -c stdout is 2 and done answers 2, no file written as requested."
+    },
+    {
+      "id": "v2-ro-check-write-75",
+      "family": "ro_check",
+      "verdict": "correct",
+      "reason": "fs.edit changed mode to egret exactly as requested; done ends empty matching staged effect."
+    },
+    {
+      "id": "v2-ro-exists-22",
+      "family": "ro_exists",
+      "verdict": "correct",
+      "reason": "fs.find returned no output so the file does not exist; done correctly answers no, no write."
+    },
+    {
+      "id": "v2-ro-compare-write-45",
+      "family": "ro_compare",
+      "verdict": "correct",
+      "reason": "cp synced copies/ledger.txt and verifying diff echoed same, matching request; done ends empty."
+    },
+    {
+      "id": "v2-ro-exists-write-59",
+      "family": "ro_exists",
+      "verdict": "correct",
+      "reason": "touch created the requested empty file shared/index-ferry.md, done ends empty matching staged effect."
+    },
+    {
+      "id": "v2-count-matches-91",
+      "family": "count_matches",
+      "verdict": "correct",
+      "reason": "grep -c stdout is 5 and done reports 5 WARN lines."
+    },
+    {
+      "id": "v2-ro-exists-write-57",
+      "family": "ro_exists",
+      "verdict": "correct",
+      "reason": "touch created the requested empty file projects/memo-cabin.md, done ends empty matching staged effect."
+    },
+    {
+      "id": "v2-ro-check-16",
+      "family": "ro_check",
+      "verdict": "correct",
+      "reason": "fs.read shows log_level=plum, done truthfully answers yes, no write."
+    },
+    {
+      "id": "v2-ro-count-68",
+      "family": "ro_count",
+      "verdict": "correct",
+      "reason": "grep -c stdout is 1 and done answers 1, no file written as requested."
+    },
+    {
+      "id": "v2-ro-count-write-47",
+      "family": "ro_count",
+      "verdict": "correct",
+      "reason": "grep wrote exactly the FAIL lines to distillery-fail.log, verified by read; done ends empty."
+    },
+    {
+      "id": "v2-ro-count-write-17",
+      "family": "ro_count",
+      "verdict": "correct",
+      "reason": "grep wrote exactly the 5 FAIL lines to quay-fail.log, verified by read; done ends empty."
+    },
+    {
+      "id": "v2-count-lines-126",
+      "family": "count_lines",
+      "verdict": "correct",
+      "reason": "wc -l stdout is 10 and done reports 10 lines."
+    },
+    {
+      "id": "v2-read-value-108",
+      "family": "read_value",
+      "verdict": "correct",
+      "reason": "fs.read shows margin=192 and done answers 192."
+    },
+    {
+      "id": "v2-ro-count-24",
+      "family": "ro_count",
+      "verdict": "correct",
+      "reason": "grep -c stdout is 1 and done answers 1, no file written as requested."
+    },
+    {
+      "id": "v2-grep-find-45",
+      "family": "grep_find",
+      "verdict": "correct",
+      "reason": "fs.grep found brewery/fennel.md and done answers it correctly."
+    },
+    {
+      "id": "v2-ro-exists-write-3",
+      "family": "ro_exists",
+      "verdict": "correct",
+      "reason": "touch created the requested empty file team/invoice-tower.md, done ends empty matching staged effect."
+    },
+    {
+      "id": "v2-grep-find-72",
+      "family": "grep_find",
+      "verdict": "correct",
+      "reason": "fs.grep found src/fennel.txt and done answers it correctly."
+    },
+    {
+      "id": "v2-ro-exists-30",
+      "family": "ro_exists",
+      "verdict": "correct",
+      "reason": "fs.find returned no output so the file does not exist; done correctly answers no, no write."
+    },
+    {
+      "id": "v2-ro-check-write-47",
+      "family": "ro_check",
+      "verdict": "correct",
+      "reason": "fs.edit changed theme to marble exactly as requested; done ends empty matching staged effect."
+    },
+    {
+      "id": "v2-grep-find-61",
+      "family": "grep_find",
+      "verdict": "correct",
+      "reason": "fs.grep found meadow/clover.md and done answers it correctly."
+    },
+    {
+      "id": "v2-count-matches-121",
+      "family": "count_matches",
+      "verdict": "correct",
+      "reason": "grep -c stdout is 7 and done reports 7 WARN lines."
+    },
+    {
+      "id": "v2-grep-find-67",
+      "family": "grep_find",
+      "verdict": "correct",
+      "reason": "fs.grep found docs/topaz.cfg and done answers it correctly."
+    },
+    {
+      "id": "v2-nonblank-97",
+      "family": "inspect_nonblank",
+      "verdict": "correct",
+      "reason": "grep -c '[^[:space:]]' stdout is 3 and done reports 3 non-blank lines."
+    },
+    {
+      "id": "v2-nonblank-89",
+      "family": "inspect_nonblank",
+      "verdict": "correct",
+      "reason": "grep -c '[^[:space:]]' stdout is 5 and done reports 5 non-blank lines."
+    },
+    {
+      "id": "v2-count-lines-123",
+      "family": "count_lines",
+      "verdict": "correct",
+      "reason": "wc -l stdout is 10 and done reports 10 lines."
+    },
+    {
+      "id": "v2-ro-compare-same-60",
+      "family": "ro_compare",
+      "verdict": "correct",
+      "reason": "diff && echo same confirms match, done truthfully reports same, no write."
+    },
+    {
+      "id": "v2-read-value-110",
+      "family": "read_value",
+      "verdict": "correct",
+      "reason": "fs.read shows log_level=wren and done answers wren."
+    },
+    {
+      "id": "v2-ro-check-write-61",
+      "family": "ro_check",
+      "verdict": "correct",
+      "reason": "fs.edit changed pool_size to 794 exactly as requested; done ends empty matching staged effect."
+    },
+    {
+      "id": "v2-ro-check-0",
+      "family": "ro_check",
+      "verdict": "correct",
+      "reason": "fs.read shows channel=stoat, done truthfully answers yes, no write."
+    }
+  ],
+  "summary": {
+    "correct": 100,
+    "debatable": 0,
+    "incorrect": 0,
+    "total": 100
+  }
+}
