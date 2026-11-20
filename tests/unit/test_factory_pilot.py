@@ -16,6 +16,10 @@ def test_train_stage_declares_time_box_and_optional_epoch_cap():
     cosine = factory_pilot.train_argv('t.sh', 'qwen08', Path('/snap'), Path('/data'), Path('/out'), 30.0, 1,
                                       'cosine')
     assert cosine[-4:] == ['--max-epochs', 1, '--lr-schedule', 'cosine']
+    seeded = factory_pilot.train_argv('t.sh', 'qwen08', Path('/snap'), Path('/data'), Path('/out'), 30.0, 1,
+                                      'cosine', seed=43)
+    assert seeded[-6:] == ['--max-epochs', 1, '--lr-schedule', 'cosine', '--seed', 43]
+    assert '--seed' not in cosine  # default keeps the trainer's recorded seed (42)
 
 
 def test_arms_run_in_order_with_identical_settings_except_data(tmp_path):

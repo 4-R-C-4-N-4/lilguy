@@ -152,6 +152,8 @@ def main():
     parser.add_argument('--arm', action='append', default=[], metavar='NAME=DATA',
                         help='pilot: matched experiment arms control=DIR then treatment=DIR (replaces --data)')
     parser.add_argument('--max-epochs', type=int, help='pilot: declared training epoch cap per base')
+    parser.add_argument('--train-seed', type=int,
+                        help='pilot: trainer seed for every base and arm (default: the trainer default, 42)')
     parser.add_argument('--previous', action='append', default=[], metavar='BASE=GGUF@INTERFACE',
                         help='pilot: also score an earlier artifact under its own interface (reference only)')
     parser.add_argument('--lr-schedule', choices=('constant', 'cosine'),
@@ -244,12 +246,14 @@ def main():
                                            server=args.server, device=device, gate=gate,
                                            stock_from=args.stock_from, max_minutes=minutes,
                                            max_epochs=args.max_epochs, evaluate=evaluate,
+                                           train_seed=args.train_seed,
                                            control_only={'previous': previous} if previous else None)
                     print(directory / 'arms.json', flush=True)
                     return 0
                 factory_pilot.run(directory, bases=args.base, data=args.data, server=args.server, device=device,
                                   gate=gate, stock_from=args.stock_from, max_minutes=minutes,
                                   max_epochs=args.max_epochs, lr_schedule=args.lr_schedule,
+                                  train_seed=args.train_seed,
                                   resume=bool(args.resume), evaluate=evaluate, previous=previous)
             except (RuntimeError, ValueError, OSError, KeyError) as exc:
                 parser.exit(1, f'Pilot stopped: {exc}; see {directory}\n')

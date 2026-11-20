@@ -63,11 +63,13 @@ def export(stage, name, src, outfile, convert_args):
     return outfile
 
 
-def train_argv(trainpy, base, snapshot, data, training, minutes, max_epochs, lr_schedule=None):
+def train_argv(trainpy, base, snapshot, data, training, minutes, max_epochs, lr_schedule=None, seed=None):
     argv = [trainpy, 'dev.v2_train', base, snapshot, data, training, '--max-minutes', minutes]
     if max_epochs:
         argv += ['--max-epochs', max_epochs]
-    return argv + ['--lr-schedule', lr_schedule] if lr_schedule else argv
+    if lr_schedule:
+        argv += ['--lr-schedule', lr_schedule]
+    return argv + ['--seed', seed] if seed is not None else argv
 
 
 def parse_arms(values):
@@ -149,13 +151,14 @@ def reusable_stock(previous, base, gguf, server, device, interface=1):
 
 
 def run(directory, *, bases, data, server, device, gate, evaluate, max_minutes, stock_from=None, build_seed=None,
-        resume=False, max_epochs=None, previous=None, lr_schedule=None):
+        resume=False, max_epochs=None, previous=None, lr_schedule=None, train_seed=None):
     """With `resume`, stages whose outputs already exist in `directory` are kept, not repeated."""
     from dev import v2_train
     preflight()
     old = json.loads((directory / 'plan.json').read_text()) if resume and (directory / 'plan.json').is_file() else {}
     plan = {'job': 'pilot-v2', 'bases': bases, 'device': device, 'split_gate': gate, 'max_minutes': max_minutes,
             'max_epochs': max_epochs, 'lr_schedule': lr_schedule or 'constant',
+            'train_seed': train_seed if train_seed is not None else v2_train.PARAMS['seed'],
             'llama_cpp': LLAMA_REVISION, 'stages': old.get('stages', []),
             'resumed': bool(resume)}
     stage = Stage(directory, plan)
@@ -193,7 +196,7 @@ def run(directory, *, bases, data, server, device, gate, evaluate, max_minutes, 
         if not (resume and (training / 'train-report.json').is_file()):
             minutes = max_minutes[base] if isinstance(max_minutes, dict) else max_minutes
             stage(f'{base}-train', train_argv(trainpy, base, spec['snapshot'], data, training, minutes, max_epochs,
-                                              lr_schedule))
+                                              lr_schedule, train_seed))
         tuned_gguf = out / 'tuned-q8_0.gguf'
         if not (resume and tuned_gguf.is_file()):
             export(stage, f'{base}-export-tuned', training / 'merged', tuned_gguf, spec['convert_args'])
