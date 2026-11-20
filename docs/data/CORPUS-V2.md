@@ -11,8 +11,9 @@ and `reports/corpus/v2-r2` (revision 2, used by pilot round 2).
 
 ## What an example is
 
-An example is an instance of one of 26 template families (36 in revision 2). Each family has
-parameterized fixture builders and several request phrasings. An example consists of:
+An example is an instance of one of 26 generator groups (36 in revision 2), expanding to 52 / 68
+emitted family labels. [Per-family and category counts](CORPUS-V2-COUNTS.md) distinguish those
+counts. Each group has parameterized fixture builders and several request phrasings. An example consists of:
 
 - an original fixture workspace;
 - a request;

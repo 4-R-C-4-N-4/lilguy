@@ -81,3 +81,24 @@ def test_pilot_gate_requires_per_category_gains_and_no_new_unsafe_behaviour(monk
     sides['tuned'] = {**sides['tuned'], 'device': 'other'}
     with pytest.raises(ValueError):
         v2_report.compare_base('stock', 'tuned')
+
+
+def test_pilot_write_publishes_readable_report_without_a_second_command(tmp_path, monkeypatch):
+    import json
+    monkeypatch.setattr(v2_report, 'compare_base', lambda *_: {'gate': {'beats_stock_overall': False}})
+    monkeypatch.setattr(v2_report, 'markdown', lambda result: 'Verified development report')
+    result = v2_report.write(tmp_path, ['minicpm'])
+    assert json.loads((tmp_path / 'comparison.json').read_text()) == result
+    assert (tmp_path / 'report.md').read_text() == 'Verified development report\n'
+
+
+def test_report_does_not_call_all_failed_done_answers_false_success_claims():
+    side = dict(_side([], {'ask': 0}), passed=0, total=5, ci95=[0, 0.434], clarification_total=5,
+                correct_clarifications=[], terminals={}, median_model_seconds={'fast12': 1, 'broad': 2},
+                median_episode_seconds={'fast12': 2, 'broad': 3},
+                categories={'ask': {'passed': 0, 'total': 5, 'ci95': [0, 0.434]}})
+    result = {'bases': {'test': {'stock': side, 'tuned': side,
+                               'per_category': {'ask': {'stock': 0, 'tuned': 0, 'total': 5}},
+                               'gate': {}, 'improved': [], 'regressed': []}}}
+    text = v2_report.markdown(result)
+    assert 'not a count of confirmed false success claims' in text

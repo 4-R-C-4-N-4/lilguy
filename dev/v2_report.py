@@ -76,12 +76,16 @@ def write(directory, bases):
                 'repo', 'revision', 'rows', 'stop_reason', 'optimizer_steps', 'seconds', 'epochs', 'peak_gpu_mib',
                 'train_tokens_per_second')}
     (Path(directory) / 'comparison.json').write_text(json.dumps(result, indent=2) + '\n')
+    (Path(directory) / 'report.md').write_text(markdown(result) + '\n')
     return result
 
 
 def markdown(result):
     """Per-base, per-category development table (stock vs tuned, Wilson 95% CI) plus safety counters."""
-    lines = []
+    lines = ['The legacy `false_done` / `no_extra_false_done` fields count failed tasks ending in '
+             '`done`, not a count of confirmed false success claims. They include wrong effects '
+             'and grader mismatches; inspect traces before making a semantic safety claim. '
+             'Policy-stop counts are pending/rejected observations, including expected approval stops.', '']
     for base, r in result['bases'].items():
         st, tu = r['stock'], r['tuned']
         lines += [f'### {base}', '',
