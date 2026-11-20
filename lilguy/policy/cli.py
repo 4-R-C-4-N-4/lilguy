@@ -41,6 +41,13 @@ def _print_steps(session, args) -> None:
     print()
 
 
+def _print_contents(session, entries, args) -> None:
+    from . import approval
+    big = 10**9
+    print(approval.render_contents(session, entries, per_file=big if args.all else 60,
+                                   limit=big if args.all else 400))
+
+
 def _errors():
     from ..sandbox import persist
     from .commit import CommitError
@@ -54,11 +61,18 @@ def diff_main(argv=None) -> int:
     try:
         with _open(args) as session:
             _print_steps(session, args)
+            entries = sandbox_diff.session_diff(session)
             if (session.directory / approval.REQUEST).exists():
+                # The summary ends on the diff hash line, which scripts read as the last line.
+                _print_contents(session, entries, args)
+                print()
                 print(approval.summarize(session, limit=10**9 if args.all else LIMIT))
             else:
-                changes = [asdict(e) for e in sandbox_diff.session_diff(session)]
+                changes = [asdict(e) for e in entries]
                 print(approval.render_changes(changes, limit=10**9 if args.all else LIMIT))
+                if entries:
+                    print()
+                    _print_contents(session, entries, args)
         return 0
     except _errors() as exc:
         return _fail(exc)
@@ -75,6 +89,9 @@ def approve_main(argv=None) -> int:
             if _network_only(session):
                 return _approve_network(session, args)
             _print_steps(session, args)
+            from ..sandbox import diff as sandbox_diff
+            _print_contents(session, sandbox_diff.session_diff(session), args)
+            print()
             print(approval.summarize(session, limit=10**9 if args.all else LIMIT))
             expected = approval.load_request(session)["diff_hash"]
             if args.diff_hash and args.diff_hash != expected:
@@ -172,6 +189,8 @@ def commit_main(argv=None) -> int:
             print(f"Changes to write into {session.workspace}:")
             print(approval.render_changes([dataclasses.asdict(e) for e in entries],
                                           limit=10**9 if args.all else LIMIT))
+            print()
+            _print_contents(session, entries, args)
             print(f"\nDiff hash {expected}")
             problem = _confirm(f"Write these {len(entries)} change(s) into {session.workspace}?",
                                args.diff_hash, expected)

@@ -228,9 +228,10 @@ def describe_handoff(session_dir: Path | None) -> str:
             steps = approval.render_steps(session_dir) + "\n\n"
             if (session_dir / approval.REQUEST).exists():
                 body = approval.summarize(session)
+                contents = approval.render_contents(session, sandbox_diff.session_diff(session))
                 return (
                     steps + "A change is staged and WAITING FOR YOUR DECISION; nothing has reached "
-                    f"your workspace.\n\n{body}\n\n"
+                    f"your workspace.\n\n{body}\n\n{contents}\n\n"
                     f"Review:  lilguy diff {session_dir}\n"
                     f"Approve: lilguy approve {session_dir}\n"
                     f"Deny:    lilguy deny {session_dir}"
@@ -239,9 +240,10 @@ def describe_handoff(session_dir: Path | None) -> str:
             if not entries:
                 return steps + "Nothing staged; the session made no changes. Nothing to review or commit."
             body = approval.render_changes([asdict(e) for e in entries])
+            contents = approval.render_contents(session, entries)
             return (
                 steps + "Changes are staged (no approval threshold was crossed); nothing has reached "
-                f"your workspace.\n\n{body}\n\n"
+                f"your workspace.\n\n{body}\n\n{contents}\n\n"
                 f"Review: lilguy diff {session_dir}\n"
                 f"Commit: lilguy commit {session_dir}"
             )

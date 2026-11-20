@@ -266,6 +266,70 @@ def render_steps(directory, *, limit: int | None = None) -> str:
     return steps_text(records, limit=limit, unreadable=unreadable)
 
 
+# --- changed contents: what would reach the workspace, line by line -----------------------------
+
+_CONTENT_CAP = 1 << 20  # bytes read per side; larger files are summarised, not diffed
+
+
+def _read_side(path, private_root):
+    """(text, note): text is None when the side is absent, binary, too large or unreadable."""
+    from ..sandbox.private_io import open_private
+    if path is None:
+        return None, None
+    try:
+        with open_private(path, private_root) as stream:
+            data = stream.read(_CONTENT_CAP + 1)
+    except OSError as exc:
+        return None, f"contents unavailable ({exc.strerror or exc})"
+    if len(data) > _CONTENT_CAP:
+        return None, "too large to show"
+    if b"\0" in data:
+        return None, "binary"
+    return data.decode("utf8", errors="replace"), None
+
+
+def render_contents(session, entries, *, per_file: int = 60, limit: int = 400) -> str:
+    """A unified diff of each changed regular text file, workspace side against the session side.
+
+    Shown for review only: the diff hash, not this text, binds what is committed. Every line is
+    untrusted and has control characters neutralised."""
+    import difflib
+    from ..sandbox import layers
+    lines, total = ["Changed contents (workspace -> session):"], 0
+    for entry in sorted(entries, key=lambda e: e.path):
+        if entry.kind != "file" or entry.op == "meta":
+            continue
+        path = _clean(entry.path)
+        if entry.is_binary:
+            lines.append(f"   {path}: binary, contents not shown")
+            continue
+        before_path = session.workspace / entry.path if entry.op != "added" else None
+        try:
+            after_path = None if entry.op == "deleted" else layers.resolve(session, entry.path)
+        except Exception as exc:  # a path the resolver refuses is shown as unavailable, not trusted
+            lines.append(f"   {path}: contents unavailable ({_clean(exc)})")
+            continue
+        before, before_note = _read_side(before_path, None)
+        after, after_note = _read_side(after_path, session.directory)
+        note = before_note or after_note
+        if note:
+            lines.append(f"   {path}: {note}")
+            continue
+        body = list(difflib.unified_diff((before or "").splitlines(), (after or "").splitlines(),
+                                         f"a/{path}", f"b/{path}", n=2, lineterm=""))
+        if not body:
+            continue
+        shown = body[:per_file]
+        if total + len(shown) > limit:
+            lines.append("   ... more changed files not shown (use --all)")
+            break
+        lines += [f"   {_clean(line)}" for line in shown]
+        if len(body) > per_file:
+            lines.append(f"   ... {len(body) - per_file} more line(s) in {path}")
+        total += len(shown)
+    return "\n".join(lines) if len(lines) > 1 else "Changed contents: no text changes to show."
+
+
 
 # --- network for one step -------------------------------------------------------------------
 

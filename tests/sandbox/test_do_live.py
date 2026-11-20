@@ -179,7 +179,9 @@ def test_cli_do_main_prints_the_handoff_and_saves_the_record(tmp_path, monkeypat
     assert code == 0
     assert "[done] model's note (unverified): changed status to ready" in out
     assert "fs.edit path=notes.txt old=<13 chars> new=<13 chars>" in out
-    assert "status: draft" not in out  # typed edit literals are not kept in the audit log
+    plan = out.split("Changed contents")[0]
+    assert "status: draft" not in plan  # typed edit literals are not kept in the audit log
+    assert "-status: draft" in out and "+status: ready" in out  # the content diff shows them
     assert "Record saved:" in out
     assert "lilguy diff" in out
     records = list((state / "records").glob("*.json"))
