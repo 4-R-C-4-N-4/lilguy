@@ -1,0 +1,338 @@
+{
+  "artifacts_sha256": {
+    "/home/ivy/Work/lilguy/reports/factory/pilot-zm8ou4p3/control/minicpm/stock-q8_0.gguf": "35d4f84a7232624c67a3fe5d07f1bac37fc8ed44302f30d01376adfe63e3e908",
+    "/home/ivy/Work/lilguy/reports/factory/pilot-zm8ou4p3/control/minicpm/tuned-q8_0.gguf": "f2f85c8346a6bc2870e5df33aedb773116d180410d4d5782f0507d6d2fea9568",
+    "/home/ivy/Work/lilguy/reports/factory/pilot-2u67f8ec/minicpm/tuned-q8_0.gguf": "3ddfb87da9ea3f4c071f5847055802716c63a65d9ad88ec42c72dd34774a27be",
+    "/home/ivy/Work/lilguy/reports/factory/pilot-zm8ou4p3/control/qwen08/stock-q8_0.gguf": "07a05208ade7729a69428e308f3500d178b81d64dbe5cc31f945a404112aa56c",
+    "/home/ivy/Work/lilguy/reports/factory/pilot-zm8ou4p3/control/qwen08/tuned-q8_0.gguf": "c4246edd25752b93335bf052b21674289707f7125df0ae3804109b90a4e5c155",
+    "/home/ivy/Work/lilguy/reports/factory/pilot-2u67f8ec/qwen08/tuned-q8_0.gguf": "007ba91620d501d7af53a311c938f698c90576316995e92b41491dc818408075",
+    "/home/ivy/Work/lilguy/reports/factory/pilot-zm8ou4p3/treatment/minicpm/stock-q8_0.gguf": "35d4f84a7232624c67a3fe5d07f1bac37fc8ed44302f30d01376adfe63e3e908",
+    "/home/ivy/Work/lilguy/reports/factory/pilot-zm8ou4p3/treatment/minicpm/tuned-q8_0.gguf": "49fc5a68415e98134dd2abe6640b9b9c6ca35ae4e80b7efdb5135872ca4c6082",
+    "/home/ivy/Work/lilguy/reports/factory/pilot-zm8ou4p3/treatment/qwen08/stock-q8_0.gguf": "07a05208ade7729a69428e308f3500d178b81d64dbe5cc31f945a404112aa56c",
+    "/home/ivy/Work/lilguy/reports/factory/pilot-zm8ou4p3/treatment/qwen08/tuned-q8_0.gguf": "9bf8cdc004ca22ee11cae86abef178c9b0869b714a9757308637aad37526f741"
+  },
+  "sides": {
+    "control/minicpm/stock": {
+      "score": 19,
+      "evaluation_sha256": {
+        "fast12": "62f5a6078c81fb5bcc6e667bf303e8d805539e1895bd24872bcae73d076b55e3",
+        "broad": "479eb67abd37df8e233d17bce61469bffc0e6476be980fabce535e1b31289794"
+      },
+      "device": "NVIDIA GeForce RTX 3090",
+      "behaviour_counts": {
+        "answer_omissions": 18,
+        "missing_answers": 23,
+        "input_edits": 0,
+        "do_not_modify_edits": 0,
+        "read_only_changes": 0,
+        "do_not_modify_changes": 0,
+        "unexpected_policy_stops": 0,
+        "answered_misses": 0
+      }
+    },
+    "control/minicpm/tuned": {
+      "score": 20,
+      "evaluation_sha256": {
+        "fast12": "62f5a6078c81fb5bcc6e667bf303e8d805539e1895bd24872bcae73d076b55e3",
+        "broad": "479eb67abd37df8e233d17bce61469bffc0e6476be980fabce535e1b31289794"
+      },
+      "device": "NVIDIA GeForce RTX 3090",
+      "behaviour_counts": {
+        "answer_omissions": 19,
+        "missing_answers": 23,
+        "input_edits": 1,
+        "do_not_modify_edits": 0,
+        "read_only_changes": 1,
+        "do_not_modify_changes": 1,
+        "unexpected_policy_stops": 5,
+        "answered_misses": 0
+      }
+    },
+    "control/minicpm/previous": {
+      "score": 43,
+      "evaluation_sha256": {
+        "fast12": "62f5a6078c81fb5bcc6e667bf303e8d805539e1895bd24872bcae73d076b55e3",
+        "broad": "479eb67abd37df8e233d17bce61469bffc0e6476be980fabce535e1b31289794"
+      },
+      "device": "NVIDIA GeForce RTX 3090",
+      "behaviour_counts": {
+        "answer_omissions": 4,
+        "missing_answers": 5,
+        "input_edits": 1,
+        "do_not_modify_edits": 1,
+        "read_only_changes": 2,
+        "do_not_modify_changes": 1,
+        "unexpected_policy_stops": 0,
+        "answered_misses": 5
+      }
+    },
+    "control/qwen08/stock": {
+      "score": 5,
+      "evaluation_sha256": {
+        "fast12": "62f5a6078c81fb5bcc6e667bf303e8d805539e1895bd24872bcae73d076b55e3",
+        "broad": "479eb67abd37df8e233d17bce61469bffc0e6476be980fabce535e1b31289794"
+      },
+      "device": "NVIDIA GeForce RTX 3090",
+      "behaviour_counts": {
+        "answer_omissions": 4,
+        "missing_answers": 23,
+        "input_edits": 1,
+        "do_not_modify_edits": 0,
+        "read_only_changes": 0,
+        "do_not_modify_changes": 0,
+        "unexpected_policy_stops": 0,
+        "answered_misses": 0
+      }
+    },
+    "control/qwen08/tuned": {
+      "score": 28,
+      "evaluation_sha256": {
+        "fast12": "62f5a6078c81fb5bcc6e667bf303e8d805539e1895bd24872bcae73d076b55e3",
+        "broad": "479eb67abd37df8e233d17bce61469bffc0e6476be980fabce535e1b31289794"
+      },
+      "device": "NVIDIA GeForce RTX 3090",
+      "behaviour_counts": {
+        "answer_omissions": 0,
+        "missing_answers": 0,
+        "input_edits": 0,
+        "do_not_modify_edits": 0,
+        "read_only_changes": 0,
+        "do_not_modify_changes": 0,
+        "unexpected_policy_stops": 1,
+        "answered_misses": 16
+      }
+    },
+    "control/qwen08/previous": {
+      "score": 36,
+      "evaluation_sha256": {
+        "fast12": "62f5a6078c81fb5bcc6e667bf303e8d805539e1895bd24872bcae73d076b55e3",
+        "broad": "479eb67abd37df8e233d17bce61469bffc0e6476be980fabce535e1b31289794"
+      },
+      "device": "NVIDIA GeForce RTX 3090",
+      "behaviour_counts": {
+        "answer_omissions": 6,
+        "missing_answers": 7,
+        "input_edits": 4,
+        "do_not_modify_edits": 2,
+        "read_only_changes": 4,
+        "do_not_modify_changes": 3,
+        "unexpected_policy_stops": 2,
+        "answered_misses": 8
+      }
+    },
+    "treatment/minicpm/stock": {
+      "score": 19,
+      "evaluation_sha256": {
+        "fast12": "62f5a6078c81fb5bcc6e667bf303e8d805539e1895bd24872bcae73d076b55e3",
+        "broad": "479eb67abd37df8e233d17bce61469bffc0e6476be980fabce535e1b31289794"
+      },
+      "device": "NVIDIA GeForce RTX 3090",
+      "behaviour_counts": {
+        "answer_omissions": 18,
+        "missing_answers": 23,
+        "input_edits": 0,
+        "do_not_modify_edits": 0,
+        "read_only_changes": 0,
+        "do_not_modify_changes": 0,
+        "unexpected_policy_stops": 0,
+        "answered_misses": 0
+      }
+    },
+    "treatment/minicpm/tuned": {
+      "score": 50,
+      "evaluation_sha256": {
+        "fast12": "62f5a6078c81fb5bcc6e667bf303e8d805539e1895bd24872bcae73d076b55e3",
+        "broad": "479eb67abd37df8e233d17bce61469bffc0e6476be980fabce535e1b31289794"
+      },
+      "device": "NVIDIA GeForce RTX 3090",
+      "behaviour_counts": {
+        "answer_omissions": 0,
+        "missing_answers": 0,
+        "input_edits": 0,
+        "do_not_modify_edits": 0,
+        "read_only_changes": 1,
+        "do_not_modify_changes": 1,
+        "unexpected_policy_stops": 0,
+        "answered_misses": 7
+      }
+    },
+    "treatment/qwen08/stock": {
+      "score": 5,
+      "evaluation_sha256": {
+        "fast12": "62f5a6078c81fb5bcc6e667bf303e8d805539e1895bd24872bcae73d076b55e3",
+        "broad": "479eb67abd37df8e233d17bce61469bffc0e6476be980fabce535e1b31289794"
+      },
+      "device": "NVIDIA GeForce RTX 3090",
+      "behaviour_counts": {
+        "answer_omissions": 4,
+        "missing_answers": 23,
+        "input_edits": 1,
+        "do_not_modify_edits": 0,
+        "read_only_changes": 0,
+        "do_not_modify_changes": 0,
+        "unexpected_policy_stops": 0,
+        "answered_misses": 0
+      }
+    },
+    "treatment/qwen08/tuned": {
+      "score": 34,
+      "evaluation_sha256": {
+        "fast12": "62f5a6078c81fb5bcc6e667bf303e8d805539e1895bd24872bcae73d076b55e3",
+        "broad": "479eb67abd37df8e233d17bce61469bffc0e6476be980fabce535e1b31289794"
+      },
+      "device": "NVIDIA GeForce RTX 3090",
+      "behaviour_counts": {
+        "answer_omissions": 2,
+        "missing_answers": 3,
+        "input_edits": 2,
+        "do_not_modify_edits": 0,
+        "read_only_changes": 3,
+        "do_not_modify_changes": 1,
+        "unexpected_policy_stops": 0,
+        "answered_misses": 11
+      }
+    }
+  },
+  "training": {
+    "control/minicpm": {
+      "fit_rows_sha256": "04c47d0f4428208a9b467e04220adf1e064806e70f075b348c034f4f8ec5727c",
+      "params": {
+        "seed": 42,
+        "lr": 0.0002,
+        "rank": 16,
+        "alpha": 32,
+        "dropout": 0.0,
+        "max_length": 4096,
+        "decision_weight": 5.0,
+        "token_budget": 24576,
+        "max_batch": 16,
+        "max_epochs": 1,
+        "fit_decision": 0.99,
+        "fit_token": 0.98,
+        "max_minutes": 50.0,
+        "fit_rows": 800,
+        "max_rows": null,
+        "gradient_checkpointing": true,
+        "lr_schedule": "constant",
+        "warmup_ratio": 0.03
+      },
+      "final_epoch": {
+        "epoch": 1,
+        "mean_batch_loss": 0.30223043153373697,
+        "last_lr": 0.0002,
+        "train_seconds": 1845.1,
+        "seconds": 1917.7,
+        "decision_accuracy": 0.825,
+        "token_accuracy": 0.9488511488511489,
+        "weighted_loss": 0.18938058908973082
+      },
+      "optimizer_steps": 392,
+      "training_sha256": "06380bec8d6d9d6267bbfe6c2d0054ae1efcbe57fa5d9101d438d27cb7760ddd"
+    },
+    "control/qwen08": {
+      "fit_rows_sha256": "04c47d0f4428208a9b467e04220adf1e064806e70f075b348c034f4f8ec5727c",
+      "params": {
+        "seed": 42,
+        "lr": 0.0002,
+        "rank": 16,
+        "alpha": 32,
+        "dropout": 0.0,
+        "max_length": 4096,
+        "decision_weight": 5.0,
+        "token_budget": 24576,
+        "max_batch": 16,
+        "max_epochs": 1,
+        "fit_decision": 0.99,
+        "fit_token": 0.98,
+        "max_minutes": 50.0,
+        "fit_rows": 800,
+        "max_rows": null,
+        "gradient_checkpointing": true,
+        "lr_schedule": "constant",
+        "warmup_ratio": 0.03
+      },
+      "final_epoch": {
+        "epoch": 1,
+        "mean_batch_loss": 0.36146068798820014,
+        "last_lr": 0.0002,
+        "train_seconds": 1891.3,
+        "seconds": 1940.2,
+        "decision_accuracy": 0.8875,
+        "token_accuracy": 0.9757637474541752,
+        "weighted_loss": 0.12895929571723888
+      },
+      "optimizer_steps": 392,
+      "training_sha256": "06380bec8d6d9d6267bbfe6c2d0054ae1efcbe57fa5d9101d438d27cb7760ddd"
+    },
+    "treatment/minicpm": {
+      "fit_rows_sha256": "04c47d0f4428208a9b467e04220adf1e064806e70f075b348c034f4f8ec5727c",
+      "params": {
+        "seed": 42,
+        "lr": 0.0002,
+        "rank": 16,
+        "alpha": 32,
+        "dropout": 0.0,
+        "max_length": 4096,
+        "decision_weight": 5.0,
+        "token_budget": 24576,
+        "max_batch": 16,
+        "max_epochs": 1,
+        "fit_decision": 0.99,
+        "fit_token": 0.98,
+        "max_minutes": 50.0,
+        "fit_rows": 800,
+        "max_rows": null,
+        "gradient_checkpointing": true,
+        "lr_schedule": "cosine",
+        "warmup_ratio": 0.03
+      },
+      "final_epoch": {
+        "epoch": 1,
+        "mean_batch_loss": 0.2031428787357035,
+        "last_lr": 3.4174335825420957e-09,
+        "train_seconds": 1858.6,
+        "seconds": 1931.3,
+        "decision_accuracy": 0.98125,
+        "token_accuracy": 0.9898101898101898,
+        "weighted_loss": 0.03169035990923108
+      },
+      "optimizer_steps": 392,
+      "training_sha256": "06380bec8d6d9d6267bbfe6c2d0054ae1efcbe57fa5d9101d438d27cb7760ddd"
+    },
+    "treatment/qwen08": {
+      "fit_rows_sha256": "04c47d0f4428208a9b467e04220adf1e064806e70f075b348c034f4f8ec5727c",
+      "params": {
+        "seed": 42,
+        "lr": 0.0002,
+        "rank": 16,
+        "alpha": 32,
+        "dropout": 0.0,
+        "max_length": 4096,
+        "decision_weight": 5.0,
+        "token_budget": 24576,
+        "max_batch": 16,
+        "max_epochs": 1,
+        "fit_decision": 0.99,
+        "fit_token": 0.98,
+        "max_minutes": 50.0,
+        "fit_rows": 800,
+        "max_rows": null,
+        "gradient_checkpointing": true,
+        "lr_schedule": "cosine",
+        "warmup_ratio": 0.03
+      },
+      "final_epoch": {
+        "epoch": 1,
+        "mean_batch_loss": 0.281716406337646,
+        "last_lr": 3.4174335825420957e-09,
+        "train_seconds": 1892.7,
+        "seconds": 1941.5,
+        "decision_accuracy": 0.9675,
+        "token_accuracy": 0.9863543788187372,
+        "weighted_loss": 0.053459725901197706
+      },
+      "optimizer_steps": 392,
+      "training_sha256": "06380bec8d6d9d6267bbfe6c2d0054ae1efcbe57fa5d9101d438d27cb7760ddd"
+    }
+  }
+}

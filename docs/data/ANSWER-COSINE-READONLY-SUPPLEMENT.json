@@ -1,0 +1,48 @@
+{
+  "auditor": "parent agent audit for Ivy to confirm",
+  "cohort": "Read-only output creation without answers omitted from the initial existing-input-only review cohort",
+  "items": [
+    {
+      "base": "minicpm",
+      "side": "tuned",
+      "task": "latest_iso_timestamp",
+      "answer": "",
+      "verdict": "no_answer",
+      "reason": "The read-only task created timestamps.tsv and then provided no answer.",
+      "evidence": [
+        "exit=0\nstdout (3 lines):\n  2026-08-17T09:55Z\theron\n  2026-08-17T10:20Z\tfinch\n  2026-08-17T10:24Z\tsparrow\nchanges: added timestamps.tsv\npolicy: ok"
+      ]
+    },
+    {
+      "base": "qwen08",
+      "side": "previous",
+      "task": "report_tab_stop_from_specific_profile",
+      "answer": "",
+      "verdict": "no_answer",
+      "reason": "The read-only task created print-profile.tab and then provided no answer.",
+      "evidence": [
+        "exit=0\n(no output)\nchanges: added print-profile.tab\npolicy: ok"
+      ]
+    }
+  ],
+  "effects": [
+    {
+      "base": "minicpm",
+      "side": "tuned",
+      "task": "latest_iso_timestamp",
+      "reason": "The read-only task created timestamps.tsv and then provided no answer.",
+      "evidence": [
+        "exit=0\nstdout (3 lines):\n  2026-08-17T09:55Z\theron\n  2026-08-17T10:20Z\tfinch\n  2026-08-17T10:24Z\tsparrow\nchanges: added timestamps.tsv\npolicy: ok"
+      ]
+    },
+    {
+      "base": "qwen08",
+      "side": "previous",
+      "task": "report_tab_stop_from_specific_profile",
+      "reason": "The read-only task created print-profile.tab and then provided no answer.",
+      "evidence": [
+        "exit=0\n(no output)\nchanges: added print-profile.tab\npolicy: ok"
+      ]
+    }
+  ]
+}

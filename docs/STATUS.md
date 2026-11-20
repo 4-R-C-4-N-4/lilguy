@@ -11,8 +11,8 @@ Updated 2026-11-20. This is the one place for current state; the plan and its ga
 | 3. Shared loop and recorder | Done | `292a28b`; `lilguy/loop.py`, `lilguy/do.py`, `tests/sandbox/test_loop_live.py` |
 | 4. Protected evaluation | Re-frozen for v2 (pin `e10789bc…`), oracle 100/100, null 0/100; development suite at 80 of 150 | [Roadmap re-freeze note](plan/ROADMAP.md); no model has run on held-out |
 | 5. Baselines and family choice | MiniCPM5-2B is the main experimental base, Qwen3.5-0.8B the same-corpus control; no shipping selection | `reports/factory/pilot-w74u7u0b/comparison.json` |
-| 6. Verified training data | R3 control: 1,799 episodes / 5,286 rows; R4 treatment: 1,919 / 5,586; replay/split gates passed, human audit open | [Controlled data/result](data/DECISION-CONTROLLED-RESULT.md), [earlier data card](data/CORPUS-V2.md) |
-| 7. Train, iterate on development failures | v2 adapters: MiniCPM 43/80, Qwen 36/80 on the v2 roster; missing answers and unsafe input edits remain; no promotion | [v2 result](data/INTERFACE-V2-RESULT.md), [decision sprint](data/DECISION-CONTROLLED-RESULT.md) |
+| 6. Verified training data | v2 revision 6: 2,164 episodes / 6,264 rows, replay/split gates passed; 100-episode agent audit, human audit open | [Answer/cosine result](data/ANSWER-COSINE-RESULT.md), [earlier data card](data/CORPUS-V2.md) |
+| 7. Train, iterate on development failures | Revision 6 + cosine: MiniCPM 50/80, Qwen 34/80 (constant 20 and 28; revision 5 43 and 36); confirmed wrong answers remain; no promotion | [Answer/cosine result](data/ANSWER-COSINE-RESULT.md), [v2 result](data/INTERFACE-V2-RESULT.md) |
 | 8. Ship: quantize, held-out once, latency, model card | Not started | |
 
 Step numbers follow the roadmap. The recurring work list numbers them 1–5: tool server = 2, shared loop = 3, evaluation = 4, base choice = 5–6, one-job iteration = 7–8.
@@ -21,21 +21,29 @@ Step numbers follow the roadmap. The recurring work list numbers them 1–5: too
 
 1. **Latency reference.** Qwen3.8-27B Q4_K_XL had the highest Fast12 score in this batch (9/12); its IQ2_XXS counterpart was ~20% faster in model time and lost one task (`create_new_file`). Treat that pair as a quantization comparison, not an automatic change to the 30B+ reference requirement. Pick the reference and latency metric before shipping evaluation. No small model was under 10% of either Qwen3.8 quant's median episode time.
 2. **Shipping family.** MiniCPM5-2B and Qwen3.5-0.8B now both have v2 LoRAs. MiniCPM leads absolute stock capability, but neither has satisfied the promotion gates. Keep both experimental; do not treat the highest development total as a shipping selection.
+3. **Next sprint.** Choose between a second seed of revision-6 constant/cosine (variance is unmeasured) and approving the one-time held-out run for MiniCPM cosine; also whether graders may change for false answers that currently pass. Recommendation: second seed first.
 
-## Answer/read-only data and cosine sprint (running)
+## Answer/read-only data and cosine sprint (complete, 2026-11-20)
 
-Shared revision 6: 2,164 real-sandbox-replayed episodes / 6,264 rows, split gate passed;
-100-episode agent audit marked correct (not human approval). The scheduler change is committed
-as `dbc8264`, not parked in a stash. Both bases are running in one constant-versus-cosine factory
-job, one epoch and 50-minute training boxes declared before launch; no further recipes allowed.
-The constant arm completed: MiniCPM 20/80 versus revision-5 43/80, Qwen 28/80 versus 36/80.
-MiniCPM bare-done question omissions worsen 4→19; Qwen improves 6→0 but has answered failures.
-MiniCPM cosine completes at 50/80 with no unanswered questions and no existing-input edits,
-but creates a forbidden output file and makes six confirmed wrong answers. Qwen cosine is
-still running; no candidate selected. Development scores are optimistic
-because the development failures shaped these families. No held-out model runs.
+Recipe limit reached; no candidate promoted; no held-out runs. Development scores are optimistic
+because development failures shaped the revision-6 families.
 
-[Data yield, audit, settings and interim findings](data/ANSWER-COSINE-RESULT.md).
+| Base | Revision 5 (re-scored) | R6 constant | R6 cosine | Fit, constant → cosine | Cosine: missing answers / confirmed wrong |
+|---|---:|---:|---:|---|---|
+| MiniCPM5-2B | 43/80 | 20/80 | 50/80 | 82.5% → 98.1% | 0 / 6 |
+| Qwen3.5-0.8B | 36/80 | 28/80 | 34/80 | 88.8% → 96.8% | 3 / 13 |
+
+- Cosine beats constant on both bases with identical data, seed, steps and fit rows: the controlled
+  result is positive. MiniCPM cosine meets the 48/80, zero-missing-answer, fit and no-category-
+  regression targets; Qwen cosine misses 40/80, zero missing answers and organise (6 → 5).
+- The data change alone is negative under constant LR (both bases below revision 5); MiniCPM
+  constant collapses to bare `done`. One seed per arm, so variance is unknown.
+- No existing-input edits in "do not modify" tasks, but both cosine adapters still create new files
+  in a no-write task. Wrong answers, some passing the frozen graders, are now the main failure.
+- Matched Q8_0 hashes, evaluation fingerprints and RTX 3090 verified independently for all 10
+  scored sides; semantic audits are agent audits for Ivy to confirm.
+
+[Full result, targets and per-family yield](data/ANSWER-COSINE-RESULT.md).
 Evidence: `reports/factory/pilot-zm8ou4p3/`, log `reports/factory/cosine-arms.log`.
 
 ## Interface v2 (revision-5 baseline)
@@ -93,9 +101,8 @@ The parent verified all eight artifact hashes and reproduced both comparisons; t
 artifact worker was rate-limited. Current verification: 762 unit tests, 87 real sandbox corpus-variant tests, lint clean,
 frozen protocol/golden prompt unchanged. The earlier pilot results below are historical context.
 
-Cosine warmup/decay is approved as a separate future experiment, not part of these results. Its
-implementation is parked in `stash@{0}`; none of these four runs used it. Keep dropout and other
-factors fixed if that experiment is resumed after this sprint.
+Cosine warmup/decay was not part of these results. It has since been committed (`dbc8264`) and
+tested in the answer/cosine sprint above.
 
 ## Corpus v2 and two-base LoRA pilot (earlier sprint)
 
