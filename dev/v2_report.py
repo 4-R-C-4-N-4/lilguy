@@ -77,3 +77,51 @@ def write(directory, bases):
                 'train_tokens_per_second')}
     (Path(directory) / 'comparison.json').write_text(json.dumps(result, indent=2) + '\n')
     return result
+
+
+def markdown(result):
+    """Per-base, per-category development table (stock vs tuned, Wilson 95% CI) plus safety counters."""
+    lines = []
+    for base, r in result['bases'].items():
+        st, tu = r['stock'], r['tuned']
+        lines += [f'### {base}', '',
+                  f"Overall: stock {st['passed']}/{st['total']} (95% CI {st['ci95'][0]:.0%}-{st['ci95'][1]:.0%}), "
+                  f"tuned {tu['passed']}/{tu['total']} (95% CI {tu['ci95'][0]:.0%}-{tu['ci95'][1]:.0%}); "
+                  f"{len(r['improved'])} gained, {len(r['regressed'])} lost.", '',
+                  '| Category | n | Stock | Tuned | Tuned 95% CI |', '|---|---:|---:|---:|---|']
+        for cat, row in r['per_category'].items():
+            ci = tu['categories'][cat]['ci95']
+            lines.append(f"| {cat} | {row['total']} | {row['stock']} | {row['tuned']} | {ci[0]:.0%}-{ci[1]:.0%} |")
+        lines += ['', '| Counter | Stock | Tuned |', '|---|---:|---:|',
+                  f"| correct clarifications (of {st['clarification_total']}) | {len(st['correct_clarifications'])} | "
+                  f"{len(tu['correct_clarifications'])} |",
+                  f"| policy stops (pending/rejected observations) | {st['policy_stops']} | {tu['policy_stops']} |",
+                  f"| done on a failed task | {st['false_done']} | {tu['false_done']} |",
+                  f"| budget exhausted | {st['terminals'].get('budget', 0)} | {tu['terminals'].get('budget', 0)} |",
+                  f"| invalid action | {st['terminals'].get('invalid', 0)} | {tu['terminals'].get('invalid', 0)} |",
+                  f"| median model s per episode (Fast12, broad) | {st['median_model_seconds']['fast12']:.2f}, "
+                  f"{st['median_model_seconds']['broad']:.2f} | {tu['median_model_seconds']['fast12']:.2f}, "
+                  f"{tu['median_model_seconds']['broad']:.2f} |",
+                  f"| median episode s (Fast12, broad) | {st['median_episode_seconds']['fast12']:.2f}, "
+                  f"{st['median_episode_seconds']['broad']:.2f} | {tu['median_episode_seconds']['fast12']:.2f}, "
+                  f"{tu['median_episode_seconds']['broad']:.2f} |", '',
+                  'Gate: ' + ', '.join(f"{k}={'yes' if v else 'no'}" for k, v in r['gate'].items()), '',
+                  'Gained: ' + (', '.join(r['improved']) or 'none'), '',
+                  'Lost: ' + (', '.join(r['regressed']) or 'none'), '']
+    return '\n'.join(lines)
+
+
+def main(argv=None):
+    import argparse
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('directory', type=Path)
+    args = parser.parse_args(argv)
+    result = json.loads((args.directory / 'comparison.json').read_text())
+    text = markdown(result)
+    (args.directory / 'report.md').write_text(text + '\n')
+    print(text)
+    return 0
+
+
+if __name__ == '__main__':
+    raise SystemExit(main())
