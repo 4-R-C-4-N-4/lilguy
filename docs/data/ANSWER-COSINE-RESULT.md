@@ -281,3 +281,18 @@ Per-example evidence:
 - **Memory:** the job scope peaked at 15.5 GB under its 20 GiB limit.
 - **Adapters:** all earlier adapters kept; the deleted superseded merged checkpoints and GGUFs
   are listed in `reports/factory/artifact-cleanup-2026-11-20.json`.
+
+## Second seed (declared before launch, 2026-11-20 ~19:00 EST)
+
+Ivy approved a second seed. It is a replication, not a new recipe:
+
+- the same two arms (revision-6 constant and cosine) and both bases, in one factory command;
+- trainer seed 43 instead of 42 in all four runs;
+- everything else identical, including the one-epoch cap, the 50-minute training boxes and the
+  same fixed 800-row fit probe (indices drawn with `Random(1)`, independent of the trainer seed);
+- untuned scores reused after the identity check; the revision-5 references are not re-scored,
+  since their evaluation fingerprint is unchanged.
+
+Decision rule, fixed now: the schedule effect counts as replicated for a base only if cosine beats
+constant on both seeds in training fit and in development score. I will report the size of the
+seed-to-seed spread for each arm alongside it.
