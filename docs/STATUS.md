@@ -30,7 +30,9 @@ as `dbc8264`, not parked in a stash. Both bases are running in one constant-vers
 job, one epoch and 50-minute training boxes declared before launch; no further recipes allowed.
 The constant arm completed: MiniCPM 20/80 versus revision-5 43/80, Qwen 28/80 versus 36/80.
 MiniCPM bare-done question omissions worsen 4→19; Qwen improves 6→0 but has answered failures.
-Cosine and semantic review are pending; no candidate selected. Development scores are optimistic
+MiniCPM cosine completes at 50/80 with no unanswered questions and no existing-input edits,
+but creates a forbidden output file and makes six confirmed wrong answers. Qwen cosine is
+still running; no candidate selected. Development scores are optimistic
 because the development failures shaped these families. No held-out model runs.
 
 [Data yield, audit, settings and interim findings](data/ANSWER-COSINE-RESULT.md).

@@ -125,8 +125,11 @@ def _training_and_behaviour(directory, base, comps):
     sides['treatment'] = directory / 'treatment' / base / 'tuned'
     checks = {label: v2_behaviour.check(path) for label, path in sides.items()}
     lines += ['| Behaviour (from traces) | ' + ' | '.join(checks) + ' |', '|---|' + '---:|' * len(checks)]
-    for key, label in (('answer_omissions', 'missing answers'), ('input_edits', 'input edits'),
+    for key, label in (('missing_answers', 'missing answers (all terminals)'),
+                       ('answer_omissions', 'bare-done question omissions'), ('input_edits', 'input edits'),
                        ('do_not_modify_edits', 'edits in do-not-modify tasks'),
+                       ('read_only_changes', 'all effects on answer-only tasks'),
+                       ('do_not_modify_changes', 'all effects where changes explicitly forbidden'),
                        ('unexpected_policy_stops', 'unexpected policy stops'),
                        ('answered_misses', 'answered but failed (review)')):
         lines.append(f'| {label} | ' + ' | '.join(str(c['counts'][key]) for c in checks.values()) + ' |')
@@ -134,7 +137,7 @@ def _training_and_behaviour(directory, base, comps):
     for label, c in checks.items():
         if label == 'stock':
             continue
-        for key in ('answer_omissions', 'do_not_modify_edits', 'input_edits'):
+        for key in ('answer_omissions', 'do_not_modify_changes', 'input_edits'):
             if c[key]:
                 lines.append(f'- {label} {key.replace("_", " ")}: '
                              + ', '.join(x if isinstance(x, str) else f"{x['task']} ({', '.join(x['paths'])})"

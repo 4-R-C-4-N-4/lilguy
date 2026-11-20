@@ -35,3 +35,24 @@ def test_read_only_wording_is_recognised():
                  'report station and time without editing', 'Do not change the file.'):
         assert vb.READ_ONLY_REQUEST.search(text), text
     assert not vb.READ_ONLY_REQUEST.search('Change interval=5 to interval=12 in schedule.ini.')
+
+
+def test_missing_answers_include_unanswered_budget_and_invalid_stops(tmp_path):
+    _write(tmp_path, 'report_tab_stop_from_specific_profile', model_changes={}, answer='', terminal='budget')
+    _write(tmp_path, 'matching_normalized_addresses', model_changes={}, answer=None, terminal='invalid')
+    result = vb.check(tmp_path)
+    assert result['answer_omissions'] == []  # legacy bare-done counter
+    assert result['missing_answers'] == [
+        {'task': 'matching_normalized_addresses', 'terminal': 'invalid'},
+        {'task': 'report_tab_stop_from_specific_profile', 'terminal': 'budget'}]
+    assert result['counts']['missing_answers'] == 2
+
+
+def test_forbidden_output_creation_is_not_hidden_by_input_edit_counter(tmp_path):
+    _write(tmp_path, 'summarize_missing_packet_ids', model_changes={'missing.txt': 'q709\nq101\n'},
+           answer='All received.')
+    result = vb.check(tmp_path)
+    assert result['input_edits'] == []
+    assert result['read_only_changes'] == [
+        {'task': 'summarize_missing_packet_ids', 'paths': ['missing.txt']}]
+    assert result['do_not_modify_changes'] == result['read_only_changes']

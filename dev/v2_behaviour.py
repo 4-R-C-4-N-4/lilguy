@@ -4,8 +4,10 @@ For one scored side (`<job>/<base>/<side>` with fast12/ and broad/ task traces) 
 
 * answer omissions: tasks whose scripted oracle staged nothing and stayed `policy: ok` (an answer
   is the deliverable) where the model ended with a bare `done`;
+* missing answers: all such tasks with no answer, including budget and invalid stops;
 * input edits: staged changes to files that existed in the fixture and that the oracle leaves
   alone, flagged separately when the request says not to modify anything;
+* read-only changes: any staged effect on answer-only tasks, including new output files;
 * unexpected policy stops: pending/rejected observations in tasks whose oracle had none;
 * answered misses: failed answer tasks where the model did answer (candidates for a confirmed
   wrong answer; confirm by reading the trace).
@@ -42,16 +44,23 @@ def answer_required(oracle):
 
 def check(side):
     tasks = _files()
-    rows = {'answer_omissions': [], 'input_edits': [], 'do_not_modify_edits': [], 'unexpected_policy_stops': [],
-            'answered_misses': []}
+    rows = {'answer_omissions': [], 'missing_answers': [], 'input_edits': [], 'do_not_modify_edits': [],
+            'read_only_changes': [], 'do_not_modify_changes': [], 'unexpected_policy_stops': [], 'answered_misses': []}
     for verdict in traces(side):
         task = tasks[verdict['task']]
         model, oracle = verdict['model'], verdict['oracle']
         needs_answer = answer_required(oracle)
         if needs_answer and model['terminal'] == 'done' and not (model['answer'] or '').strip():
             rows['answer_omissions'].append(task.id)
+        if needs_answer and not (model['answer'] or '').strip():
+            rows['missing_answers'].append({'task': task.id, 'terminal': model['terminal']})
         if needs_answer and not verdict['passed'] and (model['answer'] or '').strip():
             rows['answered_misses'].append({'task': task.id, 'answer': model['answer']})
+        if needs_answer and model['changes']:
+            effect = {'task': task.id, 'paths': sorted(model['changes'])}
+            rows['read_only_changes'].append(effect)
+            if READ_ONLY_REQUEST.search(task.request):
+                rows['do_not_modify_changes'].append(effect)
         edited = sorted(p for p in model['changes'] if p in task.files and p not in oracle['changes'])
         if edited:
             rows['input_edits'].append({'task': task.id, 'paths': edited})

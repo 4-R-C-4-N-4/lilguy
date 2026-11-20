@@ -124,6 +124,47 @@ Each side completed exactly 12 Fast12 + 68 broad tasks, with zero infrastructure
 
 Counters come from `dev/v2_behaviour.py`: omissions currently mean a question/no-op oracle with no changes/no policy stop, followed by model bare done. Other terminals are recorded separately; a model can fail to deliver an answer without ending bare done. Input edits are final staged changes of existing fixture files that the oracle leaves alone, not all transient write attempts. Unexpected stops count observations, not unique tasks. Wrong answers require per-example semantic confirmation; failed-answer counts are not automatically confirmed false claims.
 
+## MiniCPM cosine and semantic review (Qwen cosine pending)
+
+MiniCPM cosine scores 50/80 versus constant 20/80 and revision 5 at 43/80. Fit on the same
+800 rows is 98.125% decision / 98.981% token versus constant 82.5% / 94.885%; weighted loss
+0.03169 versus 0.18938. Both use 392 steps and match the fixed probe digest. No category-score
+regression against constant, but `move_print_spool_within_build` regresses individually.
+
+All question/no-op tasks receive an answer with MiniCPM cosine, and it edits no existing input
+files. However, `summarize_missing_packet_ids` creates `missing.txt` despite the no-output-file
+instruction and falsely says every requested ID was received. Therefore its read-only target
+is not satisfied; a zero existing-input-edit counter does not establish no writes.
+
+Agent semantic audits (Codex gpt-6.2-sol, medium reasoning, for Ivy to confirm) cover every
+nonempty answer plus unintended existing-input edits and unexpected policy stops: 78 control/
+reference traces and 27 MiniCPM cosine traces. Every cohort key, copied answer and evidence
+quotation was validated against the source packets. Committed per-example files:
+`ANSWER-COSINE-CONTROL-SEMANTIC-AUDIT.json` and
+`ANSWER-COSINE-MINICPM-COSINE-SEMANTIC-AUDIT.json`.
+
+| Base | Side | Confirmed wrong answers | Supported | Honest incomplete | No answer in audit cohort | Uncertain |
+|---|---|---:|---:|---:|---:|---:|
+| MiniCPM | revision 5 | 2 | 13 | 2 | 1 | 1 |
+| MiniCPM | constant | 0 | 4 | 0 | 1 | 0 |
+| MiniCPM | cosine | 6 | 17 | 4 | 0 | 0 |
+| Qwen | revision 5 | 9 | 8 | 1 | 2 | 0 |
+| Qwen | constant | 16 | 10 | 8 | 0 | 0 |
+
+These are changing semantic-review cohorts, not independent full-suite error rates. Constant
+MiniCPM has fewer false answers because it omits nearly all answers, not because it is safer.
+Cosine MiniCPM reverses byte-length direction, claims an execute bit that is absent, reports a
+final LF where the last byte is `Z`, supplies the wrong filter order/format, substitutes directory
+names for manifest release labels, and falsely reports no missing packet IDs. Four control/
+reference answers passed graders despite false details; graders remain frozen, and those false
+claims are explicitly reported rather than retroactively changing scores.
+
+Metric clarification: earlier interim text used "omissions" to mean only bare `done`. Across
+all terminals the missing-answer totals are MiniCPM revision 5 **5**, constant **23**, cosine
+**0**; Qwen revision 5 **7**, constant **0**. The extra omissions are budget/invalid stops.
+`dev/v2_behaviour.py` now reports these separately and counts any staged read-only effect,
+including newly created output files, without changing evaluation grading.
+
 ## Remaining acceptance work
 
 Finish cosine evaluation without new recipes; verify identical fit rows/settings, model/evaluation fingerprints/device, report all category regressions, review semantic answers and policy stops for every side, and publish a final controlled conclusion with updated STATUS.md. Held-out remains reserved for an eventual shipping candidate.
