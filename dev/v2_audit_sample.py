@@ -28,8 +28,13 @@ def main():
     parser.add_argument('corpus', type=Path)
     parser.add_argument('--n', type=int, default=200)
     parser.add_argument('--seed', type=int, default=7)
+    parser.add_argument('--only-new-from', type=Path,
+                        help='audit only episodes that are new or changed relative to this earlier corpus')
     args = parser.parse_args()
     evidence = json.loads((args.corpus / 'effects.json').read_text())
+    if args.only_new_from:
+        earlier = {e['task']['id']: e['record'] for e in json.loads((args.only_new_from / 'effects.json').read_text())}
+        evidence = [e for e in evidence if earlier.get(e['task']['id']) != e['record']]
     by_family = {}
     for entry in evidence:
         by_family.setdefault(entry['family'], []).append(entry)
@@ -44,6 +49,7 @@ def main():
     text = '\n\n'.join(render(e) for e in picks)
     (args.corpus / 'audit-sample.md').write_text(f'# Corpus v2 audit sample ({len(picks)} episodes, seed {args.seed})\n\n'
                                                  + text + '\n')
+    (args.corpus / 'audit-sample.json').write_text(json.dumps([e['task']['id'] for e in picks], indent=1) + '\n')
     print(len(picks))
 
 

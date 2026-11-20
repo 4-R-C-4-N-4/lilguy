@@ -12,7 +12,7 @@ def _variant(example):
 
 def _one_per_variant():
     seen = {}
-    for revision in (1, 2, 3, 4, 5):
+    for revision in (1, 2, 3, 4, 5, 6):
         for example in v2.generate(scale=0.05 if revision < 4 else 0.1, revision=revision):
             seen.setdefault(_variant(example), (revision, example))
     return list(seen.values())

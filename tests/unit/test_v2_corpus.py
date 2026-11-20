@@ -9,7 +9,7 @@ from dev.broad_runner import development_rows, task_graders
 from lilguy import protocol as p
 
 
-@pytest.fixture(scope='module', params=[1, 2, 3, 4, 5], ids=['rev1', 'rev2', 'rev3', 'rev4', 'rev5'])
+@pytest.fixture(scope='module', params=[1, 2, 3, 4, 5, 6], ids=['rev1', 'rev2', 'rev3', 'rev4', 'rev5', 'rev6'])
 def corpus(request):
     return request.param, v2.generate(revision=request.param)
 
@@ -201,3 +201,31 @@ def test_revision_5_grading_ignores_the_missing_report_but_not_the_effects():
     kwargs = dict(terminal='done', answer='', events=events, original_unchanged=True)
     assert not [r for r in v2.grade(ex, changes=ex.changes, **kwargs) if 'pending' in r or 'terminal' in r]
     assert any('changes' in r for r in v2.grade(ex, changes={}, **kwargs))
+
+
+def test_revision_6_adds_paired_read_only_families_and_more_questions():
+    five = {ex.id: ex for ex in v2.generate(scale=0.2, revision=5)}
+    six = v2.generate(scale=0.2, revision=6)
+    by_id = {ex.id: ex for ex in six}
+    assert v2.interface_for(6) == 2 and all(ex.interface == 2 for ex in six)
+    assert set(five) <= set(by_id)
+    for i, ex in five.items():
+        assert by_id[i] == ex
+    new = [ex for ex in six if ex.family in v2.READ_ONLY_FAMILIES]
+    assert {ex.family for ex in new} == set(v2.READ_ONLY_FAMILIES)
+    for family in v2.READ_ONLY_FAMILIES:
+        members = [ex for ex in new if ex.family == family]
+        looks = [ex for ex in members if not ex.changes]
+        writes = [ex for ex in members if ex.changes]
+        assert looks and writes, family
+        for ex in looks:
+            assert ex.oracle[-1].startswith('done\n') and ex.terminal == 'done'
+            assert not any(line.startswith('tool fs.edit') for line in ex.oracle)
+        for ex in writes:
+            assert ex.oracle[-1] == 'done'
+    answered = sum(ex.oracle[-1].startswith('done\n') for ex in six)
+    bare = sum(ex.oracle[-1] == 'done' for ex in six)
+    assert answered >= 0.75 * bare
+    for ex in six:
+        if ex.terminal == 'done' and not ex.changes and ex.policy_end == 'ok':
+            assert ex.oracle[-1].startswith('done\n'), ex.id  # every question or no-op is answered

@@ -1444,13 +1444,151 @@ def fam_orient_output(g, n):
 
 FAMILIES_R4 = {'orient_output': (fam_orient_output, 120)}
 
+
+# --- revision 6: interface-v2 answer and read-only fixes (2026-11-20) --------------------------------
+# The first v2 adapters ended some questions with a bare `done` and edited inputs during read-only
+# requests. Each family below pairs a read-only request (inspect, never write, answer from the
+# output) with a near-identical request that does write, so the request, not habit, decides.
+
+def fam_ro_compare(g, n):
+    for i in range(n):
+        thing = g.pick(THINGS)
+        folder = g.choice(('copies', 'mirror', 'backup', 'sync'))
+        a, b = f'{thing}.txt', f'{folder}/{thing}.txt'
+        rows = [f'{g.choice(PEOPLE)} {g.choice(WORDS)}' for _ in range(g.int(3, 6))]
+        k = g.int(0, len(rows) - 1)
+        old, new = rows[k], f'{rows[k].split()[0]} {_other_word(g, rows[k].split()[1])}'
+        other = rows[:k] + [new] + rows[k + 1:]
+        files = {a: _lines(rows), b: _lines(other if i % 4 != 0 else rows)}
+        if i % 2 == 0:
+            req = g.choice(('Do {a} and {b} contain the same lines? Do not modify either file.',
+                            'Check whether {b} still matches {a}, and leave both files as they are.')).format(a=a, b=b)
+            if i % 4 == 0:
+                yield dict(id=f'ro-compare-same-{i}', family='ro_compare', category='inspect',
+                           behaviour='read-only-answer', request=req, files=files, source_page='diff',
+                           oracle=(run(f'diff {a} {b} && echo same'), done(f'Yes, {a} and {b} have the same lines.')),
+                           changes={}, facts=('same',))
+            else:
+                yield dict(id=f'ro-compare-diff-{i}', family='ro_compare', category='inspect',
+                           behaviour='read-only-answer', request=req, files=files, source_page='diff',
+                           oracle=(run(f'diff {a} {b}'),
+                                   done(f'No, they differ: {a} has "{old}" where {b} has "{new}".')),
+                           changes={}, error_turns=(0,), facts=(old, new))
+        else:
+            files[b] = _lines(other)
+            req = g.choice(('Make {b} the same as {a}.', 'Update {b} so its lines match {a}.')).format(a=a, b=b)
+            yield dict(id=f'ro-compare-write-{i}', family='ro_compare', category='organise',
+                       behaviour='look-then-act', request=req, files=files, source_page='cp',
+                       oracle=(run(f'diff {a} {b}'), run(f'cp {a} {b}'), run(f'diff {a} {b} && echo same'),
+                               done('Made them the same.')),
+                       changes={b: _lines(rows)}, error_turns=(0,))
+
+
+def _other_word(g, word):
+    for _ in range(50):
+        other = g.choice(WORDS)
+        if other != word:
+            return other
+    raise RuntimeError('no distinct word')
+
+
+def fam_ro_check_value(g, n):
+    for i in range(n):
+        place = g.pick(PLACES)
+        key = g.choice(KEYS)
+        cur = _value_for(g, key)
+        path = g.choice((f'{place}.ini', f'settings/{place}.ini'))
+        other = g.choice([k for k in KEYS if k != key])
+        text = f'{other}={_value_for(g, other)}\n{key}={cur}\n'
+        if i % 2 == 0:
+            asked = cur if i % 4 == 0 else _other_value(g, key, cur)
+            req = g.choice(('Tell me whether {p} sets {k} to {v}. Do not change the file.',
+                            'Is {k} set to {v} in {p}? Only check; leave it unchanged.')).format(p=path, k=key, v=asked)
+            answer = (f'Yes, {path} sets {key}={cur}.' if asked == cur
+                      else f'No, {key} is {cur} in {path}, not {asked}.')
+            yield dict(id=f'ro-check-{i}', family='ro_check', category='read-only', behaviour='read-only-answer',
+                       request=req, files={path: text}, oracle=(read(path), done(answer)),
+                       changes={}, facts=(cur,))
+        else:
+            new = _other_value(g, key, cur)
+            req = g.choice(('Set {k} to {v} in {p}.', 'Change {k} in {p} to {v}.')).format(p=path, k=key, v=new)
+            yield dict(id=f'ro-check-write-{i}', family='ro_check', category='edit', behaviour='look-then-act',
+                       request=req, files={path: text},
+                       oracle=(read(path), edit(path, f'{key}={cur}', f'{key}={new}'), done('Changed it.')),
+                       changes={path: text.replace(f'{key}={cur}', f'{key}={new}')})
+
+
+def fam_ro_count(g, n):
+    for i in range(n):
+        place = g.pick(PLACES)
+        path = f'{place}-events.log'
+        word = g.choice(('WARN', 'FAIL', 'late', 'skipped', 'retry', 'paused'))
+        rows, hits = [], []
+        for _ in range(g.int(5, 12)):
+            line = f'{g.int(10, 23)}:{g.int(10, 59)} {word if g.int(0, 2) == 0 else "ok"} {g.choice(WORDS)}'
+            rows.append(line)
+            if f' {word} ' in line:
+                hits.append(line)
+        if not hits:
+            rows.append(f'08:05 {word} {g.choice(WORDS)}')
+            hits.append(rows[-1])
+        if i % 2 == 0:
+            req = g.choice(('How many lines in {p} contain {w}? Just tell me; do not create any file.',
+                            'Count the {w} lines in {p} without writing anything.')).format(p=path, w=word)
+            yield dict(id=f'ro-count-{i}', family='ro_count', category='inspect', behaviour='read-only-answer',
+                       request=req, files={path: _lines(rows)}, source_page='grep',
+                       oracle=(run(f"grep -c -- ' {word} ' {path}"), done(f'{len(hits)} lines in {path} contain {word}.')),
+                       changes={}, facts=(str(len(hits)),))
+        else:
+            out = f'{place}-{word.lower()}.log'
+            req = g.choice(('Write the lines of {p} that contain {w} to {o}.',
+                            'Save the {w} lines from {p} into {o}.')).format(p=path, w=word, o=out)
+            yield dict(id=f'ro-count-write-{i}', family='ro_count', category='edit', behaviour='look-then-act',
+                       request=req, files={path: _lines(rows)}, source_page='grep',
+                       oracle=(run(f"grep -- ' {word} ' {path} > {out}"), read(out), done('Wrote it.')),
+                       changes={out: _lines(hits)})
+
+
+def fam_ro_exists(g, n):
+    for i in range(n):
+        place, thing = g.pick(PLACES), g.pick(THINGS)
+        folder = g.choice(('projects', 'shared', 'archive', 'team'))
+        name = f'{thing}-{place}.md'
+        sub = g.choice(('2025', 'old', 'drafts', 'misc'))
+        present = i % 4 == 0
+        files = {f'{folder}/{sub}/{g.choice(WORDS)}.md': 'notes\n', f'{folder}/README.md': f'# {folder}\n'}
+        if present:
+            files[f'{folder}/{sub}/{name}'] = f'# {thing}\n'
+        if i % 2 == 0:
+            req = g.choice(('Is there a file named {n} anywhere under {f}/? Do not create it.',
+                            'Check whether {f}/ contains {n} somewhere; only look.')).format(n=name, f=folder)
+            answer = (f'Yes, it is at {folder}/{sub}/{name}.' if present else f'No, there is no {name} under {folder}/.')
+            yield dict(id=f'ro-exists-{i}', family='ro_exists', category='read-only', behaviour='read-only-answer',
+                       request=req, files=files, oracle=(find(name, path=folder), done(answer)),
+                       changes={}, facts=(f'{folder}/{sub}/{name}',) if present else ())
+        else:
+            files.pop(f'{folder}/{sub}/{name}', None)
+            req = g.choice(('Create an empty file {f}/{n}.', 'Add an empty {n} to {f}/.')).format(n=name, f=folder)
+            yield dict(id=f'ro-exists-write-{i}', family='ro_exists', category='organise', behaviour='look-then-act',
+                       request=req, files=files, source_page='touch',
+                       oracle=(ls(folder), run(f'touch {folder}/{name}'), done('Created it.')),
+                       changes={f'{folder}/{name}': ''})
+
+
+FAMILIES_R6 = {'ro_compare': (fam_ro_compare, 80), 'ro_check': (fam_ro_check_value, 80),
+               'ro_count': (fam_ro_count, 80), 'ro_exists': (fam_ro_exists, 80)}
+READ_ONLY_FAMILIES = ('ro_compare', 'ro_check', 'ro_count', 'ro_exists')
+# Answer-bearing families drawn twice as often from revision 6 on (the same seeds extend, so every
+# revision-5 episode is kept and new variants follow it).
+BOOST_R6 = {'read_value': 2, 'count': 2, 'largest': 2, 'grep_find': 2, 'awk_sum': 2, 'inspect_misc': 2}
+
 # Revision 5 is revision 4 recorded under interface v2 (Ivy, 2026-11-20): the model does simple,
 # explicit work and the human reviews lilguy's executed plan and diff. A `done` that ends a change,
 # a pending handoff or a rejection is bare; a question's answer or a no-op report keeps its text.
 # Asking is kept only where the request cannot be done with the workspace (a named input is
 # absent); asks that judged ambiguity are dropped.
 BLOCKED_ASK_FAMILIES = ('recover_absent',)
-_INTERFACE = {1: 1, 2: 1, 3: 1, 4: 1, 5: 2}
+_INTERFACE = {1: 1, 2: 1, 3: 1, 4: 1, 5: 2, 6: 2}
 
 
 def interface_for(revision):
@@ -1470,10 +1608,13 @@ def generate(seed=DEFAULT_SEED, scale=1.0, families=None, revision=1):
     global _REV
     _REV = revision
     out = []
-    table = {**FAMILIES, **(FAMILIES_R2 if revision >= 2 else {}), **(FAMILIES_R4 if revision >= 4 else {})}
+    table = {**FAMILIES, **(FAMILIES_R2 if revision >= 2 else {}), **(FAMILIES_R4 if revision >= 4 else {}),
+             **(FAMILIES_R6 if revision >= 6 else {})}
     for name, (fn, count) in table.items():
         if families and name not in families:
             continue
+        if revision >= 6:
+            count *= BOOST_R6.get(name, 1)
         g = Gen(seed, name)
         for spec in fn(g, max(1, round(count * scale))):
             spec['id'] = 'v2-' + spec['id']
