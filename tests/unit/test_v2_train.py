@@ -45,6 +45,31 @@ def test_training_length_comes_from_training_fit_or_budget():
     assert v2_train.stop_reason([_epoch(0.5, 0.5, 300)], elapsed=310, **kw) == 'time_budget'
 
 
+def test_constant_schedule_is_the_default_and_unchanged():
+    assert v2_train.PARAMS['lr_schedule'] == 'constant'
+    assert [v2_train.lr_at(s, 100, 2e-4, 'constant') for s in (0, 50, 99)] == [2e-4] * 3
+
+
+def test_cosine_schedule_warms_up_then_decays_to_zero_over_the_declared_steps():
+    lr = lambda s: v2_train.lr_at(s, 100, 2e-4, 'cosine', warmup_ratio=0.03)  # noqa: E731
+    assert lr(0) == pytest.approx(2e-4 / 3) and lr(2) == pytest.approx(2e-4)
+    assert lr(3) == pytest.approx(2e-4)
+    assert lr(51) == pytest.approx(1e-4, rel=0.05)
+    assert 0 < lr(99) < 2e-6
+    values = [lr(s) for s in range(3, 100)]
+    assert values == sorted(values, reverse=True)
+    with pytest.raises(ValueError):
+        v2_train.lr_at(0, 100, 2e-4, 'linear')
+    with pytest.raises(ValueError):
+        v2_train.lr_at(100, 100, 2e-4, 'cosine')
+
+
+def test_cosine_schedule_needs_a_declared_epoch_cap():
+    with pytest.raises(ValueError):
+        v2_train.planned_steps(batches_per_epoch=10, max_epochs=None, schedule='cosine')
+    assert v2_train.planned_steps(batches_per_epoch=10, max_epochs=2, schedule='cosine') == 20
+
+
 def test_bases_are_pinned_and_checked(tmp_path):
     assert set(v2_train.BASES) == {'qwen08', 'minicpm'}
     for key, base in v2_train.BASES.items():

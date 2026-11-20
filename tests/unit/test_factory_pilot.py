@@ -13,6 +13,9 @@ def test_train_stage_declares_time_box_and_optional_epoch_cap():
                     '--max-minutes', 35.0]
     capped = factory_pilot.train_argv('t.sh', 'qwen08', Path('/snap'), Path('/data'), Path('/out'), 30.0, 1)
     assert capped[-2:] == ['--max-epochs', 1]
+    cosine = factory_pilot.train_argv('t.sh', 'qwen08', Path('/snap'), Path('/data'), Path('/out'), 30.0, 1,
+                                      'cosine')
+    assert cosine[-4:] == ['--max-epochs', 1, '--lr-schedule', 'cosine']
 
 
 def test_arms_run_in_order_with_identical_settings_except_data(tmp_path):
@@ -43,6 +46,27 @@ def test_arms_require_exactly_control_and_treatment(tmp_path):
         factory_pilot.run_arms(tmp_path, {'control': Path('/c')}, ['minicpm'], None, None)
     with pytest.raises(ValueError):
         factory_pilot.run_arms(tmp_path, {'a': Path('/c'), 'b': Path('/t')}, ['minicpm'], None, None)
+
+
+def test_arm_specs_can_differ_only_by_schedule_and_previous_goes_to_control(tmp_path):
+    arms = factory_pilot.parse_arms(['control=/d@constant', 'treatment=/d@cosine'])
+    assert arms == {'control': {'data': Path('/d'), 'lr_schedule': 'constant'},
+                    'treatment': {'data': Path('/d'), 'lr_schedule': 'cosine'}}
+    assert factory_pilot.parse_arms(['control=/c', 'treatment=/t'])['treatment'] == {'data': Path('/t')}
+    for bad in (['control=/d@linear', 'treatment=/d'], ['control=/d', 'treatment=/d']):
+        with pytest.raises(ValueError):
+            factory_pilot.parse_arms(bad)
+    calls = []
+
+    def run_one(directory, **kwargs):
+        calls.append((directory.name, kwargs))
+
+    factory_pilot.run_arms(tmp_path, arms, ['qwen08'], run_one, lambda c, t: {}, server='s', max_epochs=1,
+                           control_only={'previous': {'qwen08': ('/old.gguf', 2)}})
+    control, treatment = (kwargs for _, kwargs in calls)
+    assert control.pop('previous') and 'previous' not in treatment
+    assert control.pop('lr_schedule') == 'constant' and treatment.pop('lr_schedule') == 'cosine'
+    assert control == treatment
 
 
 def test_previous_artifacts_name_their_base_and_interface(tmp_path):

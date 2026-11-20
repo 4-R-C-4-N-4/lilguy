@@ -19,6 +19,7 @@ import argparse
 import hashlib
 import importlib
 import json
+import math
 import os
 from pathlib import Path
 import random
@@ -42,7 +43,8 @@ BASES = {
 PARAMS = {'seed': 42, 'lr': 2e-4, 'rank': 16, 'alpha': 32, 'dropout': 0.0, 'max_length': 4096,
           'decision_weight': 5.0, 'token_budget': 24576, 'max_batch': 16, 'max_epochs': 6,
           'fit_decision': 0.99, 'fit_token': 0.98, 'max_minutes': 25.0, 'fit_rows': 800, 'max_rows': None,
-          'gradient_checkpointing': True}
+          'gradient_checkpointing': True, 'lr_schedule': 'constant', 'warmup_ratio': 0.03}
+SCHEDULES = ('constant', 'cosine')
 VERSIONS = {'torch': '2.11.0+cu128', 'transformers': '5.15.0', 'peft': '0.20.0'}
 IGNORE = -100
 
@@ -103,6 +105,28 @@ def load_verifier(spec):
     if not module or not name:
         raise ValueError('--verifier must be MODULE:FUNCTION')
     return getattr(importlib.import_module(module), name)
+
+
+def planned_steps(*, batches_per_epoch, max_epochs, schedule):
+    """Optimizer steps a decaying schedule is laid out over: it needs a declared epoch cap."""
+    if schedule != 'constant' and not max_epochs:
+        raise ValueError(f'{schedule} schedule needs a declared epoch cap')
+    return batches_per_epoch * (max_epochs or 1)
+
+
+def lr_at(step, total, base_lr, schedule, warmup_ratio=0.03):
+    """Learning rate for 0-based optimizer `step`: constant, or linear warmup then cosine to zero."""
+    if schedule not in SCHEDULES:
+        raise ValueError(f'unknown learning-rate schedule {schedule!r}')
+    if schedule == 'constant':
+        return base_lr
+    if not 0 <= step < total:
+        raise ValueError(f'step {step} is outside the planned {total} steps')
+    warmup = max(1, math.ceil(warmup_ratio * total))
+    if step < warmup:
+        return base_lr * (step + 1) / warmup
+    progress = (step - warmup) / max(1, total - warmup)
+    return base_lr * 0.5 * (1 + math.cos(math.pi * progress))
 
 
 # --- torch side -----------------------------------------------------------------------------
@@ -230,6 +254,9 @@ def train(key, base_dir, data, out, *, verifier='dev.v2_corpus:verified_rows', p
     history, start = [], time.monotonic()
     max_seconds = params['max_minutes'] * 60
     reason, steps, train_tokens = None, 0, 0
+    total_steps = planned_steps(batches_per_epoch=len(make_batches(lengths, params['token_budget'],
+                                                                   params['max_batch'], random.Random(0))),
+                                max_epochs=params['max_epochs'], schedule=params['lr_schedule'])
     while reason is None:
         epoch_start = time.monotonic()
         losses = []
@@ -242,6 +269,8 @@ def train(key, base_dir, data, out, *, verifier='dev.v2_corpus:verified_rows', p
                 raise ValueError('non-finite training loss')
             adam.zero_grad(set_to_none=True)
             loss.backward()
+            for group in adam.param_groups:
+                group['lr'] = lr_at(steps, total_steps, params['lr'], params['lr_schedule'], params['warmup_ratio'])
             adam.step()
             losses.append(loss.item())
             steps += 1
@@ -249,6 +278,7 @@ def train(key, base_dir, data, out, *, verifier='dev.v2_corpus:verified_rows', p
         train_seconds = time.monotonic() - epoch_start
         metrics = fit_metrics(model, fit_rows, eval_batches, pad_id, torch)
         history.append({'epoch': len(history) + 1, 'mean_batch_loss': sum(losses) / len(losses),
+                        'last_lr': adam.param_groups[0]['lr'],
                         'train_seconds': round(train_seconds, 1),
                         'seconds': round(time.monotonic() - epoch_start, 1), **metrics})
         print(json.dumps(history[-1]), flush=True)
@@ -263,9 +293,11 @@ def train(key, base_dir, data, out, *, verifier='dev.v2_corpus:verified_rows', p
     report = {'base': key, 'repo': base['repo'], 'revision': base['revision'], 'licence': base['licence'],
               'params': params, 'versions': versions, 'verifier': verifier, 'rows': len(rows),
               'verified_rows': verified_count, 'fit_rows': len(fit_rows),
+              'fit_rows_sha256': hashlib.sha256(json.dumps(fit_ids).encode()).hexdigest(),
               'row_tokens': {'mean': sum(lengths) / len(lengths), 'max': max(lengths)},
               'training_sha256': hashlib.sha256(data_path.read_bytes()).hexdigest() if data_path.is_file() else None,
               'epochs': history, 'stop_reason': reason, 'optimizer_steps': steps,
+              'planned_steps': total_steps,
               'train_tokens_per_second': round(train_tokens / sum(h['train_seconds'] for h in history), 1),
               'peak_gpu_mib': round(torch.cuda.max_memory_allocated() / 1024**2), 'seconds': round(seconds, 1),
               'device': torch.cuda.get_device_name(0)}
@@ -332,6 +364,7 @@ def main(argv=None):
     parser.add_argument('--seed', type=int, default=PARAMS['seed'])
     parser.add_argument('--max-rows', type=int, help='random subset of rows (throughput smoke only)')
     parser.add_argument('--no-gradient-checkpointing', action='store_true')
+    parser.add_argument('--lr-schedule', choices=SCHEDULES, default=PARAMS['lr_schedule'])
     parser.add_argument('--merge-only-from-log', type=Path, help='finish an interrupted run from its saved adapter')
     args = parser.parse_args(argv)
     if args.merge_only_from_log:
@@ -340,7 +373,7 @@ def main(argv=None):
     train(args.base_key, args.base_dir, args.data, args.out, verifier=args.verifier,
           params={'max_minutes': args.max_minutes, 'max_epochs': args.max_epochs,
                   'decision_weight': args.decision_weight, 'seed': args.seed, 'max_rows': args.max_rows,
-                  'gradient_checkpointing': not args.no_gradient_checkpointing})
+                  'gradient_checkpointing': not args.no_gradient_checkpointing, 'lr_schedule': args.lr_schedule})
     return 0
 
 

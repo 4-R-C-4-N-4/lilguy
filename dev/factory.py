@@ -154,6 +154,8 @@ def main():
     parser.add_argument('--max-epochs', type=int, help='pilot: declared training epoch cap per base')
     parser.add_argument('--previous', action='append', default=[], metavar='BASE=GGUF@INTERFACE',
                         help='pilot: also score an earlier artifact under its own interface (reference only)')
+    parser.add_argument('--lr-schedule', choices=('constant', 'cosine'),
+                        help='pilot: learning-rate schedule (default constant; cosine needs --max-epochs)')
     parser.add_argument('--stock-from', type=Path,
                         help='pilot: reuse stock scores from a previous pilot job when artifact and evaluation match')
     parser.add_argument('--server', type=Path, default=Path(os.environ.get('LLAMA_SERVER', Path.home() / 'programs/llama.cpp/build/bin/llama-server')))
@@ -235,19 +237,20 @@ def main():
                 previous = factory_pilot.parse_previous(args.previous)
                 if args.arm:
                     from dev import v2_report
-                    if args.data or args.resume:
-                        parser.exit(1, '--arm replaces --data and cannot resume\n')
-                    arms = {name: Path(data) for name, data in (a.split('=', 1) for a in args.arm)}
+                    if args.data or args.resume or args.lr_schedule:
+                        parser.exit(1, '--arm replaces --data and --lr-schedule and cannot resume\n')
+                    arms = factory_pilot.parse_arms(args.arm)
                     factory_pilot.run_arms(directory, arms, args.base, factory_pilot.run, v2_report.compare_base,
                                            server=args.server, device=device, gate=gate,
                                            stock_from=args.stock_from, max_minutes=minutes,
-                                           max_epochs=args.max_epochs, evaluate=evaluate)
+                                           max_epochs=args.max_epochs, evaluate=evaluate,
+                                           control_only={'previous': previous} if previous else None)
                     print(directory / 'arms.json', flush=True)
                     return 0
                 factory_pilot.run(directory, bases=args.base, data=args.data, server=args.server, device=device,
                                   gate=gate, stock_from=args.stock_from, max_minutes=minutes,
-                                  max_epochs=args.max_epochs, resume=bool(args.resume), evaluate=evaluate,
-                                  previous=previous)
+                                  max_epochs=args.max_epochs, lr_schedule=args.lr_schedule,
+                                  resume=bool(args.resume), evaluate=evaluate, previous=previous)
             except (RuntimeError, ValueError, OSError, KeyError) as exc:
                 parser.exit(1, f'Pilot stopped: {exc}; see {directory}\n')
             print(directory / 'comparison.json', flush=True)

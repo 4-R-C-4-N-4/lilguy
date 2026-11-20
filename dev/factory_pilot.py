@@ -63,24 +63,50 @@ def export(stage, name, src, outfile, convert_args):
     return outfile
 
 
-def train_argv(trainpy, base, snapshot, data, training, minutes, max_epochs):
+def train_argv(trainpy, base, snapshot, data, training, minutes, max_epochs, lr_schedule=None):
     argv = [trainpy, 'dev.v2_train', base, snapshot, data, training, '--max-minutes', minutes]
-    return argv + ['--max-epochs', max_epochs] if max_epochs else argv
+    if max_epochs:
+        argv += ['--max-epochs', max_epochs]
+    return argv + ['--lr-schedule', lr_schedule] if lr_schedule else argv
 
 
-def run_arms(directory, arms, bases, run_one, compare, **kwargs):
+def parse_arms(values):
+    """`NAME=DATA[@SCHEDULE]` for control then treatment. Arms must differ in exactly one of the
+    training corpus or the learning-rate schedule, so the comparison isolates one factor."""
+    arms = {}
+    for value in values:
+        name, _, rest = value.partition('=')
+        data, at, schedule = rest.rpartition('@') if '@' in rest else (rest, '', '')
+        if at and schedule not in ('constant', 'cosine'):
+            raise ValueError(f'unknown schedule in {value!r}')
+        arms[name] = {'data': Path(data), **({'lr_schedule': schedule} if at else {})}
+    if list(arms) != ['control', 'treatment']:
+        raise ValueError('arms must be exactly control then treatment')
+    control, treatment = arms.values()
+    differences = [key for key in ('data', 'lr_schedule') if control.get(key) != treatment.get(key)]
+    if len(differences) != 1:
+        raise ValueError(f'arms must differ in exactly one factor, not {differences or "none"}')
+    return arms
+
+
+def run_arms(directory, arms, bases, run_one, compare, control_only=None, **kwargs):
     """A matched control/treatment experiment: identical settings except the training corpus.
 
     Each arm is a complete pilot job (stock and tuned, both development suites) under
     `directory/<arm>`; afterwards the treatment's tuned artifact is compared with the control's.
+    An arm is a data path or a dict of per-arm settings (`data`, optionally `lr_schedule`).
+    `control_only` settings (an earlier artifact to re-score) are scored once, in the control arm.
     """
     if list(arms) != ['control', 'treatment']:
         raise ValueError('arms must be exactly control then treatment')
     results = {}
-    for arm, data in arms.items():
+    for arm, spec in arms.items():
+        spec = spec if isinstance(spec, dict) else {'data': spec}
+        extra = control_only if arm == 'control' and control_only else {}
         (directory / arm).mkdir(parents=True, exist_ok=True)
-        results[arm] = run_one(directory / arm, data=data, bases=bases, **kwargs)
-    summary = {'arms': {arm: str(data) for arm, data in arms.items()},
+        results[arm] = run_one(directory / arm, bases=bases, **spec, **extra, **kwargs)
+    summary = {'arms': {arm: (str(spec) if not isinstance(spec, dict) else
+                              {k: str(v) for k, v in spec.items()}) for arm, spec in arms.items()},
                'treatment_vs_control': {base: compare(directory / 'control' / base / 'tuned',
                                                       directory / 'treatment' / base / 'tuned') for base in bases}}
     (directory / 'arms.json').write_text(json.dumps(summary, indent=2) + '\n')
@@ -123,13 +149,14 @@ def reusable_stock(previous, base, gguf, server, device, interface=1):
 
 
 def run(directory, *, bases, data, server, device, gate, evaluate, max_minutes, stock_from=None, build_seed=None,
-        resume=False, max_epochs=None, previous=None):
+        resume=False, max_epochs=None, previous=None, lr_schedule=None):
     """With `resume`, stages whose outputs already exist in `directory` are kept, not repeated."""
     from dev import v2_train
     preflight()
     old = json.loads((directory / 'plan.json').read_text()) if resume and (directory / 'plan.json').is_file() else {}
     plan = {'job': 'pilot-v2', 'bases': bases, 'device': device, 'split_gate': gate, 'max_minutes': max_minutes,
-            'max_epochs': max_epochs, 'llama_cpp': LLAMA_REVISION, 'stages': old.get('stages', []),
+            'max_epochs': max_epochs, 'lr_schedule': lr_schedule or 'constant',
+            'llama_cpp': LLAMA_REVISION, 'stages': old.get('stages', []),
             'resumed': bool(resume)}
     stage = Stage(directory, plan)
     if data is None:
@@ -165,7 +192,8 @@ def run(directory, *, bases, data, server, device, gate, evaluate, max_minutes, 
                                            '--merge-only-from-log', directory / f'{base}-train.log'])
         if not (resume and (training / 'train-report.json').is_file()):
             minutes = max_minutes[base] if isinstance(max_minutes, dict) else max_minutes
-            stage(f'{base}-train', train_argv(trainpy, base, spec['snapshot'], data, training, minutes, max_epochs))
+            stage(f'{base}-train', train_argv(trainpy, base, spec['snapshot'], data, training, minutes, max_epochs,
+                                              lr_schedule))
         tuned_gguf = out / 'tuned-q8_0.gguf'
         if not (resume and tuned_gguf.is_file()):
             export(stage, f'{base}-export-tuned', training / 'merged', tuned_gguf, spec['convert_args'])
