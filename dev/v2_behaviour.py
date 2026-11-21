@@ -49,6 +49,11 @@ def check(side):
     for verdict in traces(side):
         task = tasks[verdict['task']]
         model, oracle = verdict['model'], verdict['oracle']
+        if verdict.get('interface', 1) >= 3:  # the answer is the quoted last output, not done text
+            from dev import fast12_runner
+            from lilguy import protocol
+            events = [(protocol.Action(**e['action']), e['observation'], e['is_error']) for e in model['events']]
+            model = {**model, 'answer': fast12_runner.quote_text(events, task.files)}
         needs_answer = answer_required(oracle)
         if needs_answer and model['terminal'] == 'done' and not (model['answer'] or '').strip():
             rows['answer_omissions'].append(task.id)

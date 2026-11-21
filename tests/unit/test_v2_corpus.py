@@ -9,7 +9,7 @@ from dev.broad_runner import development_rows, task_graders
 from lilguy import protocol as p
 
 
-@pytest.fixture(scope='module', params=[1, 2, 3, 4, 5, 6, 7], ids=['rev1', 'rev2', 'rev3', 'rev4', 'rev5', 'rev6', 'rev7'])
+@pytest.fixture(scope='module', params=[1, 2, 3, 4, 5, 6, 7, 8], ids=['rev1', 'rev2', 'rev3', 'rev4', 'rev5', 'rev6', 'rev7', 'rev8'])
 def corpus(request):
     return request.param, v2.generate(revision=request.param)
 
@@ -253,3 +253,20 @@ def test_revision_7_is_interface_v3_with_question_mode_and_answering_commands():
     assert asks and all(ex.family in v2.BLOCKED_ASK_FAMILIES for ex in asks)
     modes = {ex.mode for ex in seven}
     assert modes == {'ask', 'do'}
+
+
+def test_revision_8_looks_before_narrowing_and_varies_the_setting_format():
+    seven = {ex.id: ex for ex in v2.generate(scale=0.2, revision=7)}
+    eight = v2.generate(scale=0.2, revision=8)
+    assert v2.interface_for(8) == 3 and {ex.id for ex in eight} == set(seven)
+    looks = [ex for ex in eight if ex.family in v2.LOOK_FAMILIES and not ex.changes]
+    assert looks and all(ex.oracle[-3].startswith('tool fs.read') for ex in looks)
+    seps = {next(s for s in (': ', ' = ', '=') if s in ex.oracle[-2]) for ex in looks}
+    assert seps == {': ', ' = ', '='}
+    for ex in looks:  # the file really is in the format the command expects
+        path = ex.oracle[-3].split('path: ')[1]
+        assert ex.files[path] != seven[ex.id].files[path] or '=' in ex.oracle[-2]
+    tools = p.load_tools()
+    for ex in eight:
+        for line in ex.oracle:
+            assert p.render_action(p.parse_action(line, tools, 3), tools, 3) == line, ex.id

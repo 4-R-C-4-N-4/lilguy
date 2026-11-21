@@ -56,3 +56,17 @@ def test_forbidden_output_creation_is_not_hidden_by_input_edit_counter(tmp_path)
     assert result['read_only_changes'] == [
         {'task': 'summarize_missing_packet_ids', 'paths': ['missing.txt']}]
     assert result['do_not_modify_changes'] == result['read_only_changes']
+
+
+def test_v3_answers_are_the_quoted_last_output(tmp_path):
+    folder = tmp_path / 'broad'
+    folder.mkdir()
+    ok = 'exit=0\nstdout (1 lines):\n  2026-08-17T10:24Z\tsparrow\nchanges: none\npolicy: ok'
+    (folder / 'task_latest_iso_timestamp.json').write_text(json.dumps({
+        'task': 'latest_iso_timestamp', 'passed': True, 'interface': 3,
+        'oracle': {'changes': {}, 'events': [{'observation': OK}]},
+        'model': {'terminal': 'done', 'answer': '', 'changes': {},
+                  'events': [{'action': {'kind': 'run', 'text': 'sort arrivals.tsv | tail -n 1', 'tool': None,
+                                         'args': {}}, 'observation': ok, 'is_error': False}]}}))
+    result = vb.check(tmp_path)
+    assert result['missing_answers'] == [] and result['answer_omissions'] == []

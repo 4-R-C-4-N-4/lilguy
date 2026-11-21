@@ -1591,7 +1591,7 @@ BOOST_R6 = {'read_value': 2, 'count': 2, 'largest': 2, 'grep_find': 2, 'awk_sum'
 # Asking is kept only where the request cannot be done with the workspace (a named input is
 # absent); asks that judged ambiguity are dropped.
 BLOCKED_ASK_FAMILIES = ('recover_absent',)
-_INTERFACE = {1: 1, 2: 1, 3: 1, 4: 1, 5: 2, 6: 2, 7: 3}
+_INTERFACE = {1: 1, 2: 1, 3: 1, 4: 1, 5: 2, 6: 2, 7: 3, 8: 3}
 
 
 def interface_for(revision):
@@ -1638,6 +1638,68 @@ def _v3_steps(ex):
     if r is None:
         return None
     return r if isinstance(r[0], tuple) else (r, ex.facts, ex.error_turns)
+
+
+# --- revision 8: look before narrowing, in whatever format the file uses ---------------------------
+# The first v3 adapters grepped `^key=` without looking and missed `key: value` files (dev traces of
+# reports/factory/pilot-i99_qvnk). Revision 8 keeps the read, varies the setting format, and states
+# verdicts the revision-7 re-audit found implicit.
+_FORMATS = ('{k}={v}', '{k}: {v}', '{k} = {v}')
+LOOK_FAMILIES = ('read_value', 'ro_check', 'recover_read', 'idempotent_edit')
+
+
+def _format_of(ex):
+    return _FORMATS[int(hashlib.sha256(ex.id.encode()).hexdigest(), 16) % len(_FORMATS)]
+
+
+def _reformat(text, fmt):
+    out = []
+    for line in text.splitlines(keepends=True):
+        body = line.rstrip('\n')
+        if '=' in body and not body.startswith(('[', '#')):
+            k, v = body.split('=', 1)
+            body = fmt.format(k=k, v=v)
+        out.append(body + ('\n' if line.endswith('\n') else ''))
+    return ''.join(out)
+
+
+def _v8(ex):
+    """Revision-8 rewrite of an answer-only episode (files, steps, facts, error turns), or None."""
+    steps = ex.oracle[:-1]
+    if ex.family in LOOK_FAMILIES:
+        path = _arg(steps[-1], 'path')
+        key = _key_of(ex, path)
+        value = next(v for k, v in (line.split('=', 1) for line in ex.files[path].splitlines() if '=' in line)
+                     if k == key)
+        fmt = _format_of(ex)
+        files = {**ex.files, path: _reformat(ex.files[path], fmt)}
+        prefix = fmt.format(k=key, v='')
+        line = fmt.format(k=key, v=value)
+        flag = '-H ' if ex.family == 'recover_read' else ''
+        if ex.family == 'idempotent_edit':  # "tell me whether you changed it": say so
+            last = run(f"grep -qx '{line}' {path} && echo 'already {line}; unchanged'")
+        elif ex.family == 'ro_check':  # "tell me whether": a verdict plus the actual line
+            asked = re.search(rf"\b{re.escape(key)}\b(?: set)? to (\S+?)(?=[.?]|\s)", ex.request).group(1)
+            want = fmt.format(k=key, v=asked)
+            last = run(f"grep -qx '{want}' {path} && echo 'yes, {want}' || echo \"no, $(grep '^{prefix}' {path})\"")
+        else:
+            last = run(f"grep {flag}'^{prefix}' {path}")
+        return files, (*steps, last), ex.facts, ex.error_turns
+    if ex.family == 'recover_absent':
+        missing = ex.facts[0]
+        return ex.files, (steps[0], run(f"find . -name '{missing}' | grep . || echo 'no {missing}; nothing removed'")), \
+            ex.facts, ex.error_turns
+    if ex.family == 'ask_collision':  # the copy was not made: say so
+        src_target = re.search(r'cmp (\S+) (\S+) && echo identical', '\n'.join(steps))
+        if src_target:
+            src, target = src_target.groups()
+            last = run(f"cmp -s {src} {target} && echo 'identical; {target} already matches, not copied'")
+            return ex.files, (steps[0], last), ex.facts, ex.error_turns
+    if ex.family == 'inspect_lastbyte':
+        path = re.search(r'tail -c 1 ([^\s)"]+)', steps[0]).group(1)
+        return ex.files, (run(f"[ -s {path} ] && [ -z \"$(tail -c 1 {path})\" ] && echo 'yes, it ends with a newline' "
+                              f"|| echo 'no, it does not end with a newline'"),), ex.facts, ex.error_turns
+    return None
 
 
 def _v3_steps_only(ex):
@@ -1690,10 +1752,16 @@ def _to_interface_v3(ex):
         return replace(ex, interface=3)  # a blocked `ask` keeps its question
     answer_only = not ex.changes and ex.policy_end == 'ok'
     steps, facts, errors = (_v3_steps(ex) if answer_only else None) or (ex.oracle[:-1], ex.facts, ex.error_turns)
+    files = ex.files
+    if _REV >= 8 and answer_only:
+        v8 = _v8(replace(ex, oracle=(*steps, 'done'), facts=facts, error_turns=errors)) if ex.family not in (
+            LOOK_FAMILIES) else _v8(ex)
+        if v8 is not None:
+            files, steps, facts, errors = v8
     mode = 'ask' if answer_only and ex.family not in DO_NOOP_FAMILIES else 'do'
     skip = tuple(i for i in ex.train_skip if i < len(steps))
     return replace(ex, oracle=(*(_canon(s) for s in steps), 'done'), interface=3, mode=mode, facts=facts,
-                   error_turns=errors, train_skip=skip)
+                   error_turns=errors, train_skip=skip, files=files)
 
 
 def generate(seed=DEFAULT_SEED, scale=1.0, families=None, revision=1):
