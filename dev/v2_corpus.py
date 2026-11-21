@@ -1629,9 +1629,18 @@ def _arg(line, name):
 
 
 def _v3_steps(ex):
-    """The v3 steps of an answer-only episode (without the final done), or None to keep its own.
-    Each replaces a final full read or a prose-only conclusion with a command whose output is the
-    answer; earlier steps (including deliberate slips and their recovery) are kept."""
+    """The v3 rewrite of an answer-only episode: (steps without the final done, facts, error
+    turns), or None to keep its own. Each replaces a final full read, a listing the reader must
+    count or a dump the reader must interpret with a command whose output is the answer; earlier
+    steps (including deliberate slips and their recovery) are kept. Amended before first use after
+    the revision-7 agent audit flagged answers left implicit (largest, counts, last byte, yes/no)."""
+    r = _v3_steps_only(ex)
+    if r is None:
+        return None
+    return r if isinstance(r[0], tuple) else (r, ex.facts, ex.error_turns)
+
+
+def _v3_steps_only(ex):
     steps = ex.oracle[:-1]
     if ex.family in ('read_value', 'ro_check', 'idempotent_edit'):
         path = _arg(steps[-1], 'path')
@@ -1648,12 +1657,28 @@ def _v3_steps(ex):
     if ex.family == 'recover_absent':
         missing = ex.facts[0]
         return (steps[0], run(f"find . -name '*.bak' | grep . || echo 'no {missing} here; nothing removed'"))
-    if ex.family == 'inspect_cmp' and len(steps) == 2:
+    if ex.family == 'inspect_cmp':  # one idiom for both outcomes
         a, b = steps[0].split('\n', 1)[1].split()[1:3]
-        return (steps[0], run(f'cmp -s {a} {b} && echo identical || echo differ'))
-    if ex.family == 'text_starts' and not ex.facts:
+        return ((run(f'cmp -s {a} {b} && echo identical || echo differ'),), ex.facts, ())
+    if ex.family == 'text_starts':
         word, path = re.search(r"grep -n '\^(\S+)' (\S+)", steps[0]).groups()
-        return (steps[0], run(f"grep -q '^{word}' {path} && echo yes || echo 'no line starts with {word}'"))
+        return ((run(f"grep -n '^{word}' {path} && echo yes || echo 'no line starts with {word}'"),),
+                ex.facts, ())
+    if ex.family == 'largest_file':
+        folder = re.search(r'wc -c (\S+)/\*', steps[0]).group(1)
+        return (run(f"wc -c {folder}/* | grep -v ' total$' | sort -n | tail -n 1"),)
+    if ex.family == 'count_files':
+        folder, glob = _arg(steps[0], 'path'), _arg(steps[0], 'name_glob')
+        return ((run(f"find {folder} -type f -name '{glob}' | wc -l"),), (str(len(ex.facts)),), ())
+    if ex.family == 'text_distinct':
+        return ((run(steps[0].split('\n', 1)[1] + ' | wc -l'),), (str(len(ex.facts)),), ())
+    if ex.family == 'inspect_lastbyte':
+        path = re.search(r'tail -c 1 (\S+)', steps[0]).group(1)
+        return (run(f"[ -z \"$(tail -c 1 {path})\" ] && echo 'yes, it ends with a newline' "
+                    f"|| echo 'no, it does not end with a newline'"),)
+    if ex.family == 'ro_compare':  # one idiom for both outcomes
+        a, b = steps[0].split('\n', 1)[1].split()[1:3]
+        return ((run(f'diff {a} {b} && echo same || echo differ'),), ex.facts, ())
     return None
 
 
@@ -1664,9 +1689,11 @@ def _to_interface_v3(ex):
     if ex.terminal != 'done':
         return replace(ex, interface=3)  # a blocked `ask` keeps its question
     answer_only = not ex.changes and ex.policy_end == 'ok'
-    steps = (_v3_steps(ex) if answer_only else None) or ex.oracle[:-1]
+    steps, facts, errors = (_v3_steps(ex) if answer_only else None) or (ex.oracle[:-1], ex.facts, ex.error_turns)
     mode = 'ask' if answer_only and ex.family not in DO_NOOP_FAMILIES else 'do'
-    return replace(ex, oracle=(*(_canon(s) for s in steps), 'done'), interface=3, mode=mode)
+    skip = tuple(i for i in ex.train_skip if i < len(steps))
+    return replace(ex, oracle=(*(_canon(s) for s in steps), 'done'), interface=3, mode=mode, facts=facts,
+                   error_turns=errors, train_skip=skip)
 
 
 def generate(seed=DEFAULT_SEED, scale=1.0, families=None, revision=1):
