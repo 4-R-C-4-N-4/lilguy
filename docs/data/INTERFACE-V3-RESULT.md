@@ -100,3 +100,83 @@ data. The patterns are queued for the next revision. This is an agent audit, not
   no question tasks (edit, organise, delete, permissions, scripts, recovery, explicit). This is
   cross-version, so it is reported as a reference, not a gate.
 - **Honesty:** report regressions and missed targets. A negative result is acceptable.
+
+
+## Result 1: revision 7, seed 42 (`reports/factory/pilot-i99_qvnk`)
+
+Verified for every side:
+- matched Q8_0 hashes in the identity files;
+- the RTX 3090, with zero infrastructure failures and originals preserved;
+- v3 evaluation fingerprint `fast12 569d124c...`, `broad 3862acf9...`;
+- v2 references scored with the same code under v2 (`1d7ec067...`, `7466398d...`).
+
+Training: 391 steps, stopped by the epoch cap. Fit-probe digest `da7e5bbe...`; this is a new probe
+because revision 7 has different rows.
+
+| Base | Untuned v3 | v3 adapter | v2 cosine reference (seed 43, own interface) | Decision fit |
+|---|---:|---:|---:|---:|
+| MiniCPM | 18/80 | 46/80 | 53/80 | 91.3% |
+| Qwen | 3/80 | 34/80 | 36/80 | 92.8% |
+
+| Category (n) | MiniCPM v3 | MiniCPM v2 ref | Qwen v3 | Qwen v2 ref |
+|---|---:|---:|---:|---:|
+| delete (2) | 2 | 2 | 2 | 2 |
+| edit (32) | 15 | 14 | 11 | 12 |
+| explicit (9) | 7 | 9 | 8 | 6 |
+| inspect (12) | 7 | 10 | 3 | 5 |
+| organise (9) | 8 | 9 | 5 | 6 |
+| permissions (4) | 3 | 3 | 2 | 2 |
+| read-only (7) | 2 | 4 | 2 | 1 |
+| recovery (2) | 1 | 2 | 1 | 2 |
+| scripts (3) | 1 | 0 | 0 | 0 |
+
+Behaviour, from the traces:
+- **No writes during questions.** Neither adapter staged anything in a question, and neither
+  echoed literal text as an answer.
+- **Change tasks** are about level with the v2 reference.
+- **Questions are worse.** MiniCPM passes 10 of 23 answer tasks, Qwen 5. Failure types for
+  MiniCPM / Qwen:
+  - the last output did not contain the answer: 8 / 12;
+  - no output: 1 / 5;
+  - a whole-file dump: 2 / 0;
+  - ran out of turns: 2 / 0;
+  - question mode refused a write, which then ended the episode: 0 / 1.
+
+**Diagnosis.** The traces show both adapters guessing the format before looking. They grep
+`^theme=` in a `theme: juniper` file, grep `^stockroom=` for `stockroom_colour`, or cut the
+timestamps and drop the station name. Revision 7 removed the read before the narrowing grep and
+used only `key=value` files, so the training data taught the guess. The v3 harness behaved as
+designed; the data is the defect.
+
+**Not met:**
+- MiniCPM 46 < 48;
+- Qwen 34 < 40;
+- question categories regress against the v2 reference.
+
+This is a single seed. Following the calibration rule (assess with specific tasks, refine where
+they fail), the planned seed-43 replication of revision 7 is replaced by the controlled data
+comparison below.
+
+## Declared (2026-11-21 ~00:05 EST): revision 8 versus revision 7
+
+Revision 8 (`0445f04`, `reports/corpus/v3-r8`) changes only the answer-only episodes of a few
+families:
+- **Look before narrowing.** Keep the `fs.read` before the narrowing grep.
+- **Varied setting format.** Each config file uses `k=v`, `k: v` or `k = v`, chosen by a hash of
+  the episode id, and the grep matches the format seen.
+- **Stated verdicts:**
+  - "already ...; unchanged";
+  - `yes, k=v` / `no, k=actual`;
+  - "identical; ... not copied";
+  - an empty-file-safe last-byte test;
+  - an exact-name check for a missing `.bak`.
+
+Yield: 2,164/2,164 replayed, split gate passed, 6,465 rows. That is +220 rows (+3.5% exposure)
+from the kept reads.
+
+Runs, both bases, same recipe (cosine, one epoch, 50-minute box), evaluation code unchanged:
+- **A:** revision 8 at seed 42, compared with Result 1 (revision 7, seed 42);
+- **B:** one factory command, `control=v3-r7@cosine`, `treatment=v3-r8@cosine`, at seed 43.
+
+Revision 8 counts as better for a base only if it beats revision 7 on answer tasks on both seeds
+without losing change-task categories. Targets as declared above.
