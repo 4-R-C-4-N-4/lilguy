@@ -22,7 +22,7 @@ def to_messages(saved: dict, tools) -> list[dict]:
     if saved.get('terminal') not in TRAINABLE or not (saved.get('answer') or bare_done):
         raise ValueError(f"episode ended {saved.get('terminal')!r}; only finished done/ask episodes train")
     messages = [{'role': 'system', 'content': p.system_prompt(tools, version)},
-                {'role': 'user', 'content': saved['request']}]
+                {'role': 'user', 'content': p.user_message(saved['request'], saved.get('mode', 'do'), version)}]
     for turn in saved['turns']:
         action = p.Action(**turn['action'])
         if action.kind not in ('run', 'tool'):

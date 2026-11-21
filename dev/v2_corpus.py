@@ -64,6 +64,7 @@ class Example:
     # before looking) kept only so the recovery after them is real; they are never training targets.
     train_skip: tuple = ()
     interface: int = 1  # protocol version the episode is recorded and trained under
+    mode: str = 'do'    # interface v3: 'ask' for a question (lilguy refuses any change), else 'do'
     meta: dict = field(default_factory=dict, compare=False, hash=False)
 
     def manifest(self):
@@ -91,8 +92,10 @@ def _tools():
 
 
 def _canon(line):
+    # Family oracles are authored in v2 syntax (a done may carry text); the interface an episode
+    # is recorded under is applied afterwards (_to_interface_v2), so canonicalise at v2.
     tools = _tools()
-    return protocol.render_action(protocol.parse_action(line, tools), tools)
+    return protocol.render_action(protocol.parse_action(line, tools, 2), tools, 2)
 
 
 def run(command):
@@ -1588,7 +1591,7 @@ BOOST_R6 = {'read_value': 2, 'count': 2, 'largest': 2, 'grep_find': 2, 'awk_sum'
 # Asking is kept only where the request cannot be done with the workspace (a named input is
 # absent); asks that judged ambiguity are dropped.
 BLOCKED_ASK_FAMILIES = ('recover_absent',)
-_INTERFACE = {1: 1, 2: 1, 3: 1, 4: 1, 5: 2, 6: 2}
+_INTERFACE = {1: 1, 2: 1, 3: 1, 4: 1, 5: 2, 6: 2, 7: 3}
 
 
 def interface_for(revision):
@@ -1602,6 +1605,68 @@ def _to_interface_v2(ex):
     if reported:
         return replace(ex, oracle=(*ex.oracle[:-1], 'done'), facts=(), interface=2)
     return replace(ex, interface=2)
+
+
+# --- interface v3 (revision 7): the last command prints the answer ------------------------------
+
+# Answer-only episodes of these families are change requests that turned out to need nothing
+# (already set, condition not met, nothing to delete, name taken): issued with `lilguy do`.
+DO_NOOP_FAMILIES = ('idempotent_edit', 'conditional_copy', 'recover_absent', 'ask_collision')
+
+
+def _key_of(ex, path):
+    """The setting a question names: the key in `path` whose value is the expected fact and whose
+    name appears in the request."""
+    pairs = [line.split('=', 1) for line in ex.files[path].splitlines() if '=' in line]
+    keys = [k for k, v in pairs if v in ex.facts and re.search(rf'\b{re.escape(k)}\b', ex.request)]
+    if len(keys) != 1:
+        raise ValueError(f'{ex.id}: cannot tell which setting the request names')
+    return keys[0]
+
+
+def _arg(line, name):
+    return re.search(rf'^{name}: (.*)$', line, re.M).group(1)
+
+
+def _v3_steps(ex):
+    """The v3 steps of an answer-only episode (without the final done), or None to keep its own.
+    Each replaces a final full read or a prose-only conclusion with a command whose output is the
+    answer; earlier steps (including deliberate slips and their recovery) are kept."""
+    steps = ex.oracle[:-1]
+    if ex.family in ('read_value', 'ro_check', 'idempotent_edit'):
+        path = _arg(steps[-1], 'path')
+        return (*steps[:-1], run(f"grep '^{_key_of(ex, path)}=' {path}"))
+    if ex.family == 'recover_read':
+        path = _arg(steps[-1], 'path')
+        return (*steps[:-1], run(f"grep -H '^{_key_of(ex, path)}=' {path}"))
+    if ex.family == 'ro_exists' and not ex.facts:
+        name, folder = _arg(steps[-1], 'name_glob'), _arg(steps[-1], 'path')
+        return (run(f"find {folder} -name '{name}' | grep . || echo 'no {name} under {folder}/'"),)
+    if ex.family == 'conditional_copy':
+        flag, marker = re.search(r'grep -x -- (\S+) (\S+)', steps[0]).group(2, 1)
+        return (steps[0], run(f'grep -qx {marker} {flag} || echo "not copied: {flag} has $(grep -- {marker} {flag})"'))
+    if ex.family == 'recover_absent':
+        missing = ex.facts[0]
+        return (steps[0], run(f"find . -name '*.bak' | grep . || echo 'no {missing} here; nothing removed'"))
+    if ex.family == 'inspect_cmp' and len(steps) == 2:
+        a, b = steps[0].split('\n', 1)[1].split()[1:3]
+        return (steps[0], run(f'cmp -s {a} {b} && echo identical || echo differ'))
+    if ex.family == 'text_starts' and not ex.facts:
+        word, path = re.search(r"grep -n '\^(\S+)' (\S+)", steps[0]).groups()
+        return (steps[0], run(f"grep -q '^{word}' {path} && echo yes || echo 'no line starts with {word}'"))
+    return None
+
+
+def _to_interface_v3(ex):
+    ex = _to_interface_v2(ex)
+    if ex is None:
+        return None
+    if ex.terminal != 'done':
+        return replace(ex, interface=3)  # a blocked `ask` keeps its question
+    answer_only = not ex.changes and ex.policy_end == 'ok'
+    steps = (_v3_steps(ex) if answer_only else None) or ex.oracle[:-1]
+    mode = 'ask' if answer_only and ex.family not in DO_NOOP_FAMILIES else 'do'
+    return replace(ex, oracle=(*(_canon(s) for s in steps), 'done'), interface=3, mode=mode)
 
 
 def generate(seed=DEFAULT_SEED, scale=1.0, families=None, revision=1):
@@ -1621,7 +1686,9 @@ def generate(seed=DEFAULT_SEED, scale=1.0, families=None, revision=1):
             spec['oracle'] = tuple(_canon(line) for line in spec['oracle'])
             spec['changes'] = dict(sorted(spec['changes'].items()))
             out.append(Example(**spec))
-    if interface_for(revision) >= 2:
+    if interface_for(revision) >= 3:
+        out = [ex for ex in map(_to_interface_v3, out) if ex is not None]
+    elif interface_for(revision) >= 2:
         out = [ex for ex in map(_to_interface_v2, out) if ex is not None]
     return out
 
@@ -1663,6 +1730,16 @@ def grade(task, *, terminal, answer, changes, events, original_unchanged):
     if loop.policy_of(events[-1][1]) != task.policy_end:
         reasons.append(f'final policy {loop.policy_of(events[-1][1])} != {task.policy_end}')
     low = (answer or '').casefold()
+    if task.interface >= 3 and task.terminal == 'done':
+        if task.changes or task.policy_end != 'ok':
+            return reasons  # lilguy reports the change, pending handoff or rejection
+        quote = fast12_runner.quote_text(events, task.files)  # the answer the user is shown
+        if not quote.strip():
+            reasons.append('the last command shows no answer')
+        for fact in task.facts:
+            if fact.casefold() not in quote.casefold():
+                reasons.append(f'quoted answer omits fact {fact!r}')
+        return reasons
     if bare:  # interface v2: lilguy reports the change, pending handoff or rejection
         return reasons
     if task.policy_end == 'pending' and PENDING not in low:
@@ -1685,8 +1762,11 @@ def grade(task, *, terminal, answer, changes, events, original_unchanged):
 # --- verification pipeline -------------------------------------------------------------------
 
 def _record(task, reference):
-    return dict(version=task.interface, request=task.request, terminal=reference['terminal'],
-                answer=reference['answer'], turns=reference['events'])
+    saved = dict(version=task.interface, request=task.request, terminal=reference['terminal'],
+                 answer=reference['answer'], turns=reference['events'])
+    if task.interface >= 3:
+        saved['mode'] = task.mode
+    return saved
 
 
 def verify_one(task):
@@ -1694,7 +1774,8 @@ def verify_one(task):
     tools = _tools()
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp)
-        reference = fast12_runner.run_oracle(root / 'reference', task, tools, grade)
+        reference = fast12_runner.run_oracle(root / 'reference', task, tools, grade,
+                                             version=max(task.interface, 2), mode=task.mode)
         if reference['infra_error'] is not None:
             return 'infra', {'id': task.id, 'reason': reference['infra_error']}
         if reference['failures']:
@@ -1703,7 +1784,9 @@ def verify_one(task):
         lines = tuple(m['content'] for m in episodes.to_messages(saved, tools) if m['role'] == 'assistant')
         if lines != task.oracle:
             return 'gold', {'id': task.id, 'reason': 'recorded actions do not round-trip to the oracle'}
-        replay = fast12_runner.run_episode(root / 'replay', task, fast12_runner._scripted(lines, tools), tools, grade)
+        replay = fast12_runner.run_episode(root / 'replay', task,
+                                           fast12_runner._scripted(lines, tools, max(task.interface, 2)),
+                                           tools, grade, task.mode)
     if replay != reference:
         return 'replay', {'id': task.id, 'reason': 'replay record differs from reference'}
     return 'ok', {'id': task.id, 'record': saved, 'staged': reference['changes']}

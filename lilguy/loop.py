@@ -60,9 +60,10 @@ class Record:
     terminal: str
     answer: Optional[str]
     turns: tuple
+    mode: str = "do"  # interface v3: "do" or "ask" (question, read-only); earlier versions: do
 
     def to_jsonable(self) -> dict:
-        return {
+        data = {
             "version": self.version,
             "request": self.request,
             "terminal": self.terminal,
@@ -79,6 +80,9 @@ class Record:
                 for t in self.turns
             ],
         }
+        if self.version >= 3:
+            data["mode"] = self.mode
+        return data
 
 
 # `call_tool(action) -> (observation_text, is_error)`, async; the caller owns the live session.
@@ -103,27 +107,30 @@ NextAction = Callable[[Sequence[Turn], str], Optional["p.Action"]]
 
 
 async def run_loop(call_tool: CallTool, request: str, next_action: NextAction, max_turns: int,
-                    *, version: int = p.INTERFACE_VERSION) -> Record:
+                    *, version: int = p.INTERFACE_VERSION, mode: str = "do") -> Record:
     """Drive one honest v1 trajectory to a terminal state and return its full Record.
 
     See module docstring for the fail-closed contract and the terminal kinds produced.
     """
+    def record(terminal, answer):
+        return Record(version, request, terminal, answer, tuple(turns), mode)
+
     turns: list = []
     policy = "ok"
     for _ in range(max_turns):
         try:
             action = next_action(turns, policy)
         except p.ProtocolError:
-            return Record(version, request, "invalid", None, tuple(turns))
+            return record("invalid", None)
         if action is None:
-            return Record(version, request, "exhausted", None, tuple(turns))
+            return record("exhausted", None)
         if policy != "ok" and action.kind not in ("ask", "done"):
-            return Record(version, request, "invalid", None, tuple(turns))
+            return record("invalid", None)
         if action.kind in ("ask", "done"):
-            return Record(version, request, action.kind, action.text, tuple(turns))
+            return record(action.kind, action.text)
         text, is_error = await call_tool(action)
         policy = policy_of(text)
         turns.append(Turn(action, text, is_error))
         if policy == 'unknown':
-            return Record(version, request, 'invalid', None, tuple(turns))
-    return Record(version, request, "budget", None, tuple(turns))
+            return record('invalid', None)
+    return record("budget", None)

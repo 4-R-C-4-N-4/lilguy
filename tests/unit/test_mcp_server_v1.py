@@ -137,3 +137,17 @@ def test_interface_v1_server_is_opt_in_via_cli_flag(tmp_path):
         "--toolset", str(Path(__file__).resolve().parents[2] / "toolset.yaml"),
     ])
     assert default_args.interface_v1 is False
+
+
+def test_read_only_flag_opens_sessions_whose_policy_rejects_every_change(tmp_path, monkeypatch):
+    from lilguy import mcp_server
+    from lilguy.policy.engine import Policy
+
+    args = mcp_server._parse_args([
+        "--workspace", str(tmp_path), "--state-dir", str(tmp_path / "state"),
+        "--toolset", str(Path(__file__).resolve().parents[2] / "toolset.yaml"),
+        "--interface-v1", "--read-only",
+    ])
+    assert args.read_only is True
+    assert mcp_server.trusted_policies(read_only=True) == [Policy(read_only=True)]
+    assert mcp_server.trusted_policies(read_only=False) is None

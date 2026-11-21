@@ -29,7 +29,7 @@ def _script(monkeypatch, replies):
         try:
             return next(it)
         except StopIteration:
-            return "done\nscript exhausted"
+            return "done"
     monkeypatch.setattr(do, "_chat_complete", fake_complete)
 
 
@@ -50,12 +50,12 @@ def test_do_edit_stages_the_change_records_it_and_hands_off_cleanly(tmp_path, mo
     workspace, state = _state_and_workspace(tmp_path, "edit", {"notes.txt": "status: draft\n"})
     _script(monkeypatch, [
         "tool fs.edit\npath: notes.txt\nold: status: draft\nnew: status: ready",
-        "done\nchanged status to ready",
+        "done",
     ])
     record, session_dir = do.drive("change status to ready", workspace, state, skip_preflight=True)
 
     assert record.terminal == "done"
-    assert record.answer == "changed status to ready"
+    assert record.answer == ""
     assert len(record.turns) == 1
     assert "policy: ok" in record.turns[0].observation
 
@@ -67,7 +67,7 @@ def test_do_edit_stages_the_change_records_it_and_hands_off_cleanly(tmp_path, mo
     assert path.is_relative_to(state)
     assert not path.is_relative_to(workspace)
     loaded = do.load_record(path)
-    assert loaded["terminal"] == "done" and loaded["answer"] == "changed status to ready"
+    assert loaded["terminal"] == "done" and loaded["answer"] == "" and loaded["mode"] == "do"
 
     # the handoff is derived from the session's own ground truth, not the model's claim
     handoff = do.describe_handoff(session_dir)
@@ -79,7 +79,7 @@ def test_do_edit_stages_the_change_records_it_and_hands_off_cleanly(tmp_path, mo
 def test_do_edit_replays_to_a_matching_record_and_staged_effect(tmp_path, monkeypatch):
     lines = [
         "tool fs.edit\npath: notes.txt\nold: status: draft\nnew: status: ready",
-        "done\nchanged status to ready",
+        "done",
     ]
     results = []
     for i in range(2):
@@ -113,7 +113,7 @@ def test_do_pending_policy_surfaces_the_real_approval_handoff(tmp_path, monkeypa
     workspace, state = _state_and_workspace(tmp_path, "pending", {"notes.txt": "todo: ship\nstatus: draft\n"})
     _script(monkeypatch, [
         "run\ncp /dev/null notes.txt",
-        "done\nnotes.txt truncation is staged and pending your approval",
+        "done",
     ])
     record, session_dir = do.drive("clear out notes.txt", workspace, state, skip_preflight=True)
 
@@ -172,12 +172,12 @@ def test_cli_do_main_prints_the_handoff_and_saves_the_record(tmp_path, monkeypat
     monkeypatch.setattr(do, "check_model", lambda url, timeout=5.0: None)
     _script(monkeypatch, [
         "tool fs.edit\npath: notes.txt\nold: status: draft\nnew: status: ready",
-        "done\nchanged status to ready",
+        "done",
     ])
     code = do.main(["change status to ready", "--workspace", str(workspace), "--state-dir", str(state)])
     out = capsys.readouterr().out
     assert code == 0
-    assert "[done] model's note (unverified): changed status to ready" in out
+    assert out.startswith("[done]\n")  # v3: no model summary at all
     assert "fs.edit path=notes.txt old=<13 chars> new=<13 chars>" in out
     plan = out.split("Changed contents")[0]
     assert "status: draft" not in plan  # typed edit literals are not kept in the audit log
@@ -188,3 +188,31 @@ def test_cli_do_main_prints_the_handoff_and_saves_the_record(tmp_path, monkeypat
     assert len(records) == 1
     saved = json.loads(records[0].read_text())
     assert saved["terminal"] == "done" and saved["schema_version"] == do.RECORD_SCHEMA_VERSION
+
+
+def test_cli_ask_quotes_the_last_output(tmp_path, monkeypatch, capsys):
+    workspace, state = _state_and_workspace(tmp_path, "ask", {"access.log": "GET /\nGET /about\nPOST /x\n"})
+    monkeypatch.setattr(do, "check_sandbox", lambda: None)
+    monkeypatch.setattr(do, "check_model", lambda url, timeout=5.0: None)
+    _script(monkeypatch, ["tool fs.read\npath: access.log", "run\nwc -l < access.log", "done"])
+    code = do.ask_main(["How many lines are in access.log?", "--workspace", str(workspace), "--state-dir", str(state)])
+    out = capsys.readouterr().out
+    assert code == 0
+    assert out.startswith("Answer (output of `wc -l < access.log`, exit 0):\n  3\n")
+    assert "Nothing staged" in out
+    assert json.loads(next((state / "records").glob("*.json")).read_text())["mode"] == "ask"
+
+
+def test_cli_ask_refuses_a_write_and_shows_no_answer(tmp_path, monkeypatch, capsys):
+    workspace, state = _state_and_workspace(tmp_path, "askw", {"access.log": "GET /\nGET /about\nPOST /x\n"})
+    monkeypatch.setattr(do, "check_sandbox", lambda: None)
+    monkeypatch.setattr(do, "check_model", lambda url, timeout=5.0: None)
+    _script(monkeypatch, ["run\nwc -l < access.log > count.txt", "done"])
+    code = do.ask_main(["How many lines are in access.log?", "--workspace", str(workspace), "--state-dir", str(state)])
+    out = capsys.readouterr().out
+    assert code == 0
+    assert out.startswith("No answer: the model did not finish with a command that lilguy let stand")
+    assert "Nothing staged" in out
+    assert sorted(p.name for p in workspace.iterdir()) == ["access.log"]
+    saved = json.loads(next((state / "records").glob("*.json")).read_text())
+    assert "policy: rejected (read-only question: count.txt)" in saved["turns"][0]["observation"]

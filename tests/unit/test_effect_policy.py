@@ -51,3 +51,23 @@ def test_policy_refuses_unknown_fields(tmp_path):
     policy.write_text("auto_commit:\n  max_deletttes: 100\n")
     with pytest.raises(ValueError):
         load_policy(policy)
+
+
+def test_read_only_policy_rejects_any_staged_change():
+    from lilguy.policy.engine import Policy, evaluate, evaluate_policies, active_policies
+    ro = Policy(read_only=True)
+    for entry in (DiffEntry("added", "out.txt", "file"), DiffEntry("modified", "a.txt", "file"),
+                  DiffEntry("deleted", "build/x", "file"), DiffEntry("meta", "run.sh", "file", mode_before=0o644,
+                                                                      mode_after=0o755)):
+        decision = evaluate([entry], [entry], ro)
+        assert (decision.kind, decision.rule, decision.detail) == ("reject", "read_only", f"read-only question: {entry.path}")
+    assert evaluate([], [], ro).kind == "ok"
+    assert evaluate_policies([DiffEntry("added", "x", "file")], [], active_policies([ro])).rule == "read_only"
+    assert Policy().read_only is False
+
+
+def test_read_only_cannot_be_switched_by_workspace_yaml(tmp_path):
+    from lilguy.policy.engine import load_policy
+    (tmp_path / "p.yaml").write_text("read_only: true\n")
+    with pytest.raises(ValueError):
+        load_policy(tmp_path / "p.yaml")

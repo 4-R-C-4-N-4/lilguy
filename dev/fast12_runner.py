@@ -42,6 +42,9 @@ from lilguy.sandbox import layers, persist
 from lilguy.sandbox.diff import session_diff
 
 MAX_TURNS = 6
+# Task oracles are authored in interface-v2 syntax, a superset that accepts done with or without
+# text. They are replayed in the interface being evaluated; from v3 a done carries no text.
+ORACLE_SYNTAX = 2
 
 
 class InfraError(RuntimeError):
@@ -62,17 +65,17 @@ def write_fixture(root: Path, files: dict) -> Path:
     return ws
 
 
-def _server_params(ws: Path, state: Path) -> StdioServerParameters:
+def _server_params(ws: Path, state: Path, mode: str = "do") -> StdioServerParameters:
     env = {k: os.environ[k] for k in ("XDG_RUNTIME_DIR", "DBUS_SESSION_BUS_ADDRESS") if k in os.environ}
     return StdioServerParameters(command=sys.executable, env=env, args=[
         "-m", "lilguy.mcp_server", "--workspace", str(ws), "--state-dir", str(state),
         "--toolset", str(p.TOOLSET), "--interface-v1",
-    ])
+    ] + (["--read-only"] if mode == "ask" else []))
 
 
 # --- the shared turn loop ---------------------------------------------------------------------
 
-async def _drive(ws: Path, state: Path, tools, next_action, max_turns: int = MAX_TURNS):
+async def _drive(ws: Path, state: Path, tools, next_action, max_turns: int = MAX_TURNS, mode: str = "do"):
     """Run turns against one guarded MCP session until a terminal action or the budget runs out.
 
     Thin adapter over the shared `lilguy.loop.run_loop` core: opens the one guarded MCP session,
@@ -80,7 +83,7 @@ async def _drive(ws: Path, state: Path, tools, next_action, max_turns: int = MAX
     this module's own (terminal, answer, events) contract so no caller here has to change.
     """
     pending_infra_error = None
-    async with stdio_client(_server_params(ws, state)) as (r, w), ClientSession(r, w) as client:
+    async with stdio_client(_server_params(ws, state, mode)) as (r, w), ClientSession(r, w) as client:
         await client.initialize()
 
         async def call_tool(action):
@@ -156,12 +159,12 @@ def collect_changes(state: Path) -> dict:
     return changes
 
 
-def run_episode(root: Path, task, next_action, tools, grade):
+def run_episode(root: Path, task, next_action, tools, grade, mode: str = "do"):
     """One fixture + one session + one drive + one read-only scoring pass."""
     ws = write_fixture(root, task.files)
     state = root / "state"
     try:
-        terminal, answer, events = asyncio.run(_drive(ws, state, tools, next_action))
+        terminal, answer, events = asyncio.run(_drive(ws, state, tools, next_action, mode=mode))
     except InfraError as exc:
         return {"terminal": "infra-error", "answer": None, "original_unchanged": None,
                 "changes": {}, "failures": None, "infra_error": str(exc), "events": []}
@@ -189,7 +192,7 @@ def run_episode(root: Path, task, next_action, tools, grade):
 
 # --- the three conditions -----------------------------------------------------------------------
 
-def _scripted(lines, tools):
+def _scripted(lines, tools, version=ORACLE_SYNTAX):
     it = iter(lines)
 
     def next_action(events, policy):
@@ -198,14 +201,15 @@ def _scripted(lines, tools):
         except StopIteration:
             return None
         try:
-            return p.parse_action(line, tools)
+            action = p.parse_action(line, tools, ORACLE_SYNTAX)
         except p.ProtocolError as exc:
             raise InfraError(f"oracle script is not a valid v1 action: {exc}") from exc
+        return p.Action.done() if version >= 3 and action.kind == "done" else action
 
     return next_action
 
 
-def _false_done():
+def _false_done(version=ORACLE_SYNTAX):
     done_sent = False
 
     def next_action(events, policy):
@@ -213,24 +217,24 @@ def _false_done():
         if done_sent:
             return None
         done_sent = True
-        return p.Action.done("done without doing anything (control probe)")
+        return p.Action.done("" if version >= 3 else "done without doing anything (control probe)")
 
     return next_action
 
 
-def run_oracle(root: Path, task, tools, grade):
-    return run_episode(root, task, _scripted(task.oracle, tools), tools, grade)
+def run_oracle(root: Path, task, tools, grade, version=ORACLE_SYNTAX, mode="do"):
+    return run_episode(root, task, _scripted(task.oracle, tools, version), tools, grade, mode)
 
 
-def run_false_done(root: Path, task, tools, grade):
-    return run_episode(root, task, _false_done(), tools, grade)
+def run_false_done(root: Path, task, tools, grade, version=ORACLE_SYNTAX, mode="do"):
+    return run_episode(root, task, _false_done(version), tools, grade, mode)
 
 
-def run_model(root: Path, task, tools, port, opener, grade, version=p.INTERFACE_VERSION):
+def run_model(root: Path, task, tools, port, opener, grade, version=p.INTERFACE_VERSION, mode="do"):
     ws = write_fixture(root, task.files)
     state = root / "state"
     messages = [{"role": "system", "content": p.system_prompt(tools, version)},
-                {"role": "user", "content": task.request}]
+                {"role": "user", "content": p.user_message(task.request, mode, version)}]
     grammar = p.grammar(tools, version)
     metrics = {"requests": 0, "prompt_tokens": 0, "completion_tokens": 0, "model_seconds": 0.0}
     started = time.monotonic()
@@ -240,7 +244,7 @@ def run_model(root: Path, task, tools, port, opener, grade, version=p.INTERFACE_
         shared conversation history and feeds its reply through the same fail-closed core
         `_drive` uses, so the scripted and model paths share one definition of what "done",
         "ask", "budget" and "invalid" mean."""
-        async with stdio_client(_server_params(ws, state)) as (r, w), ClientSession(r, w) as client:
+        async with stdio_client(_server_params(ws, state, mode)) as (r, w), ClientSession(r, w) as client:
             await client.initialize()
 
             async def call_tool(action):
@@ -271,7 +275,8 @@ def run_model(root: Path, task, tools, port, opener, grade, version=p.INTERFACE_
                     messages.append({"role": "user", "content": p.invalid_action_message(str(exc))})
                     raise
 
-            record = await loop.run_loop(call_tool, task.request, next_action, MAX_TURNS)
+            record = await loop.run_loop(call_tool, task.request, next_action, MAX_TURNS, version=version,
+                                         mode=mode)
         return (record.terminal, record.answer,
                 [(t.action, t.observation, t.is_error) for t in record.turns])
 
@@ -320,7 +325,13 @@ def answer_required(oracle: dict) -> bool:
 
 def interface_grade(grade, *, answer_required, version):
     """In v2 the user reviews lilguy's executed plan and diff, so a change task's done text is
-    not graded; effects, terminal kind, policy and evidence checks are unchanged."""
+    not graded; effects, terminal kind, policy and evidence checks are unchanged. In v3 the
+    answer to a question is the quoted output of the last step, so the same answer checks run
+    on that quote instead of on the model's words (a v3 done has none)."""
+    if version >= 3 and answer_required:
+        def quoted(task, *, events, answer, **kwargs):
+            return grade(task, events=events, answer=quote_text(events, task.files), **kwargs)
+        return quoted
     if version < 2 or answer_required:
         return grade
 
@@ -329,12 +340,57 @@ def interface_grade(grade, *, answer_required, version):
     return graded
 
 
+def quote_text(events, files=None) -> str:
+    """The v3 answer: stdout of the last step as lilguy shows it. Empty when there is none, the
+    policy refused the step, the command only printed literal text the model typed, or the output
+    is just the whole of a multi-line input file (that is the evidence, not an answer)."""
+    quote = p.quoted_answer([loop.Turn(action, observation, error) for action, observation, error in events])
+    if quote is None or quote.literal:
+        return ""
+    inputs = {text.rstrip("\n") for text in (files or {}).values() if text.strip().count("\n") >= 1}
+    return "" if quote.text.rstrip("\n") in inputs else quote.text
+
+
+def task_mode(task, version=p.INTERFACE_VERSION) -> str:
+    """Interface v3 mode an evaluation task is issued in: `ask` for the development questions
+    listed in dev/oracles_v3.py (the user would type `lilguy ask`), `do` for everything else."""
+    if version < 3:
+        return "do"
+    from dev.oracles_v3 import ASK
+    return "ask" if task.id in ASK else "do"
+
+
+def with_oracle(task, oracle):
+    return type(task)(**{**task.__dict__, "oracle": tuple(oracle)})
+
+
+def _events(run):
+    """A recorded run's trace events back as (Action, observation, is_error) tuples."""
+    return [(p.Action(**e["action"]), e["observation"], e["is_error"]) for e in run["events"]]
+
+
+def oracle_for(task, version):
+    """v3 replaces the oracle of a question with one whose last command prints the answer."""
+    if version >= 3:
+        from dev.oracles_v3 import ORACLES
+        if task.id in ORACLES:
+            return with_oracle(task, ORACLES[task.id])
+    return task
+
+
 def judge_task(root: Path, task, tools, port, opener, grade, version=p.INTERFACE_VERSION) -> dict:
-    oracle = run_oracle(root / "oracle", task, tools, grade)
+    task = oracle_for(task, version)
+    mode = task_mode(task, version)  # the controls run in the mode the model gets
+    oracle = run_oracle(root / "oracle", task, tools, grade, version=version, mode=mode)
     scored = grade if oracle["infra_error"] else interface_grade(
         grade, answer_required=answer_required(oracle), version=version)
-    false_done = run_false_done(root / "false_done", task, tools, scored)
-    model = run_model(root / "model", task, tools, port, opener, scored, version)
+    if version >= 3 and oracle["infra_error"] is None:
+        failures = list(scored(task, terminal=oracle["terminal"], answer=oracle["answer"],
+                               changes=oracle["changes"], events=_events(oracle),
+                               original_unchanged=oracle["original_unchanged"]))
+        oracle = {**oracle, "failures": failures}
+    false_done = run_false_done(root / "false_done", task, tools, scored, version=version, mode=mode)
+    model = run_model(root / "model", task, tools, port, opener, scored, version, mode)
 
     oracle_ok = oracle["infra_error"] is None and not oracle["failures"]
     false_done_caught = false_done["infra_error"] is None and bool(false_done["failures"])
@@ -346,7 +402,7 @@ def judge_task(root: Path, task, tools, port, opener, grade, version=p.INTERFACE
 
     return {
         "task": task.id, "passed": passed, "infra_failure": infra_failure,
-        "interface": version,
+        "interface": version, **({"mode": mode} if version >= 3 else {}),
         "model_miss": controls_agree and not model_ok and model["infra_error"] is None,
         "controls_agree": controls_agree,
         "oracle": oracle, "false_done": false_done, "model": model,

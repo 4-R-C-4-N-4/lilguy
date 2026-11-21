@@ -59,3 +59,39 @@ to infer "read-only" from the wording.
 
 Before any GPU time, the recorded seed-42/43 traces will be regraded offline under v3 quoting.
 That gives a rough estimate of the effect, with no claim attached.
+
+## Specification (as implemented)
+
+- **Protocol** (`lilguy/protocol.py`):
+  - `INTERFACE_VERSION = 3`; versions 1, 2 and 3 are supported. The v3 golden prompt is
+    `tests/unit/interface_v3_system_prompt.txt`.
+  - `done` takes no text: the grammar is `done ::= "done"` and the parser rejects any text after
+    it. `ask` is unchanged.
+  - The first user message is `Request: ...` (`do`) or `Question: ...` (`ask`) (`user_message`).
+    Earlier versions keep the raw request.
+  - `quoted_answer(turns)` takes the last executed step, if its policy is `ok`, and returns its
+    command, exit code and digested stdout. It marks a command as `literal` when it only prints
+    text the model typed (`echo`/`printf` with no substitution, pipe, redirect or condition).
+- **Question mode:**
+  - `Policy(read_only=True)` rejects any staged change (rule `read_only`) and rolls the step back.
+    The model sees `policy: rejected (read-only question: PATH)`. A workspace `policy.yaml` cannot
+    set it.
+  - The MCP server takes `--read-only`. `lilguy ask` uses it and prints the quoted answer; a
+    literal echo is reported as no answer.
+- **Records** carry `mode` from v3 on; v1 and v2 record shapes are unchanged.
+- **Evaluation** (`dev/fast12_runner.py`, `dev/oracles_v3.py`):
+  - 21 listed development questions run in `ask` mode; everything else runs in `do`.
+  - Oracle syntax stays v2; from v3 a scripted `done` is replayed bare.
+  - Questions whose v2 oracle did not end on an answering command get a v3 oracle (18 tasks).
+  - Where the scripted solution changes nothing (an answer task), the existing graders check the
+    quoted stdout of the last step. A literal echo, or output that is just the whole of a
+    multi-line input file, counts as no answer.
+  - Change tasks keep v2 grading.
+  - Calibration: all 80 development tasks pass their v3 oracle and fail an immediate bare `done`
+    (`tests/sandbox/test_dev_v3_live.py`). The same test replays three recorded v2 model writes
+    in question mode: all are rejected, nothing is staged and the originals are untouched.
+- **Not yet:**
+  - held-out v3 recalibration, which needs modes and v3 oracles for its question tasks and is
+    authorised as part of v3, before any model runs on it;
+  - corpus revision 7;
+  - training.

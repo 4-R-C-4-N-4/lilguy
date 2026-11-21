@@ -27,7 +27,7 @@ def test_exact_output_does_not_excuse_an_extra_effect_or_changes_to_originals():
 def test_oracles_use_the_frozen_parser_and_only_add_files():
     tools = p.load_tools()
     for task in dev_shell.TASKS:
-        actions = [p.parse_action(line, tools) for line in task.oracle]
+        actions = [p.parse_action(line, tools, 2) for line in task.oracle]
         assert actions[-1].kind == 'done'
         assert all(action.kind in {'run', 'tool'} for action in actions[:-1])
         assert task.changes.keys().isdisjoint(task.files)

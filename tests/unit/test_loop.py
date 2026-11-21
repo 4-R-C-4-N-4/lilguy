@@ -183,8 +183,10 @@ def test_record_to_jsonable_round_trips_structure():
     data = record.to_jsonable()
     assert data == {
         "version": p.INTERFACE_VERSION, "request": "req", "terminal": "done",
-        "answer": "ok", "turns": [],
+        "answer": "ok", "turns": [], "mode": "do",
     }
+    v2 = asyncio.run(loop.run_loop(_sync_call_tool([]), "req", next_action, max_turns=1, version=2))
+    assert "mode" not in v2.to_jsonable()  # earlier versions keep their exact record shape
 
 
 def test_turns_seen_by_next_action_grow_each_call():

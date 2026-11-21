@@ -256,6 +256,8 @@ def _parse_args(argv=None):
     parser.add_argument("--toolset", required=True, type=Path, help="Trusted toolset.yaml outside the workspace")
     parser.add_argument("--interface-v1", action="store_true",
                          help="Serve interface v1 (run + typed tools) instead of the pilot tracer's three tools")
+    parser.add_argument("--read-only", action="store_true",
+                        help="Question mode (interface v3 `ask`): the policy rejects and rolls back any change")
     args = parser.parse_args(argv)
     workspace = args.workspace.resolve()
     state = args.state_dir.resolve()
@@ -263,6 +265,13 @@ def _parse_args(argv=None):
     if source.is_relative_to(workspace) or source.is_relative_to(state):
         parser.error("The trusted toolset must be outside the workspace and session state")
     return args
+
+
+def trusted_policies(*, read_only: bool):
+    """The caller-side policies for a session: None keeps the defaults; question mode refuses
+    every change (the defaults' other rules still apply inside Policy(read_only=True))."""
+    from .policy.engine import Policy
+    return [Policy(read_only=True)] if read_only else None
 
 
 def main(argv=None) -> None:
@@ -274,7 +283,7 @@ def main(argv=None) -> None:
     def open_guarded():
         backend = BwrapBackend()
         session = backend.open_session(workspace, SessionConfig(state_dir=state, network="off"))
-        return GuardedSession(backend, session)
+        return GuardedSession(backend, session, trusted_policies(read_only=args.read_only))
 
     if args.interface_v1:
         asyncio.run(serve_v1(InterfaceV1(build_v1_tools(), open_guarded)))

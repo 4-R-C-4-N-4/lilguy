@@ -109,7 +109,7 @@ def _run_scenario(tmp_path, name, fixture_files, request, lines):
 def _edit_lines():
     return [
         "tool fs.edit\npath: notes.txt\nold: status: draft\nnew: status: ready",
-        "done\nchanged status to ready",
+        "done",
     ]
 
 
@@ -121,7 +121,7 @@ def test_edit_reaches_done_with_the_staged_effect_matching():
             "change status to ready", _edit_lines())
     assert record.version == p.INTERFACE_VERSION
     assert record.terminal == "done"
-    assert record.answer == "changed status to ready"
+    assert record.answer == ""
     assert len(record.turns) == 1
     assert "policy: ok" in record.turns[0].observation
     assert not record.turns[0].is_error
@@ -203,7 +203,7 @@ def test_ask_replays_to_a_matching_terminal():
 def _pending_then_done_lines():
     return [
         "run\ncp /dev/null notes.txt",
-        "done\nnotes.txt truncation is staged and pending your approval",
+        "done",
     ]
 
 
@@ -214,7 +214,7 @@ def test_pending_policy_forces_approval_stop_then_honest_done():
             Path(tmp), "approval-stop", {"notes.txt": "todo: ship\nstatus: draft\n"},
             "clear out notes.txt", _pending_then_done_lines())
     assert record.terminal == "done"
-    assert record.answer == "notes.txt truncation is staged and pending your approval"
+    assert record.answer == ""
     assert len(record.turns) == 1
     assert "policy: pending" in record.turns[0].observation
     assert record.turns[0].is_error  # non-ok policy outcomes surface as a tool error

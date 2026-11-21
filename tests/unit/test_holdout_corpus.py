@@ -57,7 +57,7 @@ def run_oracle(task, actions=None):
         return entry, pol.evaluate_policies([entry], session_entries + [entry], policies)
 
     for raw in (actions if actions is not None else task.oracle):
-        action = p.parse_action(raw, TOOLS)
+        action = p.parse_action(raw, TOOLS, 2)
         if action.kind == "ask":
             terminal, answer = "ask", action.text
             events.append((action, "", False))
@@ -145,7 +145,7 @@ def test_every_task_has_a_grading_spec():
 def test_oracle_actions_all_parse_as_v1():
     for task in hc.TASKS:
         for raw in task.oracle:
-            p.parse_action(raw, TOOLS)  # raises ProtocolError on anything malformed
+            p.parse_action(raw, TOOLS, 2)  # raises ProtocolError on anything malformed
 
 
 def test_grade_reports_unknown_task_id_instead_of_crashing():

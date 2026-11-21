@@ -1,6 +1,9 @@
-"""`lilguy do REQUEST`: one v1 trajectory, driven by a loopback llama.cpp model, through
+"""`lilguy do REQUEST` / `lilguy ask QUESTION`: one trajectory, driven by a loopback llama.cpp model, through
 the guarded MCP interface-v1 server only -- staged, never applied, with the diff and the
 trusted-human approval handoff on the existing CLI (`lilguy diff|approve|deny|commit`).
+
+`ask` (interface v3) is question mode: the session's policy rejects and rolls back any change,
+and the answer shown is the output of the model's last command, quoted from what ran.
 
 Safety posture (why this module exists rather than reusing the legacy agent):
 
@@ -93,7 +96,7 @@ def _chat_complete(url: str, model: str | None, messages: list[dict], grammar: s
 
 
 def make_model_driver(tools, request: str, url: str, model: str | None = None,
-                       use_grammar: bool = True, timeout: float = 120.0):
+                       use_grammar: bool = True, timeout: float = 120.0, mode: str = "do"):
     """Build the `next_action` run_loop needs: stateless in `turns` (rebuilt every call, no
     closure state to drift from the Record), using interface v1's own system prompt,
     grammar and canonical action rendering -- the one definition of the protocol, not a
@@ -102,10 +105,11 @@ def make_model_driver(tools, request: str, url: str, model: str | None = None,
     safe abort by the caller, the latter is caught by run_loop itself."""
     system = p.system_prompt(tools)
     grammar = p.grammar(tools) if use_grammar else None
+    opening = p.user_message(request, mode)
 
     def next_action(turns, policy):
         messages = [{"role": "system", "content": system},
-                    {"role": "user", "content": f"Request: {request}"}]
+                    {"role": "user", "content": opening}]
         for turn in turns:
             messages.append({"role": "assistant", "content": p.render_action(turn.action, tools)})
             messages.append({"role": "user", "content": p.observation_message(turn.observation)})
@@ -113,6 +117,22 @@ def make_model_driver(tools, request: str, url: str, model: str | None = None,
         return p.parse_action(raw, tools)
 
     return next_action
+
+
+def render_answer(record: "loop.Record") -> str:
+    """What a question gets back: the last command's output as lilguy recorded it, never the
+    model's words. An `ask` terminal is shown as the model's unverified note."""
+    if record.terminal == "ask":
+        return f"The model says something is missing (unverified): {record.answer or ''}"
+    quote = p.quoted_answer(record.turns) if record.terminal == "done" else None
+    if quote is None:
+        return ("No answer: the model did not finish with a command that lilguy let stand "
+                f"(ended {record.terminal}).")
+    if quote.literal:
+        return (f"No answer: the last command only printed text the model typed (`{quote.command}`); "
+                "nothing was computed from your files.")
+    body = "\n".join("  " + line for line in quote.text.split("\n")) if quote.text else "  (no output)"
+    return f"Answer (output of `{quote.command}`, exit {quote.exit_code}):\n{body}"
 
 
 # --- call_tool: the guarded MCP client call, with its own fail-safe on top of run_loop ------
@@ -255,18 +275,22 @@ def describe_handoff(session_dir: Path | None) -> str:
 
 # --- the drive itself: guarded MCP only, never a direct in-process GuardedSession -----------
 
+def server_args(workspace: Path, state_dir: Path, mode: str) -> list[str]:
+    args = ["-m", "lilguy.mcp_server", "--workspace", str(workspace), "--state-dir", str(state_dir),
+            "--toolset", str(ROOT / "toolset.yaml"), "--interface-v1"]
+    return args + ["--read-only"] if mode == "ask" else args
+
+
 async def _run(request: str, workspace: Path, state_dir: Path, url: str, model: str | None,
-                max_turns: int, use_grammar: bool, timeout: float) -> "loop.Record":
+                max_turns: int, use_grammar: bool, timeout: float, mode: str = "do") -> "loop.Record":
     import anyio
     from mcp import ClientSession, StdioServerParameters
     from mcp.client.stdio import stdio_client
 
     tools = p.load_tools()
     env = {k: os.environ[k] for k in ("XDG_RUNTIME_DIR", "DBUS_SESSION_BUS_ADDRESS") if k in os.environ}
-    params = StdioServerParameters(command=sys.executable, cwd=str(ROOT), env=env, args=[
-        "-m", "lilguy.mcp_server", "--workspace", str(workspace), "--state-dir", str(state_dir),
-        "--toolset", str(ROOT / "toolset.yaml"), "--interface-v1",
-    ])
+    params = StdioServerParameters(command=sys.executable, cwd=str(ROOT), env=env,
+                                   args=server_args(workspace, state_dir, mode))
     with anyio.fail_after(timeout):
         async with stdio_client(params) as (read, write):
             async with ClientSession(read, write) as client:
@@ -278,13 +302,14 @@ async def _run(request: str, workspace: Path, state_dir: Path, url: str, model: 
                         f"the guarded MCP server exposes approval authority to the model: "
                         f"{sorted(forbidden)}; refusing to drive it")
                 call_tool = make_call_tool(client)
-                next_action = make_model_driver(tools, request, url, model, use_grammar, timeout)
-                return await loop.run_loop(call_tool, request, next_action, max_turns)
+                next_action = make_model_driver(tools, request, url, model, use_grammar, timeout, mode)
+                return await loop.run_loop(call_tool, request, next_action, max_turns, mode=mode)
 
 
 def drive(request: str, workspace: Path, state_dir: Path, *, url: str = DEFAULT_URL,
           model: str | None = None, max_turns: int = 15, use_grammar: bool = True,
-          timeout: float = 300.0, skip_preflight: bool = False) -> tuple["loop.Record", Path | None]:
+          timeout: float = 300.0, skip_preflight: bool = False,
+          mode: str = "do") -> tuple["loop.Record", Path | None]:
     """Run one `do` trajectory end to end and return (record, session_dir). `session_dir` is
     None iff the trajectory never opened a sandbox session (e.g. it ended on `ask` without
     any tool call) -- a legitimate outcome, not a failure. Preflight is skippable only for
@@ -294,17 +319,18 @@ def drive(request: str, workspace: Path, state_dir: Path, *, url: str = DEFAULT_
         check_sandbox()
         check_model(url)
     record = asyncio.run(_run(request, workspace, state_dir, url, model, max_turns,
-                              use_grammar, timeout))
+                              use_grammar, timeout, mode))
     session_dir = find_new_session(state_dir)
     return record, session_dir
 
 
 # --- CLI --------------------------------------------------------------------------------------
 
-def _parser():
+def _parser(mode="do"):
     parser = argparse.ArgumentParser(
-        prog="lilguy do", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("request", help="what you want done, in plain language")
+        prog=f"lilguy {mode}", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("request", help="what you want done, in plain language" if mode == "do"
+                        else "your question; lilguy refuses any change to files")
     parser.add_argument("--workspace", type=Path, default=Path("."))
     parser.add_argument("--state-dir", type=Path, required=True,
                         help="private session state root; must be outside the workspace")
@@ -317,35 +343,44 @@ def _parser():
     return parser
 
 
-def main(argv: list[str] | None = None) -> int:
-    args = _parser().parse_args(argv)
+def main(argv: list[str] | None = None, mode: str = "do") -> int:
+    args = _parser(mode).parse_args(argv)
     workspace = args.workspace.resolve()
     state_dir = args.state_dir.resolve()
 
     try:
         record, session_dir = drive(
             args.request, workspace, state_dir, url=args.url, model=args.model,
-            max_turns=args.max_turns, use_grammar=not args.no_grammar, timeout=args.timeout)
+            max_turns=args.max_turns, use_grammar=not args.no_grammar, timeout=args.timeout, mode=mode)
     except DoSafetyError as exc:
-        print(f"lilguy do failed safely: {exc}", file=sys.stderr)
+        print(f"lilguy {mode} failed safely: {exc}", file=sys.stderr)
         return 2
     except Exception as exc:  # anyio timeouts, transport errors, etc: never a legacy fallback
-        print(f"lilguy do failed safely (unexpected error, nothing was applied): {exc}", file=sys.stderr)
+        print(f"lilguy {mode} failed safely (unexpected error, nothing was applied): {exc}", file=sys.stderr)
         return 2
 
     try:
         session_id = session_dir.name if session_dir is not None else "no-session"
         record_path = save_record(state_dir, session_id, args.request, workspace, record)
-        # The model's own words are a note, not the report: the executed plan and the diff
-        # below are rebuilt from the session's trusted state.
-        print(f"[{record.terminal}] model's note (unverified): {record.answer or ''}")
+        # The model's own words are never the report: the answer is quoted from what ran, and
+        # the executed plan and the diff below are rebuilt from the session's trusted state.
+        if mode == "ask":
+            print(render_answer(record))
+        elif record.answer:
+            print(f"[{record.terminal}] model's note (unverified): {record.answer}")
+        else:
+            print(f"[{record.terminal}]")
         print(f"Record saved: {record_path}")
         print()
         print(describe_handoff(session_dir))
     except (OSError, DoSafetyError) as exc:
-        print(f"lilguy do: {exc}", file=sys.stderr)
+        print(f"lilguy {mode}: {exc}", file=sys.stderr)
         return 2
     return 0 if record.terminal in ("done", "ask") else 1
+
+
+def ask_main(argv: list[str] | None = None) -> int:
+    return main(argv, mode="ask")
 
 
 if __name__ == "__main__":

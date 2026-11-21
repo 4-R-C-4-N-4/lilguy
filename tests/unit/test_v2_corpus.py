@@ -9,7 +9,7 @@ from dev.broad_runner import development_rows, task_graders
 from lilguy import protocol as p
 
 
-@pytest.fixture(scope='module', params=[1, 2, 3, 4, 5, 6], ids=['rev1', 'rev2', 'rev3', 'rev4', 'rev5', 'rev6'])
+@pytest.fixture(scope='module', params=[1, 2, 3, 4, 5, 6, 7], ids=['rev1', 'rev2', 'rev3', 'rev4', 'rev5', 'rev6', 'rev7'])
 def corpus(request):
     return request.param, v2.generate(revision=request.param)
 
@@ -34,7 +34,7 @@ def test_oracles_are_canonical_v1_within_the_turn_budget(corpus):
     for e in corpus:
         assert 2 <= len(e.oracle) <= fast12_runner.MAX_TURNS, e.id
         for line in e.oracle:
-            assert p.render_action(p.parse_action(line, tools), tools) == line, e.id
+            assert p.render_action(p.parse_action(line, tools, 2), tools, 2) == line, e.id
         kinds = [line.split('\n', 1)[0].split(' ')[0] for line in e.oracle]
         assert kinds[-1] == e.terminal and all(k in ('run', 'tool') for k in kinds[:-1]), e.id
 
@@ -174,7 +174,7 @@ def test_revision_four_only_adds_output_orientation_episodes():
         else:
             assert set(e.changes) == {out}, e.id
         for line in e.oracle:
-            assert p.render_action(p.parse_action(line, tools), tools) == line
+            assert p.render_action(p.parse_action(line, tools, 2), tools, 2) == line
 
 
 def test_revision_5_is_interface_v2_with_bare_done_and_only_blocked_asks():
@@ -229,3 +229,27 @@ def test_revision_6_adds_paired_read_only_families_and_more_questions():
     for ex in six:
         if ex.terminal == 'done' and not ex.changes and ex.policy_end == 'ok':
             assert ex.oracle[-1].startswith('done\n'), ex.id  # every question or no-op is answered
+
+
+def test_revision_7_is_interface_v3_with_question_mode_and_answering_commands():
+    six = {ex.id: ex for ex in v2.generate(scale=0.2, revision=6)}
+    seven = v2.generate(scale=0.2, revision=7)
+    assert v2.interface_for(7) == 3 and all(ex.interface == 3 for ex in seven)
+    assert {ex.id for ex in seven} == set(six)  # same episodes, re-expressed for v3
+    tools = p.load_tools()
+    for ex in seven:
+        for line in ex.oracle:
+            assert p.render_action(p.parse_action(line, tools, 3), tools, 3) == line, ex.id
+        if ex.terminal == 'done':
+            assert ex.oracle[-1] == 'done'
+        answer_only = ex.terminal == 'done' and not ex.changes and ex.policy_end == 'ok'
+        assert (ex.mode == 'ask') == (answer_only and ex.family not in v2.DO_NOOP_FAMILIES), ex.id
+        if answer_only:
+            last = p.parse_action(ex.oracle[-2], tools, 3)
+            assert not (last.kind == 'run' and p.is_literal_output(last.text)), ex.id
+        if ex.mode == 'ask':  # a question never writes: no edit tool and no redirect into a file
+            assert not any(line.startswith('tool fs.edit') for line in ex.oracle), ex.id
+    asks = [ex for ex in seven if ex.terminal == 'ask']
+    assert asks and all(ex.family in v2.BLOCKED_ASK_FAMILIES for ex in asks)
+    modes = {ex.mode for ex in seven}
+    assert modes == {'ask', 'do'}

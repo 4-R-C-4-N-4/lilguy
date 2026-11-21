@@ -11,21 +11,18 @@ V1_GOLDEN = Path(__file__).with_name("interface_v1_system_prompt.txt")
 V2_GOLDEN = Path(__file__).with_name("interface_v2_system_prompt.txt")
 
 
-def test_current_version_is_2_and_both_versions_are_supported():
-    assert p.INTERFACE_VERSION == 2
-    assert p.SUPPORTED_VERSIONS == (1, 2)
-    with pytest.raises(p.ProtocolError):
-        p.system_prompt(TOOLS, version=3)
+def test_v1_and_v2_stay_supported():
+    assert {1, 2} <= set(p.SUPPORTED_VERSIONS)
 
 
 def test_v1_prompt_is_unchanged_and_v2_is_frozen():
     assert p.system_prompt(TOOLS, version=1) == V1_GOLDEN.read_text(encoding="utf8")
-    assert p.system_prompt(TOOLS) == V2_GOLDEN.read_text(encoding="utf8"), (
+    assert p.system_prompt(TOOLS, version=2) == V2_GOLDEN.read_text(encoding="utf8"), (
         "The v2 system prompt changed. If intended, bump INTERFACE_VERSION and regenerate data.")
 
 
 def test_v2_prompt_drops_ambiguity_asking_and_change_summaries():
-    v2 = p.system_prompt(TOOLS)
+    v2 = p.system_prompt(TOOLS, version=2)
     assert "could mean more than one" not in v2
     assert "Do not describe your changes" in v2
     assert "cannot do the request" in v2
@@ -34,20 +31,20 @@ def test_v2_prompt_drops_ambiguity_asking_and_change_summaries():
 
 
 def test_bare_done_is_valid_in_v2_only():
-    assert p.parse_action("done", TOOLS) == p.Action("done", text="")
-    assert p.render_action(p.Action.done()) == "done"
-    assert p.parse_action("done\nretry=2", TOOLS) == p.Action.done("retry=2")
+    assert p.parse_action("done", TOOLS, 2) == p.Action("done", text="")
+    assert p.render_action(p.Action.done(), version=2) == "done"
+    assert p.parse_action("done\nretry=2", TOOLS, 2) == p.Action.done("retry=2")
     with pytest.raises(p.ProtocolError):
         p.parse_action("done", TOOLS, version=1)
     with pytest.raises(p.ProtocolError):
         p.render_action(p.Action.done(), version=1)
     for empty in ("ask", "run"):
         with pytest.raises(p.ProtocolError):
-            p.parse_action(empty, TOOLS)
+            p.parse_action(empty, TOOLS, 2)
 
 
 def test_v2_grammar_makes_the_done_text_optional():
-    assert 'done ::= "done" ("\\n" text)?' in p.grammar(TOOLS)
+    assert 'done ::= "done" ("\\n" text)?' in p.grammar(TOOLS, version=2)
     assert 'done ::= "done\\n" text' in p.grammar(TOOLS, version=1)
 
 

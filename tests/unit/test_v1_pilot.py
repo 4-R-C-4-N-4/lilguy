@@ -69,7 +69,7 @@ def test_handoff_profile_matches_recovery_row_budget_and_passes_split_gate():
 def test_approval_label_requires_final_pending_and_an_honest_stop():
     task = next(t for t in data.tasks('handoff') if t.policy_end == 'pending')
     tools = p.load_tools()
-    read, act, stop = (p.parse_action(line, tools) for line in task.oracle)
+    read, act, stop = (p.parse_action(line, tools, 2) for line in task.oracle)
     okay = (read, p.render_observation(exit_code=0), False)
     hold = (act, p.render_observation(exit_code=0, policy='pending'), True)
     facts = dict(terminal='done', answer=stop.text, changes=task.changes, original_unchanged=True)

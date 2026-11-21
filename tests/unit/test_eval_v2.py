@@ -59,3 +59,37 @@ def test_dev_workspace_separates_the_terminal_from_the_answer_wording():
     reasons = dev_workspace.grade(task, terminal="ask", answer="pending approval", changes=task.changes,
                                   events=[], original_unchanged=True)
     assert any(not r.is_answer_reason(x) and "done" in x for x in reasons)
+
+
+def test_v3_grades_the_quoted_output_not_the_model_text():
+    from dev import fast12_runner as fr
+    from lilguy import protocol as p
+
+    obs = p.render_observation(exit_code=0, stdout="5\n", policy="ok")
+    seen = {}
+
+    def grade(task, **kwargs):
+        seen.update(kwargs)
+        return [] if kwargs['answer'] == '5' else ['answer is missing expected content']
+
+    task = type('T', (), {'files': {'access.log': 'a\nb\nc\nd\ne\n'}})()
+    events = [(p.Action.run('wc -l < access.log'), obs, False)]
+    graded = fr.interface_grade(grade, answer_required=True, version=3)
+    assert graded(task, terminal='done', answer='', changes={}, events=events, original_unchanged=True) == []
+    # Quoting a whole input file, or literal text the model typed, is not an answer.
+    whole = [(p.Action.call('fs.read', path='access.log'),
+              p.render_observation(exit_code=0, stdout='a\nb\nc\nd\ne\n', policy='ok'), False)]
+    graded(task, terminal='done', answer='', changes={}, events=whole, original_unchanged=True)
+    assert seen['answer'] == ''
+    typed = [(p.Action.run('echo 5'), obs, False)]
+    graded(task, terminal='done', answer='', changes={}, events=typed, original_unchanged=True)
+    assert seen['answer'] == ''
+
+
+def test_v3_mode_is_ask_exactly_for_the_listed_development_questions():
+    from dev import broad_runner, fast12, fast12_runner as fr, oracles_v3
+    roster = {t.id: t for t in (*fast12.TASKS, *(t for t, _ in broad_runner.task_graders()))}
+    assert oracles_v3.ASK <= set(roster)
+    assert {fr.task_mode(roster[i]) for i in oracles_v3.ASK} == {'ask'}
+    assert fr.task_mode(roster['leave_matching_output_style']) == 'do'  # a change request
+    assert fr.task_mode(roster['read_only_question'], version=2) == 'do'

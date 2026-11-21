@@ -114,14 +114,14 @@ def test_make_model_driver_sends_system_request_and_history_then_parses_the_repl
     def fake_complete(url, model, messages, grammar, timeout):
         seen["messages"] = messages
         seen["grammar"] = grammar
-        return "done\nall set"
+        return "done"
     monkeypatch.setattr(do, "_chat_complete", fake_complete)
 
     next_action = do.make_model_driver(tools, "do the thing", "http://x", use_grammar=True)
     action = next_action((), "ok")
-    assert action == p.Action.done("all set")
-    assert seen["messages"][0]["role"] == "system"
-    assert "Request: do the thing" in seen["messages"][1]["content"]
+    assert action == p.Action.done()
+    assert seen["messages"][0] == {"role": "system", "content": p.system_prompt(tools)}
+    assert seen["messages"][1]["content"] == "Request: do the thing"
     assert seen["grammar"] is not None
 
 
@@ -131,7 +131,7 @@ def test_make_model_driver_replays_prior_turns_into_the_prompt(monkeypatch):
 
     def fake_complete(url, model, messages, grammar, timeout):
         seen["messages"] = messages
-        return "done\nok"
+        return "done"
     monkeypatch.setattr(do, "_chat_complete", fake_complete)
 
     turn = loop.Turn(p.Action.run("ls"), "exit 0\nchanges: none\npolicy: ok", False)
@@ -156,7 +156,7 @@ def test_make_model_driver_without_grammar_sends_no_grammar(monkeypatch):
 
     def fake_complete(url, model, messages, grammar, timeout):
         seen["grammar"] = grammar
-        return "done\nok"
+        return "done"
     monkeypatch.setattr(do, "_chat_complete", fake_complete)
     next_action = do.make_model_driver(tools, "goal", "http://x", use_grammar=False)
     next_action((), "ok")
@@ -263,3 +263,55 @@ def test_main_fails_safely_without_falling_back_when_model_unreachable(tmp_path,
     code = do.main(["fix it", "--state-dir", str(tmp_path / "state")])
     assert code == 2
     assert "failed safely" in capsys.readouterr().err
+
+
+# --- interface v3: question mode and the quoted answer ---------------------------------------
+
+def test_ask_mode_driver_names_the_question(monkeypatch):
+    seen = {}
+
+    def fake_complete(url, model, messages, grammar, timeout):
+        seen["messages"] = messages
+        return "done"
+    monkeypatch.setattr(do, "_chat_complete", fake_complete)
+    do.make_model_driver(p.load_tools(), "Which is latest?", "http://x", mode="ask")((), "ok")
+    assert seen["messages"][1]["content"] == "Question: Which is latest?"
+
+
+def test_server_args_add_read_only_only_in_ask_mode(tmp_path):
+    ask = do.server_args(tmp_path / "ws", tmp_path / "state", "ask")
+    assert "--read-only" in ask and "--interface-v1" in ask
+    assert "--read-only" not in do.server_args(tmp_path / "ws", tmp_path / "state", "do")
+
+
+def _turn(command, stdout, policy="ok", exit_code=0):
+    return loop.Turn(p.Action.run(command), p.render_observation(exit_code=exit_code, stdout=stdout, policy=policy),
+                     False)
+
+
+def test_answer_is_quoted_from_the_last_command_not_the_model():
+    record = loop.Record(3, "Which is latest?", "done", "",
+                         (_turn("ls", "arrivals.tsv\n"), _turn("sort arrivals.tsv | tail -n 1", "10:24Z\tsparrow\n")),
+                         "ask")
+    text = do.render_answer(record)
+    assert text == "Answer (output of `sort arrivals.tsv | tail -n 1`, exit 0):\n  10:24Z\tsparrow"
+
+
+def test_no_answer_is_said_plainly_when_nothing_ran_or_the_last_step_was_refused():
+    assert do.render_answer(loop.Record(3, "q", "done", "", (), "ask")).startswith("No answer")
+    refused = _turn("echo x > y", "", policy="rejected")
+    assert do.render_answer(loop.Record(3, "q", "done", "", (refused,), "ask")).startswith("No answer")
+    asked = loop.Record(3, "q", "ask", "Which file?", (), "ask")
+    assert do.render_answer(asked) == "The model says something is missing (unverified): Which file?"
+
+
+def test_cli_dispatches_ask_to_ask_main(monkeypatch):
+    calls = []
+    monkeypatch.setattr("lilguy.do.ask_main", lambda argv: calls.append(argv) or 0)
+    assert cli.main(["ask", "--state-dir", "/tmp/x", "how many lines?"]) == 0
+    assert calls == [["--state-dir", "/tmp/x", "how many lines?"]]
+
+
+def test_literal_echo_is_not_shown_as_an_answer():
+    record = loop.Record(3, "Which is latest?", "done", "", (_turn("echo sparrow", "sparrow\n"),), "ask")
+    assert do.render_answer(record).startswith("No answer: the last command only printed text the model typed")

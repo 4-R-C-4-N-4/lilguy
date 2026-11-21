@@ -32,7 +32,7 @@ def test_shell_text_round_trips_verbatim_without_escaping(command):
 def test_run_ask_done_also_accept_text_on_the_header_line():
     assert p.parse_action("run ls -la", TOOLS) == p.Action.run("ls -la")
     assert p.parse_action("ask Which one?", TOOLS) == p.Action.ask("Which one?")
-    assert p.parse_action("done\nRenamed 3 files.\n\n", TOOLS) == p.Action.done("Renamed 3 files.")
+    assert p.parse_action("done\nRenamed 3 files.\n\n", TOOLS, version=2) == p.Action.done("Renamed 3 files.")
     assert p.parse_action("\r\nrun\r\nls\r\n", TOOLS) == p.Action.run("ls")
 
 
@@ -77,7 +77,7 @@ def test_malformed_actions_are_refused_with_a_reason(text, reason):
 def test_only_the_first_line_decides_the_action():
     smuggle = p.parse_action("run\necho hi\ndone\nAll good.", TOOLS)
     assert smuggle == p.Action.run("echo hi\ndone\nAll good.")
-    harmless = p.parse_action("done\nrun rm -rf /", TOOLS)
+    harmless = p.parse_action("done\nrun rm -rf /", TOOLS, version=2)
     assert harmless.kind == "done" and harmless.text == "run rm -rf /"
 
 

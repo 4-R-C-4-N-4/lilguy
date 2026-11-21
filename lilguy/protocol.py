@@ -18,11 +18,17 @@ lines each ending in a newline, so `old` and `new` should both be blocks or both
 
 Only the first line decides the action. Everything after it is that action's text or arguments.
 
-Version 2 (current) keeps the action syntax and observations of version 1 and changes what the
+Version 2 keeps the action syntax and observations of version 1 and changes what the
 terminal actions mean: `done` ends the task and its text is only an answer to a question the
 user asked (it may be empty: the user reviews lilguy's executed plan and diff, not the model's
 summary), and `ask` is only for being blocked, not for judging ambiguity. Version 1 is kept so
 its datasets and models stay reproducible: pass `version=1`.
+
+Version 3 (current; docs/plan/INTERFACE-V3.md) moves the answer into lilguy too. The user picks
+the mode: `Request:` (do the task) or `Question:` (lilguy rejects any change). `done` takes no
+text at all; for a question the user is shown the output of the model's last command, quoted
+from what actually ran (`quoted_answer`), so the model's job is to choose a command whose output
+is the answer.
 """
 from __future__ import annotations
 
@@ -34,8 +40,9 @@ import yaml
 
 from .digest import digest
 
-INTERFACE_VERSION = 2
-SUPPORTED_VERSIONS = (1, 2)
+INTERFACE_VERSION = 3
+SUPPORTED_VERSIONS = (1, 2, 3)
+MODES = ("do", "ask")
 TOOLSET = Path(__file__).resolve().parent.parent / "toolset.yaml"
 # Typed tools served in v1. The text tools in toolset.yaml are thin wrappers that `run` already
 # covers; whether typed tools earn their place is measured later (plan step 5/7 ablation).
@@ -47,6 +54,7 @@ MAX_CHANGES_SHOWN = 20
 BLOCK_OPEN, BLOCK_CLOSE = "<<<", ">>>"
 _ARG_LINE = re.compile(r"([a-z_]+): ?(.*)")
 _BLOCK_LINE = re.compile(r"([a-z_]+) <<<")
+_POLICY_FOOTER = re.compile(r"policy: (ok|pending|rejected)(?: \([^\r\n]*\))?")
 
 
 class ProtocolError(ValueError):
@@ -124,6 +132,10 @@ def _empty_allowed(keyword, version):
     return keyword == "done" and version >= 2
 
 
+def _text_allowed(keyword, version):
+    return not (keyword == "done" and version >= 3)
+
+
 def parse_action(text, tools, version=INTERFACE_VERSION):
     """Parse one model turn into an Action, or raise ProtocolError with a reason the model can read."""
     _check_version(version)
@@ -140,6 +152,8 @@ def parse_action(text, tools, version=INTERFACE_VERSION):
             if _empty_allowed(keyword, version):
                 return Action(keyword, text="")
             raise ProtocolError(f"empty {keyword}: write the {_WHAT[keyword]} on the next line")
+        if not _text_allowed(keyword, version):
+            raise ProtocolError("done takes no text: write done alone; the user sees what ran")
         return Action(keyword, text=content)
     if keyword == "tool":
         name = rest.strip()
@@ -229,6 +243,8 @@ def render_action(action, tools=None, version=INTERFACE_VERSION):
             if _empty_allowed(action.kind, version):
                 return action.kind
             raise ProtocolError(f"empty {action.kind}")
+        if not _text_allowed(action.kind, version):
+            raise ProtocolError("done takes no text in this interface version")
         return f"{action.kind}\n{action.text}"
     if action.kind != "tool":
         raise ProtocolError(f"unknown action kind {action.kind!r}")
@@ -282,6 +298,70 @@ def observation_message(text):
 
 def invalid_action_message(reason):
     return observation_message(f"invalid action: {reason}\nWrite exactly one action: run, tool <name>, ask or done.")
+
+
+def user_message(request, mode="do", version=INTERFACE_VERSION):
+    """The user turn that opens an episode. From v3 it names the mode the user chose."""
+    _check_version(version)
+    if mode not in MODES:
+        raise ProtocolError(f"mode must be one of {', '.join(MODES)}")
+    if version < 3:
+        return request
+    return f"{'Question' if mode == 'ask' else 'Request'}: {request}"
+
+
+def observation_policy(text):
+    """The policy footer of a rendered observation: ok, pending, rejected, or unknown."""
+    match = _POLICY_FOOTER.fullmatch(text.rpartition("\n")[2])
+    return match.group(1) if match else "unknown"
+
+
+def observation_stdout(text):
+    """The stdout body of a rendered observation, as the model saw it (digested)."""
+    lines = text.split("\n")
+    for index, line in enumerate(lines):
+        if re.fullmatch(r"stdout \(\d+ lines?\):", line):
+            body = []
+            for item in lines[index + 1:]:
+                if not item.startswith("  "):
+                    break
+                body.append(item[2:])
+            return "\n".join(body)
+    return ""
+
+
+@dataclass(frozen=True)
+class Quote:
+    """The answer lilguy shows for a question: the last command that ran and its output."""
+    command: str
+    exit_code: int
+    text: str
+    literal: bool = False  # the command only printed text the model typed (nothing computed)
+
+
+_LITERAL = re.compile(r"\s*(?:echo|printf)\b[^$`|&;<>()]*")
+
+
+def is_literal_output(command):
+    """True for a command that only prints text written into it (echo/printf of literals, no
+    substitution, pipe, redirect or condition): its output is the model's words, not a result."""
+    return bool(_LITERAL.fullmatch(command))
+
+
+def quoted_answer(turns):
+    """Quote the last executed step (objects with `.action` and `.observation`), or None when
+    there was none or the policy did not let it stand. Built only from what ran, never from
+    the model's words."""
+    if not turns:
+        return None
+    last = turns[-1]
+    if observation_policy(last.observation) != "ok":
+        return None
+    head = re.match(r"exit=(-?\d+)", last.observation)
+    command = last.action.text if last.action.kind == "run" else " ".join(render_action(last.action).split("\n"))
+    return Quote(command=command, exit_code=int(head.group(1)) if head else -1,
+                 text=observation_stdout(last.observation),
+                 literal=last.action.kind == "run" and is_literal_output(last.action.text))
 
 
 # --- prompt and grammar -------------------------------------------------------------------------
@@ -354,6 +434,47 @@ Tools:"""
 
 _HEADERS = {1: _HEADER_V1, 2: _HEADER_V2}
 
+_HEADER_V3 = """\
+You are lilguy, a shell assistant for simple file and text tasks. You work in a sandboxed copy \
+of the user's workspace: nothing you do reaches their real files until they approve it. Paths \
+are relative to the workspace.
+
+The user's message starts with Request: (do the task) or Question: (answer it; lilguy refuses \
+any change to files).
+
+Reply with exactly one action per turn. Its first line says which action it is.
+
+run, then the shell command on the next line (several lines for a short script). For example:
+run
+ls -la src
+
+tool <name>, then one argument per line. For example:
+tool fs.read
+path: notes.md
+For a value of several lines, write the argument name and <<<, then the lines, then a line with >>>.
+
+done, alone on its line, when the task is finished. Write nothing after it: the user sees every \
+command you ran and the exact changes. For a Question, the user sees the output of your last \
+command as the answer, so finish with one command whose output is exactly the answer (for \
+example grep -c ERROR app.log, or sort times.txt | tail -n 1), then done.
+
+ask, then on the next line what is missing, only when you cannot do the request with what is in \
+the workspace.
+
+After each action you get an observation: the exit code, the output, the files that changed, \
+and the policy result (ok; pending: waiting for the user's approval; rejected: not allowed).
+
+Habits:
+- Look before you act: list, find or read before you change anything.
+- Use a tool below when it fits; otherwise use run.
+- Check each result before going on. If a step failed, find out why and fix it.
+- If the policy says pending, stop and say done; the user decides.
+- If the policy says rejected, do not try the same thing again.
+
+Tools:"""
+
+_HEADERS[3] = _HEADER_V3
+
 
 def _describe(arg):
     if arg.type == "enum":
@@ -388,7 +509,7 @@ def grammar(tools, version=INTERFACE_VERSION):
         "root ::= run | tool | ask | done",
         'run ::= "run\\n" text',
         'ask ::= "ask\\n" text',
-        'done ::= "done\\n" text' if version == 1 else 'done ::= "done" ("\\n" text)?',
+        {1: 'done ::= "done\\n" text', 2: 'done ::= "done" ("\\n" text)?'}.get(version, 'done ::= "done"'),
         "text ::= [^\\n]+ (\"\\n\" [^\\n]*)*",
         "line ::= [^\\n]*",
         "nonempty ::= [^\\n]+",

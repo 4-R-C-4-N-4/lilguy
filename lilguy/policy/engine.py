@@ -29,6 +29,9 @@ class Policy:
     mode_change: str = "executable_bit"
     symlink_target_outside_root: bool = True
     special_files: bool = True
+    # `lilguy ask` (interface v3): the user asked a question, so any change at all is refused.
+    # Only trusted callers set this; a workspace policy.yaml cannot (load_policy has no key).
+    read_only: bool = False
 
     def __post_init__(self):
         for value in (self.max_deletes, self.max_modified, self.max_bytes_written):
@@ -77,6 +80,8 @@ def evaluate(step: list[DiffEntry], session: list[DiffEntry], policy: Policy | N
                 return Decision("reject", "protected", entry.path)
             if entry.kind == "special" and entry.op != "deleted" and policy.special_files:
                 return Decision("reject", "special_files", entry.path)
+            if policy.read_only:
+                return Decision("reject", "read_only", f"read-only question: {entry.path}")
     if conflict:
         return Decision("pending", "conflict", "workspace changed underneath session")
     for entries in views:
