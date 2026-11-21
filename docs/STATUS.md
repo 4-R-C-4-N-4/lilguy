@@ -21,7 +21,7 @@ Step numbers follow the roadmap. The recurring work list numbers them 1–5: too
 
 1. **Latency reference.** Qwen3.8-27B Q4_K_XL had the highest Fast12 score in this batch (9/12); its IQ2_XXS counterpart was ~20% faster in model time and lost one task (`create_new_file`). Treat that pair as a quantization comparison, not an automatic change to the 30B+ reference requirement. Pick the reference and latency metric before shipping evaluation. No small model was under 10% of either Qwen3.8 quant's median episode time.
 2. **Shipping family.** MiniCPM5-2B and Qwen3.5-0.8B now both have v2 LoRAs. MiniCPM leads absolute stock capability, but neither has satisfied the promotion gates. Keep both experimental; do not treat the highest development total as a shipping selection.
-3. **Next sprint.** Choose between a second seed of revision-6 constant/cosine (variance is unmeasured) and approving the one-time held-out run for MiniCPM cosine; also whether graders may change for false answers that currently pass. Recommendation: second seed first.
+3. **Next sprint.** The seed-43 replication is running (`reports/factory/pilot-xif8k6a9`). Interface v3 is approved: an `ask` mode where lilguy rejects writes, answers quoted from the trusted audit log, and grading on the quoted output ([plan](plan/INTERFACE-V3.md)). It starts after seed 43 is reported. From now on every interface refinement follows the [versioning rules](plan/ROADMAP.md#interface-versioning-adopted-from-v3-on).
 
 ## Answer/read-only data and cosine sprint (complete, 2026-11-20)
 

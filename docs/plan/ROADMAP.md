@@ -70,7 +70,42 @@ Requests at the level of the tldr pages, not shell wizardry, for example:
    - Investigate a failed step instead of declaring `done`.
    - On `pending`, stop and summarise for the human.
    - On `rejected`, do not retry the same thing.
-   - Ask when the target is ambiguous.
+   - Ask when the target is ambiguous. (Superseded by interface v2: `ask` only when an input is
+     missing.)
+
+### How the factory is calibrated (Ivy, 2026-11-20)
+
+This balance is the premise of the experiment:
+
+1. **Assess the model's capability with specific tasks.** Each development task tests one simple,
+   explicit job through the real lilguy interface, graded on what actually happened.
+2. **When tasks are inconsistent or fail, consider refining the interface.** Before asking the
+   model to learn something harder, ask whether lilguy can take that burden instead. Examples so
+   far:
+   - v2: the trusted plan and diff replaced the model's own change report;
+   - v3: the quoted command output replaces the model's paraphrased answer, and an `ask` mode in
+     which lilguy rejects writes replaces guessing "read-only" from wording.
+
+   The model's job shrinks to choosing the right tool. Training and data changes are for the
+   failures that remain.
+
+### Interface versioning (adopted from v3 on)
+
+Every refinement of what the model sees or what its actions mean is a new interface version, not
+an in-place edit:
+
+- **A plan before any change.** `docs/plan/INTERFACE-Vn.md` states the failure evidence (task
+  traces), the change, its consequences and their effort, and Ivy's approval.
+- **One version constant.** `INTERFACE_VERSION` in `lilguy/protocol.py` names the version, with a
+  golden prompt per version. Every training row, evaluation identity and model card records it.
+- **Earlier versions stay reproducible.** Their prompts, grammars, graders and corpus revisions
+  still regenerate byte-identically from the tree.
+- **Data is regenerated for the new version** through the real loop and replay, and must pass the
+  split gate.
+- **Held-out is recalibrated before any model runs on it.** The scripted solution must pass and
+  the null control must fail under the new version, re-pinned with Ivy's authorisation.
+- **Scores across versions are references, never matched comparisons.** A gate compares only
+  artifacts scored on the same version and evaluation fingerprint.
 
 ## What exists today
 
