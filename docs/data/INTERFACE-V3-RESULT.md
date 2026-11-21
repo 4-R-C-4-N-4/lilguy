@@ -36,6 +36,26 @@ Offline estimate, for orientation only: regrading the existing v2 cosine traces 
 only 5–8 of the 23 answer tasks would pass, because v2 models do not end on an answering command.
 v3 therefore needs v3 training; v2 adapters are not expected to do well under v3.
 
+### Amendment before first use (2026-11-20 ~23:05 EST)
+
+The first revision-7 build went to a 100-episode agent audit (Codex `gpt-6.2-sol`, for Ivy to
+confirm): 95 correct, 1 debatable, 4 incorrect. The 4 incorrect episodes left the answer implicit.
+The last output was a sorted size list ending in `total`, a file list the reader had to count, an
+`od` byte dump, or a matching line instead of yes/no.
+
+Those are family-wide patterns, so I stopped job `pilot-s8njviu0` 10 minutes into MiniCPM
+training, before any score existed. I then amended revision 7 (`4e2efa1`) so these families
+compute the answer outright:
+
+- `wc -c dir/* | grep -v ' total$' | sort -n | tail -n 1`;
+- `find dir -type f -name '*.csv' | wc -l`;
+- `... | sort -u | wc -l`;
+- a yes/no test of the last byte;
+- `grep -n '^W' f && echo yes || echo 'no line starts with W'`;
+- one `&& echo same || echo differ` idiom for both outcomes of `diff` and `cmp`.
+
+The aborted job's artifacts are not used. The rebuilt corpus is audited again below.
+
 ## Declared runs (fixed before launch)
 
 - **Recipe:** unchanged from the adopted default — 3% warmup then cosine to zero, one epoch, a
