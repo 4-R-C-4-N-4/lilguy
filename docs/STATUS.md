@@ -21,7 +21,7 @@ Step numbers follow the roadmap. The recurring work list numbers them 1–5: too
 
 1. **Latency reference.** Qwen3.8-27B Q4_K_XL had the highest Fast12 score in this batch (9/12); its IQ2_XXS counterpart was ~20% faster in model time and lost one task (`create_new_file`). Treat that pair as a quantization comparison, not an automatic change to the 30B+ reference requirement. Pick the reference and latency metric before shipping evaluation. No small model was under 10% of either Qwen3.8 quant's median episode time.
 2. **Shipping family.** MiniCPM5-2B and Qwen3.5-0.8B now both have v2 LoRAs. MiniCPM leads absolute stock capability, but neither has satisfied the promotion gates. Keep both experimental; do not treat the highest development total as a shipping selection.
-3. **Next sprint.** The seed-43 replication is running (`reports/factory/pilot-xif8k6a9`). Interface v3 is approved: an `ask` mode where lilguy rejects writes, answers quoted from the trusted audit log, and grading on the quoted output ([plan](plan/INTERFACE-V3.md)). It starts after seed 43 is reported. From now on every interface refinement follows the [versioning rules](plan/ROADMAP.md#interface-versioning-adopted-from-v3-on).
+3. **Next sprint.** Seed 43 replicated the cosine effect; cosine is the default schedule from now on. Interface v3 is approved: an `ask` mode where lilguy rejects writes, answers quoted from the trusted audit log, and grading on the quoted output ([plan](plan/INTERFACE-V3.md)). It starts after seed 43 is reported. From now on every interface refinement follows the [versioning rules](plan/ROADMAP.md#interface-versioning-adopted-from-v3-on).
 
 ## Answer/read-only data and cosine sprint (complete, 2026-11-20)
 
@@ -36,8 +36,9 @@ because development failures shaped the revision-6 families.
 - Cosine beats constant on both bases with identical data, seed, steps and fit rows: the controlled
   result is positive. MiniCPM cosine meets the 48/80, zero-missing-answer, fit and no-category-
   regression targets; Qwen cosine misses 40/80, zero missing answers and organise (6 → 5).
-- The data change alone is negative under constant LR (both bases below revision 5); MiniCPM
-  constant collapses to bare `done`. One seed per arm, so variance is unknown.
+- Seed 43 replicates it (declared rule met on both bases): cosine MiniCPM 50/53, Qwen 34/36 across
+  seeds; constant MiniCPM 20/48, Qwen 28/20. Cosine is the effect and is far more stable; the
+  seed-42 "data change alone is negative" reading does not hold (constant is too seed-sensitive).
 - No existing-input edits in "do not modify" tasks, but both cosine adapters still create new files
   in a no-write task. Wrong answers, some passing the frozen graders, are now the main failure.
 - Matched Q8_0 hashes, evaluation fingerprints and RTX 3090 verified independently for all 10

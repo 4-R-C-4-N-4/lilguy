@@ -296,3 +296,60 @@ Ivy approved a second seed. It is a replication, not a new recipe:
 Decision rule, fixed now: the schedule effect counts as replicated for a base only if cosine beats
 constant on both seeds in training fit and in development score. I will report the size of the
 seed-to-seed spread for each arm alongside it.
+
+### Second-seed result (seed 43, `reports/factory/pilot-xif8k6a9`)
+
+Independently verified:
+- all 4 training reports use seed 43 and differ only in `lr_schedule`;
+- all used the same 800 fit rows and 392 steps;
+- all 8 scored sides ran the fixed 80-task roster with matching Q8_0 hashes, the same evaluation
+  fingerprints (`fast12 62f5a607...`, `broad 479eb67a...`) and the RTX 3090;
+- zero infrastructure failures; originals preserved.
+
+| Base | Arm | Seed 42 | Seed 43 | Spread | Decision fit 42 / 43 |
+|---|---|---:|---:|---:|---|
+| MiniCPM | constant | 20/80 | 48/80 | 28 | 82.5% / 93.1% |
+| MiniCPM | cosine | 50/80 | 53/80 | 3 | 98.1% / 97.4% |
+| Qwen | constant | 28/80 | 20/80 | 8 | 88.8% / 89.9% |
+| Qwen | cosine | 34/80 | 36/80 | 2 | 96.8% / 95.0% |
+
+**Decision rule (declared before launch): met for both bases.** On both seeds, cosine beats
+constant in training fit and in development score.
+
+- **Cosine is the main effect, and it is also far more stable.** It moves 2–3 tasks between seeds,
+  constant moves 8–28.
+- **Correction to the seed-42 reading.** The seed-42 conclusion that "the data change alone is
+  negative under constant LR" does not hold: MiniCPM constant on revision 6 scores 48/80 with seed
+  43, above the revision-5 adapter's 43/80. That adapter was a single seed too. The revision-6
+  effect under a constant rate is unresolved; constant training is too seed-sensitive to measure
+  it with one or two seeds. MiniCPM's seed-42 bare-`done` collapse was a seed outcome, not a data
+  property.
+- **Category regressions against the same-seed control are not consistent.**
+  - seed 43: MiniCPM cosine loses read-only (5 -> 4) and scripts (2 -> 0); Qwen cosine loses
+    read-only (2 -> 1);
+  - seed 42: only Qwen organise (6 -> 5).
+
+  The categories are small (3–9 tasks), so these one- or two-task moves sit inside the seed
+  spread. The "no category regression" target is still missed for both bases on at least one seed.
+
+Seed-43 cosine behaviour, from the traces:
+
+| Base | Missing answers | Existing-input edits | Any write on answer-only tasks | Unexpected policy stops | Answered but failed (needs review) |
+|---|---:|---:|---:|---:|---:|
+| MiniCPM | 0 | 0 | 0 | 1 | 5 |
+| Qwen | 0 | 0 | 0 | 0 | 14 |
+
+- **Score targets:** MiniCPM cosine meets 48/80 on both seeds (50, 53). Qwen cosine misses 40/80
+  on both (34, 36).
+- **Seed-43 constant:** MiniCPM still writes on one answer-only task; Qwen leaves 7 questions
+  unanswered and writes in one do-not-modify task.
+- **Not audited:** no semantic audit was run on seed 43. The "answered but failed" counts are
+  candidates, not confirmed wrong answers.
+
+Disk: the bf16 merged checkpoints of both cosine jobs were removed after export (24.5 GiB). Their
+Q8_0 GGUFs, adapters and reports are kept; the list is in
+`reports/factory/artifact-cleanup-2026-11-20-b.json`. 62 GiB is free.
+
+**Conclusion:** adopt warmup plus cosine to zero as the default schedule for the next recipe
+(interface v3, revision 7). No adapter is promoted and nothing has run on held-out. Wrong answers
+remain the main failure, which is what interface v3 targets.
