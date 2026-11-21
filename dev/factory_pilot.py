@@ -72,14 +72,26 @@ def train_argv(trainpy, base, snapshot, data, training, minutes, max_epochs, lr_
     return argv + ['--seed', seed] if seed is not None else argv
 
 
+def base_schedules(values, bases, fallback):
+    from dev.v2_train import SCHEDULES
+    overrides = {}
+    for value in values:
+        base, sep, schedule = value.partition('=')
+        if not sep or base not in bases or base in overrides or schedule not in SCHEDULES:
+            raise ValueError(f'invalid or duplicate per-base schedule: {value!r}')
+        overrides[base] = schedule
+    return {base: overrides.get(base, fallback or 'constant') for base in bases}
+
+
 def parse_arms(values):
     """`NAME=DATA[@SCHEDULE]` for control then treatment. Arms must differ in exactly one of the
     training corpus or the learning-rate schedule, so the comparison isolates one factor."""
+    from dev.v2_train import SCHEDULES
     arms = {}
     for value in values:
         name, _, rest = value.partition('=')
         data, at, schedule = rest.rpartition('@') if '@' in rest else (rest, '', '')
-        if at and schedule not in ('constant', 'cosine'):
+        if at and schedule not in SCHEDULES:
             raise ValueError(f'unknown schedule in {value!r}')
         arms[name] = {'data': Path(data), **({'lr_schedule': schedule} if at else {})}
     if list(arms) != ['control', 'treatment']:
@@ -156,6 +168,12 @@ def run(directory, *, bases, data, server, device, gate, evaluate, max_minutes, 
     from dev import v2_train
     preflight()
     old = json.loads((directory / 'plan.json').read_text()) if resume and (directory / 'plan.json').is_file() else {}
+    if old:
+        saved = old.get('lr_schedule', 'constant')
+        if lr_schedule is None:
+            lr_schedule = saved
+        elif lr_schedule != saved:
+            raise ValueError('cannot resume with a different learning-rate schedule')
     plan = {'job': 'pilot-v2', 'bases': bases, 'device': device, 'split_gate': gate, 'max_minutes': max_minutes,
             'max_epochs': max_epochs, 'lr_schedule': lr_schedule or 'constant',
             'train_seed': train_seed if train_seed is not None else v2_train.PARAMS['seed'],
@@ -196,7 +214,8 @@ def run(directory, *, bases, data, server, device, gate, evaluate, max_minutes, 
         if not (resume and (training / 'train-report.json').is_file()):
             minutes = max_minutes[base] if isinstance(max_minutes, dict) else max_minutes
             stage(f'{base}-train', train_argv(trainpy, base, spec['snapshot'], data, training, minutes, max_epochs,
-                                              lr_schedule, train_seed))
+                                              lr_schedule[base] if isinstance(lr_schedule, dict) else lr_schedule,
+                                              train_seed))
         tuned_gguf = out / 'tuned-q8_0.gguf'
         if not (resume and tuned_gguf.is_file()):
             export(stage, f'{base}-export-tuned', training / 'merged', tuned_gguf, spec['convert_args'])

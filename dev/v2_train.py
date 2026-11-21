@@ -44,7 +44,7 @@ PARAMS = {'seed': 42, 'lr': 2e-4, 'rank': 16, 'alpha': 32, 'dropout': 0.0, 'max_
           'decision_weight': 5.0, 'token_budget': 24576, 'max_batch': 16, 'max_epochs': 6,
           'fit_decision': 0.99, 'fit_token': 0.98, 'max_minutes': 25.0, 'fit_rows': 800, 'max_rows': None,
           'gradient_checkpointing': True, 'lr_schedule': 'constant', 'warmup_ratio': 0.03}
-SCHEDULES = ('constant', 'cosine')
+SCHEDULES = ('constant', 'cosine', 'linear')
 VERSIONS = {'torch': '2.11.0+cu128', 'transformers': '5.15.0', 'peft': '0.20.0'}
 IGNORE = -100
 
@@ -126,6 +126,8 @@ def lr_at(step, total, base_lr, schedule, warmup_ratio=0.03):
     if step < warmup:
         return base_lr * (step + 1) / warmup
     progress = (step - warmup) / max(1, total - warmup)
+    if schedule == 'linear':
+        return base_lr * (1 - progress)
     return base_lr * 0.5 * (1 + math.cos(math.pi * progress))
 
 

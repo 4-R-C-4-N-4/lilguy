@@ -57,7 +57,7 @@ def test_arm_specs_can_differ_only_by_schedule_and_previous_goes_to_control(tmp_
     assert arms == {'control': {'data': Path('/d'), 'lr_schedule': 'constant'},
                     'treatment': {'data': Path('/d'), 'lr_schedule': 'cosine'}}
     assert factory_pilot.parse_arms(['control=/c', 'treatment=/t'])['treatment'] == {'data': Path('/t')}
-    for bad in (['control=/d@linear', 'treatment=/d'], ['control=/d', 'treatment=/d']):
+    for bad in (['control=/d@unknown', 'treatment=/d'], ['control=/d', 'treatment=/d']):
         with pytest.raises(ValueError):
             factory_pilot.parse_arms(bad)
     calls = []

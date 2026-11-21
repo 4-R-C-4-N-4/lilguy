@@ -59,7 +59,7 @@ def test_cosine_schedule_warms_up_then_decays_to_zero_over_the_declared_steps():
     values = [lr(s) for s in range(3, 100)]
     assert values == sorted(values, reverse=True)
     with pytest.raises(ValueError):
-        v2_train.lr_at(0, 100, 2e-4, 'linear')
+        v2_train.lr_at(0, 100, 2e-4, 'unknown')
     with pytest.raises(ValueError):
         v2_train.lr_at(100, 100, 2e-4, 'cosine')
 

@@ -156,8 +156,11 @@ def main():
                         help='pilot: trainer seed for every base and arm (default: the trainer default, 42)')
     parser.add_argument('--previous', action='append', default=[], metavar='BASE=GGUF@INTERFACE',
                         help='pilot: also score an earlier artifact under its own interface (reference only)')
-    parser.add_argument('--lr-schedule', choices=('constant', 'cosine'),
-                        help='pilot: learning-rate schedule (default constant; cosine needs --max-epochs)')
+    from dev.v2_train import SCHEDULES
+    parser.add_argument('--lr-schedule', choices=SCHEDULES,
+                        help='pilot: shared learning-rate schedule (decay needs --max-epochs)')
+    parser.add_argument('--base-schedule', action='append', default=[], metavar='BASE=SCHEDULE',
+                        help='pilot: override the shared schedule for one selected base (repeatable)')
     parser.add_argument('--stock-from', type=Path,
                         help='pilot: reuse stock scores from a previous pilot job when artifact and evaluation match')
     parser.add_argument('--server', type=Path, default=Path(os.environ.get('LLAMA_SERVER', Path.home() / 'programs/llama.cpp/build/bin/llama-server')))
@@ -239,8 +242,8 @@ def main():
                 previous = factory_pilot.parse_previous(args.previous)
                 if args.arm:
                     from dev import v2_report
-                    if args.data or args.resume or args.lr_schedule:
-                        parser.exit(1, '--arm replaces --data and --lr-schedule and cannot resume\n')
+                    if args.data or args.resume or args.lr_schedule or args.base_schedule:
+                        parser.exit(1, '--arm replaces --data, --lr-schedule and --base-schedule and cannot resume\n')
                     arms = factory_pilot.parse_arms(args.arm)
                     factory_pilot.run_arms(directory, arms, args.base, factory_pilot.run, v2_report.compare_base,
                                            server=args.server, device=device, gate=gate,
@@ -252,7 +255,9 @@ def main():
                     return 0
                 factory_pilot.run(directory, bases=args.base, data=args.data, server=args.server, device=device,
                                   gate=gate, stock_from=args.stock_from, max_minutes=minutes,
-                                  max_epochs=args.max_epochs, lr_schedule=args.lr_schedule,
+                                  max_epochs=args.max_epochs, lr_schedule=(factory_pilot.base_schedules(
+                                      args.base_schedule, args.base, args.lr_schedule) if args.base_schedule
+                                      else args.lr_schedule),
                                   train_seed=args.train_seed,
                                   resume=bool(args.resume), evaluate=evaluate, previous=previous)
             except (RuntimeError, ValueError, OSError, KeyError) as exc:
