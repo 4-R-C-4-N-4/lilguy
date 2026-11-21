@@ -26,8 +26,8 @@ def fast12_identity(model, server, *, extra_sources=(), interface=INTERFACE_VERS
         with path.open('rb') as stream:
             return hashlib.file_digest(stream, 'sha256').hexdigest()
 
-    sources = [ROOT / p for p in ('dev/fast12.py', 'dev/fast12_runner.py', 'toolset.yaml', 'policy.yaml',
-                                  *extra_sources)]
+    sources = [ROOT / p for p in ('dev/fast12.py', 'dev/fast12_runner.py', 'dev/oracles_v3.py', 'toolset.yaml',
+                                  'policy.yaml', *extra_sources)]
     sources.extend(sorted((ROOT / 'lilguy').rglob('*.py')))
     inputs = {str(p.relative_to(ROOT)): sha(p) for p in sources}
     inputs['llama-server'] = sha(server)
