@@ -54,7 +54,23 @@ compute the answer outright:
 - `grep -n '^W' f && echo yes || echo 'no line starts with W'`;
 - one `&& echo same || echo differ` idiom for both outcomes of `diff` and `cmp`.
 
-The aborted job's artifacts are not used. The rebuilt corpus is audited again below.
+The aborted job's artifacts are not used.
+
+**Re-audit of the rebuilt corpus.** A fresh sample of 100 episodes (seed 72; 72 change requests,
+28 questions) gave 95 correct, 4 debatable and 1 incorrect; the per-episode verdicts are in
+`INTERFACE-V3-DATA-AUDIT.json`. Every remaining finding is again an answer that is true but
+implicit or loosely conditioned:
+
+- *incorrect:* `idempotent_edit` "tell me whether you changed it" quotes `theme=sage` without
+  saying "unchanged";
+- *debatable:*
+  - `ro_check` shows the value without a yes/no;
+  - `ask_collision` says `identical` without "not copied";
+  - the `recover_absent` fallback tests for any `.bak` file;
+  - the empty-substitution last-byte test would say "yes" for an empty file.
+
+None of these is wrong on its fixture, and training had started, so this run proceeds on this
+data. The patterns are queued for the next revision. This is an agent audit, not a human review.
 
 ## Declared runs (fixed before launch)
 

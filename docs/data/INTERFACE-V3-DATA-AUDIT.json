@@ -1,0 +1,712 @@
+{
+  "auditor": "agent audit for Ivy to confirm",
+  "model": "gpt-6.2-sol",
+  "sample_seed": 72,
+  "items": [
+    {
+      "id": "v2-chmod-600-23",
+      "family": "chmod_private_pending",
+      "mode": "do",
+      "verdict": "correct",
+      "reason": "The only staged change is theatre-secrets.txt from mode 644 to 600, and the replay stops at pending approval."
+    },
+    {
+      "id": "v2-truncate-2",
+      "family": "truncate_pending",
+      "mode": "do",
+      "verdict": "correct",
+      "reason": "The diff stages stable-notebook.log as an empty file, and the replay stops at pending approval."
+    },
+    {
+      "id": "v2-ro-count-22",
+      "family": "ro_count",
+      "mode": "ask",
+      "verdict": "correct",
+      "reason": "Final stdout is 1, the count of the single WARN line in quarry-events.log, with no writes."
+    },
+    {
+      "id": "v2-recover-dir-10",
+      "family": "recover_missing_dir",
+      "mode": "do",
+      "verdict": "correct",
+      "reason": "After the missing-directory error, the diff adds final/ and a byte-for-byte copy at final/itinerary.csv."
+    },
+    {
+      "id": "v2-orient-act-110",
+      "family": "orient_output",
+      "mode": "do",
+      "verdict": "correct",
+      "reason": "The diff adds only brewery-roster-final.txt with the five source entries sorted from cedar to marble."
+    },
+    {
+      "id": "v2-lastbyte-50",
+      "family": "inspect_lastbyte",
+      "mode": "ask",
+      "verdict": "debatable",
+      "reason": "Final stdout correctly says the fixture ends with a newline, but the empty-substitution test also returns yes for an empty file because it never verifies that a byte was read."
+    },
+    {
+      "id": "v2-recover-read-28",
+      "family": "recover_read",
+      "mode": "ask",
+      "verdict": "correct",
+      "reason": "After finding settings/marina.ini, the final grep prints threshold=313 with the source path and makes no changes."
+    },
+    {
+      "id": "v2-sed-range-1",
+      "family": "text_range",
+      "mode": "do",
+      "verdict": "correct",
+      "reason": "The diff adds checklist-lines-2-4.txt containing swift, garnet, and swift in that order."
+    },
+    {
+      "id": "v2-act-conflict-35",
+      "family": "ask_conflict",
+      "mode": "do",
+      "verdict": "correct",
+      "reason": "The guide lookup returns pipes, and the diff adds handbook-glacier.txt with the three source lines joined by pipes."
+    },
+    {
+      "id": "v2-pipe-sort_u-42",
+      "family": "pipe_sort_u",
+      "mode": "do",
+      "verdict": "correct",
+      "reason": "The diff adds smithy-recipe-unique.txt with dahlia, iris, kestrel, and thyme once each in sorted order."
+    },
+    {
+      "id": "v2-distinct-50",
+      "family": "text_distinct",
+      "mode": "ask",
+      "verdict": "correct",
+      "reason": "Final stdout is 3, the number of distinct second-column values in handbook.csv, with no writes."
+    },
+    {
+      "id": "v2-act-target-29",
+      "family": "ask_target",
+      "mode": "do",
+      "verdict": "correct",
+      "reason": "The diff changes only log_level in config/jetty.ini from russet to ivory."
+    },
+    {
+      "id": "v2-act-collision-34",
+      "family": "ask_collision",
+      "mode": "do",
+      "verdict": "correct",
+      "reason": "The diff adds outbox/recipe.txt with the exact contents of recipe-v2.txt."
+    },
+    {
+      "id": "v2-ro-check-write-79",
+      "family": "ro_check",
+      "mode": "do",
+      "verdict": "correct",
+      "reason": "The diff changes only the owner setting in settings/hub.ini from flint to gannet."
+    },
+    {
+      "id": "v2-tar-list-24",
+      "family": "tar_list",
+      "mode": "ask",
+      "verdict": "correct",
+      "reason": "The final tar listing names both archive members, tally/velvet.txt and tally/aster.txt, with no extraction or writes."
+    },
+    {
+      "id": "v2-awk-sum-47",
+      "family": "awk_sum",
+      "mode": "ask",
+      "verdict": "correct",
+      "reason": "Final stdout is 795, the sum of the four amount rows in roster.tsv, with no writes."
+    },
+    {
+      "id": "v2-hidden-79",
+      "family": "inspect_hidden",
+      "mode": "ask",
+      "verdict": "correct",
+      "reason": "The hidden-file listing finds settings/.censusrc, and the final read prints its sole setting, theme=gravel, without writing."
+    },
+    {
+      "id": "v2-ro-exists-66",
+      "family": "ro_exists",
+      "mode": "ask",
+      "verdict": "correct",
+      "reason": "Final stdout says there is no gazette-cinema.md under archive/, which matches the name-specific search and the fixture."
+    },
+    {
+      "id": "v2-delete-size-45",
+      "family": "delete_by_size_pending",
+      "mode": "do",
+      "verdict": "correct",
+      "reason": "The diff deletes only harvest.log and olive.log, the two atelier logs above 200 bytes, and the replay stops at pending approval."
+    },
+    {
+      "id": "v2-pipe-tr_lower-60",
+      "family": "pipe_tr_lower",
+      "mode": "do",
+      "verdict": "correct",
+      "reason": "The diff adds workshop-invoice-lower.txt with all four source lines lowercased in order."
+    },
+    {
+      "id": "v2-pipe-grep_i-51",
+      "family": "pipe_grep_i",
+      "mode": "do",
+      "verdict": "correct",
+      "reason": "The diff adds dairy-briefing-test.txt containing only umber test, the sole case-insensitive match."
+    },
+    {
+      "id": "v2-ro-exists-write-21",
+      "family": "ro_exists",
+      "mode": "do",
+      "verdict": "correct",
+      "reason": "The diff adds only shared/recipe-grove.md as an empty file."
+    },
+    {
+      "id": "v2-append-25",
+      "family": "append_line",
+      "mode": "do",
+      "verdict": "correct",
+      "reason": "The diff retains both existing invoice lines and appends exactly ivan: quartz with a trailing newline."
+    },
+    {
+      "id": "v2-replace-all-0",
+      "family": "replace_all",
+      "mode": "do",
+      "verdict": "correct",
+      "reason": "The staged mirror list replaces all seven occurrences of juniper with slate and preserves the surrounding text."
+    },
+    {
+      "id": "v2-pipe-cut-111",
+      "family": "pipe_cut",
+      "mode": "do",
+      "verdict": "correct",
+      "reason": "The diff adds cinema-almanac-column1.txt with the six first fields in source order, from chen through emil."
+    },
+    {
+      "id": "v2-recover-absent-20",
+      "family": "recover_absent",
+      "mode": "do",
+      "verdict": "debatable",
+      "reason": "Final stdout correctly reports no hub-checklist.bak and no removal, but its fallback tests for any .bak file and would print an unrelated backup path if one existed."
+    },
+    {
+      "id": "v2-chmod-x-10",
+      "family": "chmod_exec_pending",
+      "mode": "do",
+      "verdict": "correct",
+      "reason": "The diff stages mode 755 for the three bin shell scripts only, and the replay stops at pending approval."
+    },
+    {
+      "id": "v2-pipe-sort_n-14",
+      "family": "pipe_sort_n",
+      "mode": "do",
+      "verdict": "correct",
+      "reason": "The diff adds ferry-inventory-ascending.txt with all six numbers in ascending numeric order from 223 to 918."
+    },
+    {
+      "id": "v2-act-order-49",
+      "family": "ask_order",
+      "mode": "do",
+      "verdict": "correct",
+      "reason": "ORDER.txt specifies part B first, and the diff stages the marten section followed by the quince section."
+    },
+    {
+      "id": "v2-crlf-12",
+      "family": "text_crlf",
+      "mode": "do",
+      "verdict": "correct",
+      "reason": "The diff stages roster-unix.txt with all three original rows and each CRLF replaced by LF."
+    },
+    {
+      "id": "v2-count-files-53",
+      "family": "count_files",
+      "mode": "ask",
+      "verdict": "correct",
+      "reason": "Final stdout is 3, the number of .ini files under exports, excluding memo.ini outside that directory."
+    },
+    {
+      "id": "v2-delete-tmp-22",
+      "family": "delete_tmp_ok",
+      "mode": "do",
+      "verdict": "correct",
+      "reason": "The diff deletes all four root-level .tmp files and leaves index.txt intact."
+    },
+    {
+      "id": "v2-ro-check-48",
+      "family": "ro_check",
+      "mode": "ask",
+      "verdict": "debatable",
+      "reason": "Final stdout shows quota=638, which supports the affirmative answer, but the command retrieves the setting without testing the requested equality or printing a yes/no verdict."
+    },
+    {
+      "id": "v2-cmp-diff-4",
+      "family": "inspect_cmp",
+      "mode": "ask",
+      "verdict": "correct",
+      "reason": "Final stdout says differ, matching the extra space in new/programme.txt, with no writes."
+    },
+    {
+      "id": "v2-read-value-63",
+      "family": "read_value",
+      "mode": "ask",
+      "verdict": "correct",
+      "reason": "The final grep prints depth=446 from config/depot.conf without writing."
+    },
+    {
+      "id": "v2-pipe-uniq_c-4",
+      "family": "pipe_uniq_c",
+      "mode": "do",
+      "verdict": "correct",
+      "reason": "The diff stages seven line counts in estate-catalog-counts.txt, with lemon, maple, and onyx occurring twice and each other line once."
+    },
+    {
+      "id": "v2-script-2",
+      "family": "script_2",
+      "mode": "do",
+      "verdict": "correct",
+      "reason": "The diff adds pack-bistro.sh with a tar command that creates bistro.tar.gz from bistro, and the syntax check passes."
+    },
+    {
+      "id": "v2-pipe-head-18",
+      "family": "pipe_head",
+      "mode": "do",
+      "verdict": "correct",
+      "reason": "The diff adds stable-directory-first2.txt with exactly yusuf otter and carla quince in that order."
+    },
+    {
+      "id": "v2-grep-find-73",
+      "family": "grep_find",
+      "mode": "ask",
+      "verdict": "correct",
+      "reason": "Final stdout names src/lynx.md, the sole file containing lilac-372, with no writes."
+    },
+    {
+      "id": "v2-pipe-tr_lower-34",
+      "family": "pipe_tr_lower",
+      "mode": "do",
+      "verdict": "correct",
+      "reason": "The diff adds atelier-recipe-lower.txt with all five source lines lowercased in order."
+    },
+    {
+      "id": "v2-verify-fix-13",
+      "family": "verify_fix",
+      "mode": "do",
+      "verdict": "correct",
+      "reason": "The final read and diff show atlas-codes.txt contains the four code values in source order after the initial header was removed."
+    },
+    {
+      "id": "v2-read-value-74",
+      "family": "read_value",
+      "mode": "ask",
+      "verdict": "correct",
+      "reason": "The final grep prints language=bison from forge.ini without writing."
+    },
+    {
+      "id": "v2-nonblank-17",
+      "family": "inspect_nonblank",
+      "mode": "ask",
+      "verdict": "correct",
+      "reason": "Final stdout is 2, the number of lines in gazette-journal.txt containing non-whitespace characters."
+    },
+    {
+      "id": "v2-recover-edit-39",
+      "family": "recover_edit",
+      "mode": "do",
+      "verdict": "correct",
+      "reason": "After finding docs/handbook.txt, the diff changes its status from hold to shipped and retains its title."
+    },
+    {
+      "id": "v2-ro-count-72",
+      "family": "ro_count",
+      "mode": "ask",
+      "verdict": "correct",
+      "reason": "Final stdout is 3, the count of skipped lines in marina-events.log, with no writes."
+    },
+    {
+      "id": "v2-nonblank-37",
+      "family": "inspect_nonblank",
+      "mode": "ask",
+      "verdict": "correct",
+      "reason": "Final stdout is 1, matching the one nonblank line, jade hana, in briefing-journal.txt."
+    },
+    {
+      "id": "v2-cond-yes-0",
+      "family": "conditional_copy",
+      "mode": "do",
+      "verdict": "correct",
+      "reason": "The exact-line grep finds SIGNED in state.txt, and the diff adds an exact copy at outgoing/timetable.txt."
+    },
+    {
+      "id": "v2-edit-value-54",
+      "family": "edit_value",
+      "mode": "do",
+      "verdict": "correct",
+      "reason": "The diff changes only depth in settings/bakery.conf from 149 to 679."
+    },
+    {
+      "id": "v2-ro-count-write-61",
+      "family": "ro_count",
+      "mode": "do",
+      "verdict": "correct",
+      "reason": "The diff adds citadel-warn.log with the five WARN lines in their original order."
+    },
+    {
+      "id": "v2-tar-list-33",
+      "family": "tar_list",
+      "mode": "ask",
+      "verdict": "correct",
+      "reason": "The final tar listing names roster/umber.txt, roster/sage.txt, and roster/jade.txt, with no extraction or writes."
+    },
+    {
+      "id": "v2-grep-find-42",
+      "family": "grep_find",
+      "mode": "ask",
+      "verdict": "correct",
+      "reason": "Final stdout names docs/raven.md, the sole file under docs that references fig-931, with no writes."
+    },
+    {
+      "id": "v2-sed-range-45",
+      "family": "text_range",
+      "mode": "do",
+      "verdict": "correct",
+      "reason": "The diff adds inventory-lines-3-4.txt containing ivory and elm, the requested two lines in order."
+    },
+    {
+      "id": "v2-delete-tmp-38",
+      "family": "delete_tmp_ok",
+      "mode": "do",
+      "verdict": "correct",
+      "reason": "The diff deletes falcon.tmp, fig.tmp, and swift.tmp only, leaving logbook.txt intact."
+    },
+    {
+      "id": "v2-ro-compare-diff-38",
+      "family": "ro_compare",
+      "mode": "ask",
+      "verdict": "correct",
+      "reason": "Final stdout explicitly says differ and shows the differing fourth lines, noor gannet and noor kestrel, without any writes."
+    },
+    {
+      "id": "v2-count-files-89",
+      "family": "count_files",
+      "mode": "ask",
+      "verdict": "correct",
+      "reason": "Final stdout is 5, the number of .ini files under farm/, excluding chronicle.ini outside that directory."
+    },
+    {
+      "id": "v2-truncate-15",
+      "family": "truncate_pending",
+      "mode": "do",
+      "verdict": "correct",
+      "reason": "The diff stages villa-itinerary.log as an empty file and the replay stops at pending approval."
+    },
+    {
+      "id": "v2-rejected-37",
+      "family": "rejected_protected",
+      "mode": "do",
+      "verdict": "correct",
+      "reason": "The policy rejects deletion of protected index_final.csv, and the replay ends immediately with an empty staged diff."
+    },
+    {
+      "id": "v2-cmp-same-40",
+      "family": "inspect_cmp",
+      "mode": "ask",
+      "verdict": "correct",
+      "reason": "Final stdout says identical, matching the exact bytes of both manifest files, with no writes."
+    },
+    {
+      "id": "v2-recover-dir-3",
+      "family": "recover_missing_dir",
+      "mode": "do",
+      "verdict": "correct",
+      "reason": "After the missing-directory error, the diff adds published/ and a byte-for-byte copy at published/digest.csv."
+    },
+    {
+      "id": "v2-ro-check-write-19",
+      "family": "ro_check",
+      "mode": "do",
+      "verdict": "correct",
+      "reason": "The diff changes only backlog in canyon.ini from 835 to 985."
+    },
+    {
+      "id": "v2-pipe-cut-98",
+      "family": "pipe_cut",
+      "mode": "do",
+      "verdict": "correct",
+      "reason": "The diff adds pier-docket-column3.txt containing olive, quartz, bramble, and sage in source order."
+    },
+    {
+      "id": "v2-cond-yes-28",
+      "family": "conditional_copy",
+      "mode": "do",
+      "verdict": "correct",
+      "reason": "The exact-line grep finds SIGNED in state.txt, and the diff adds an exact copy at outgoing/charter.txt."
+    },
+    {
+      "id": "v2-recover-read-15",
+      "family": "recover_read",
+      "mode": "ask",
+      "verdict": "correct",
+      "reason": "After finding settings/studio.ini, the final grep prints threshold=844 with the source path and makes no changes."
+    },
+    {
+      "id": "v2-verify-fix-3",
+      "family": "verify_fix",
+      "mode": "do",
+      "verdict": "correct",
+      "reason": "The final read and diff show glossary-emails.txt contains the five email values in order after the initial header was removed."
+    },
+    {
+      "id": "v2-script-10",
+      "family": "script_2",
+      "mode": "do",
+      "verdict": "correct",
+      "reason": "The diff adds pack-distillery.sh with a tar command that creates distillery.tar.gz from distillery, and the syntax check passes."
+    },
+    {
+      "id": "v2-delete-size-29",
+      "family": "delete_by_size_pending",
+      "mode": "do",
+      "verdict": "correct",
+      "reason": "The diff deletes only badger.dat and lilac.dat, the two exports files above 300 bytes, and the replay stops at pending approval."
+    },
+    {
+      "id": "v2-delete-one-60",
+      "family": "delete_pending",
+      "mode": "do",
+      "verdict": "correct",
+      "reason": "The diff stages deletion of invoice-library.md alone, and the replay stops at pending approval."
+    },
+    {
+      "id": "v2-distinct-22",
+      "family": "text_distinct",
+      "mode": "ask",
+      "verdict": "correct",
+      "reason": "Final stdout is 3, the number of distinct second-column values in ledger.csv, with no writes."
+    },
+    {
+      "id": "v2-pipe-sort-91",
+      "family": "pipe_sort",
+      "mode": "do",
+      "verdict": "correct",
+      "reason": "The diff adds pantry-catalog-sorted.txt with elm, juniper, maple, and raven in alphabetical order."
+    },
+    {
+      "id": "v2-ro-compare-diff-78",
+      "family": "ro_compare",
+      "mode": "ask",
+      "verdict": "correct",
+      "reason": "Final stdout explicitly says differ and shows the differing fourth lines, ines heron and ines dune, without any writes."
+    },
+    {
+      "id": "v2-ro-exists-write-61",
+      "family": "ro_exists",
+      "mode": "do",
+      "verdict": "correct",
+      "reason": "The diff adds only projects/inventory-smithy.md as an empty file."
+    },
+    {
+      "id": "v2-crlf-36",
+      "family": "text_crlf",
+      "mode": "do",
+      "verdict": "correct",
+      "reason": "The diff stages itinerary-unix.txt with all four original rows and each CRLF replaced by LF."
+    },
+    {
+      "id": "v2-copy-existing-7",
+      "family": "copy_existing_dir",
+      "mode": "do",
+      "verdict": "correct",
+      "reason": "The diff adds backup/depot-docket.csv with the exact contents of depot-docket.csv in the existing directory."
+    },
+    {
+      "id": "v2-script-27",
+      "family": "script_3",
+      "mode": "do",
+      "verdict": "correct",
+      "reason": "The diff adds scan-meadow.sh with a recursive, line-numbered TODO search of meadow, and the syntax check passes."
+    },
+    {
+      "id": "v2-idem-change-13",
+      "family": "idempotent_edit",
+      "mode": "do",
+      "verdict": "correct",
+      "reason": "The diff changes only mode in conf/mill.ini from puffin to tern after observing the original setting."
+    },
+    {
+      "id": "v2-same-collision-17",
+      "family": "ask_collision",
+      "mode": "do",
+      "verdict": "debatable",
+      "reason": "The comparison correctly prints identical and the diff is empty, but stdout leaves the user to infer that the destination already matched and no copy was made."
+    },
+    {
+      "id": "v2-delete-build-63",
+      "family": "delete_build_ok",
+      "mode": "do",
+      "verdict": "correct",
+      "reason": "The diff deletes only build/heather.o and build/kestrel.o and leaves the source file intact."
+    },
+    {
+      "id": "v2-delete-build-83",
+      "family": "delete_build_ok",
+      "mode": "do",
+      "verdict": "correct",
+      "reason": "The diff deletes only build/cobalt.o, build/sage.o, and build/slate.o and leaves the source file intact."
+    },
+    {
+      "id": "v2-edit-value-57",
+      "family": "edit_value",
+      "mode": "do",
+      "verdict": "correct",
+      "reason": "The diff changes only quota in config/studio.cfg from 224 to 169."
+    },
+    {
+      "id": "v2-idem-same-2",
+      "family": "idempotent_edit",
+      "mode": "do",
+      "verdict": "incorrect",
+      "reason": "The empty diff confirms no edit was needed, but final stdout only says theme=sage and omits the explicitly requested report of whether a change was made."
+    },
+    {
+      "id": "v2-diff-added-36",
+      "family": "set_diff",
+      "mode": "do",
+      "verdict": "correct",
+      "reason": "The diff adds agenda-added.txt containing chen and bruno, the two new names in their order from agenda-after.txt."
+    },
+    {
+      "id": "v2-act-content-23",
+      "family": "ask_content",
+      "mode": "do",
+      "verdict": "correct",
+      "reason": "The search finds pool_size in studio/extra.conf, and the diff changes only that value from 669 to 581."
+    },
+    {
+      "id": "v2-script-25",
+      "family": "script_1",
+      "mode": "do",
+      "verdict": "correct",
+      "reason": "The diff adds tally-clinic.sh with a find-and-wc pipeline that counts the two fixture .txt lines, and the syntax check passes."
+    },
+    {
+      "id": "v2-append-2",
+      "family": "append_line",
+      "mode": "do",
+      "verdict": "correct",
+      "reason": "The diff retains both existing programme lines and appends exactly nadia: stoat with a trailing newline."
+    },
+    {
+      "id": "v2-largest-1",
+      "family": "largest_file",
+      "mode": "ask",
+      "verdict": "correct",
+      "reason": "Final stdout names dumps/rose.ini at 391 bytes, which exceeds the size of each other fixture file under dumps."
+    },
+    {
+      "id": "v2-copy-mkdir-0",
+      "family": "copy_new_dir",
+      "mode": "do",
+      "verdict": "correct",
+      "reason": "The diff adds outpost/ and stages an exact copy of glossary.txt inside it."
+    },
+    {
+      "id": "v2-read-value-82",
+      "family": "read_value",
+      "mode": "ask",
+      "verdict": "correct",
+      "reason": "The final grep prints retries=869 from config/rookery.cfg without writing."
+    },
+    {
+      "id": "v2-pipe-uniq_c-134",
+      "family": "pipe_uniq_c",
+      "mode": "do",
+      "verdict": "correct",
+      "reason": "The diff adds ranch-charter-counts.txt with badger counted twice and nutmeg, raven, and weasel once each."
+    },
+    {
+      "id": "v2-pipe-grep_v-24",
+      "family": "pipe_grep_v",
+      "mode": "do",
+      "verdict": "correct",
+      "reason": "The diff adds campus-menu-kept.txt with the three lines free of old in their original order."
+    },
+    {
+      "id": "v2-diff-added-32",
+      "family": "set_diff",
+      "mode": "do",
+      "verdict": "correct",
+      "reason": "The diff adds index-added.txt containing mateo and goran, the two new names in their order from index-after.txt."
+    },
+    {
+      "id": "v2-orient-act-84",
+      "family": "orient_output",
+      "mode": "do",
+      "verdict": "correct",
+      "reason": "The diff adds bistro-logbook-print.txt with falcon, plum, quartz, and swift in alphabetical order."
+    },
+    {
+      "id": "v2-pipe-sort_r-132",
+      "family": "pipe_sort_r",
+      "mode": "do",
+      "verdict": "correct",
+      "reason": "The diff adds bistro-docket-reversed.txt with all six source lines in reverse alphabetical order from wren to garnet."
+    },
+    {
+      "id": "v2-pipe-tail-110",
+      "family": "pipe_tail",
+      "mode": "do",
+      "verdict": "correct",
+      "reason": "The diff adds plaza-playlist-last3.txt with greta nutmeg, priya ember, and chen maple in that order."
+    },
+    {
+      "id": "v2-replace-all-33",
+      "family": "replace_all",
+      "mode": "do",
+      "verdict": "correct",
+      "reason": "The staged hosts file replaces all five occurrences of osprey with thyme and preserves the surrounding text."
+    },
+    {
+      "id": "v2-script-3",
+      "family": "script_3",
+      "mode": "do",
+      "verdict": "correct",
+      "reason": "The diff adds scan-drafts.sh with a recursive, line-numbered TODO search of drafts, and the syntax check passes."
+    },
+    {
+      "id": "v2-pipe-paste-62",
+      "family": "pipe_paste",
+      "mode": "do",
+      "verdict": "correct",
+      "reason": "The diff adds rookery-almanac-pairs.txt with the three corresponding pairs joined by tabs in source order."
+    },
+    {
+      "id": "v2-recover-edit-13",
+      "family": "recover_edit",
+      "mode": "do",
+      "verdict": "correct",
+      "reason": "After finding docs/chronicle.txt, the diff changes its status from closed to hold and retains its title."
+    },
+    {
+      "id": "v2-ro-exists-write-3",
+      "family": "ro_exists",
+      "mode": "do",
+      "verdict": "correct",
+      "reason": "The diff adds only team/invoice-tower.md as an empty file."
+    },
+    {
+      "id": "v2-count-lines-51",
+      "family": "count_lines",
+      "mode": "ask",
+      "verdict": "correct",
+      "reason": "Final stdout is 4, the line count of lantern-glossary.txt, with no writes."
+    },
+    {
+      "id": "v2-ro-count-write-35",
+      "family": "ro_count",
+      "mode": "do",
+      "verdict": "correct",
+      "reason": "The diff adds hub-skipped.log with the fennel, kale, and elm skipped lines in their original order."
+    }
+  ],
+  "summary": {
+    "correct": 95,
+    "debatable": 4,
+    "incorrect": 1
+  }
+}
