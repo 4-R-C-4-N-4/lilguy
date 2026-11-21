@@ -43,7 +43,7 @@ from .digest import digest
 INTERFACE_VERSION = 3
 SUPPORTED_VERSIONS = (1, 2, 3)
 MODES = ("do", "ask")
-TOOLSET = Path(__file__).resolve().parent.parent / "toolset.yaml"
+TOOLSET = Path(__file__).resolve().parent / "data" / "toolset.yaml"
 # Typed tools served in v1. The text tools in toolset.yaml are thin wrappers that `run` already
 # covers; whether typed tools earn their place is measured later (plan step 5/7 ablation).
 TOOLS_V1 = ("fs.list", "fs.find", "fs.read", "fs.grep", "fs.edit")
