@@ -80,7 +80,8 @@ def _chat_complete(url: str, model: str | None, messages: list[dict], grammar: s
     """The network boundary with the model server. Isolated so tests can stub exactly this
     and nothing else, and so a connection failure here is easy to tell apart from a parse
     failure of what it returned."""
-    body = {"messages": messages, "temperature": 0.0, "max_tokens": 512}
+    body = {"messages": messages, "temperature": 0.0, "max_tokens": 256, "seed": 42,
+            "chat_template_kwargs": {"enable_thinking": False}}
     if model:
         body["model"] = model
     if grammar:
@@ -332,10 +333,12 @@ def _parser(mode="do"):
     parser.add_argument("request", help="what you want done, in plain language" if mode == "do"
                         else "your question; lilguy refuses any change to files")
     parser.add_argument("--workspace", type=Path, default=Path("."))
-    parser.add_argument("--state-dir", type=Path, required=True,
-                        help="private session state root; must be outside the workspace")
-    parser.add_argument("--url", default=DEFAULT_URL,
-                        help="loopback llama.cpp server (default: %(default)s)")
+    parser.add_argument("--state-dir", type=Path, default=None,
+                        help="private session state root; must be outside the workspace "
+                             "(default: a fresh directory under the XDG state dir)")
+    parser.add_argument("--url", default=None,
+                        help="loopback llama.cpp server (default: the model from `lilguy setup`, "
+                             "started on demand)")
     parser.add_argument("--model", default=None)
     parser.add_argument("--no-grammar", action="store_true")
     parser.add_argument("--max-turns", type=int, default=15)
@@ -343,14 +346,36 @@ def _parser(mode="do"):
     return parser
 
 
+def fresh_state_dir() -> Path:
+    """One new private state root per run (`find_new_session` expects exactly one session),
+    kept under XDG state so the printed diff/commit commands stay valid afterwards."""
+    from .serve import state_home
+    root = state_home() / "runs"
+    root.mkdir(parents=True, exist_ok=True, mode=0o700)
+    return Path(tempfile.mkdtemp(prefix=time.strftime("%Y%m%d-%H%M%S-"), dir=root))
+
+
 def main(argv: list[str] | None = None, mode: str = "do") -> int:
     args = _parser(mode).parse_args(argv)
     workspace = args.workspace.resolve()
-    state_dir = args.state_dir.resolve()
+
+    url = args.url
+    if url is None:
+        from . import serve
+        try:
+            check_sandbox()  # before spending a GPU on a run that cannot happen
+            url = serve.ensure_server(serve.load_config())
+        except DoSafetyError as exc:
+            print(f"lilguy {mode} failed safely: {exc}", file=sys.stderr)
+            return 2
+        except serve.ServeError as exc:
+            print(f"lilguy {mode}: {exc}", file=sys.stderr)
+            return 2
+    state_dir = (args.state_dir or fresh_state_dir()).resolve()
 
     try:
         record, session_dir = drive(
-            args.request, workspace, state_dir, url=args.url, model=args.model,
+            args.request, workspace, state_dir, url=url, model=args.model,
             max_turns=args.max_turns, use_grammar=not args.no_grammar, timeout=args.timeout, mode=mode)
     except DoSafetyError as exc:
         print(f"lilguy {mode} failed safely: {exc}", file=sys.stderr)

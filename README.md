@@ -42,7 +42,17 @@ Model jobs (`fast12`, `broad`, `screen`, `trial`) refuse to start unless:
 
 The held-out suite is never run by these jobs. It is reserved for the one selected shipping GGUF.
 
-`lilguy do "REQUEST" --state-dir DIR` is the prototype assistant. It uses the same loop and guarded tools, stages changes but never applies them, and hands off to `lilguy diff | approve | deny | commit`.
+`lilguy do "REQUEST"` is the prototype assistant (`lilguy ask "QUESTION"` is its read-only mode). It uses the same loop and guarded tools, stages changes but never applies them, and hands off to `lilguy diff | approve | deny | commit`.
+
+One-time setup points lilguy at its tuned GGUF and pins a GPU by name; after that `ask`/`do` start the model on demand (port 18088, evaluator flags) and refuse to drive any other model found on that port:
+
+```bash
+lilguy setup --model ~/programs/lilguy/minicpm-r8-seed43-q8_0.gguf --gpu 4070
+lilguy ask "What is the timeout in staging.conf?"   # run inside the folder to work on
+lilguy stop                                         # free the GPU
+```
+
+Pass `--url` to drive an already-running server instead (factory jobs do).
 
 ## Layout
 

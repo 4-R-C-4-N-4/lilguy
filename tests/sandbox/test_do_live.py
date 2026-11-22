@@ -166,6 +166,10 @@ def test_do_never_sees_approval_tools_from_the_guarded_server(tmp_path, monkeypa
 
 # --- CLI end to end, exercised on a benign fixture, with preflight stubbed -----------------
 
+# An explicit URL keeps these on the stubbed model boundary, never the user's `lilguy setup`.
+STUB_URL = "http://127.0.0.1:1"
+
+
 def test_cli_do_main_prints_the_handoff_and_saves_the_record(tmp_path, monkeypatch, capsys):
     workspace, state = _state_and_workspace(tmp_path, "cli", {"notes.txt": "status: draft\n"})
     monkeypatch.setattr(do, "check_sandbox", lambda: None)
@@ -174,7 +178,8 @@ def test_cli_do_main_prints_the_handoff_and_saves_the_record(tmp_path, monkeypat
         "tool fs.edit\npath: notes.txt\nold: status: draft\nnew: status: ready",
         "done",
     ])
-    code = do.main(["change status to ready", "--workspace", str(workspace), "--state-dir", str(state)])
+    code = do.main(["change status to ready", "--workspace", str(workspace), "--state-dir", str(state),
+                     "--url", STUB_URL])
     out = capsys.readouterr().out
     assert code == 0
     assert out.startswith("[done]\n")  # v3: no model summary at all
@@ -195,7 +200,8 @@ def test_cli_ask_quotes_the_last_output(tmp_path, monkeypatch, capsys):
     monkeypatch.setattr(do, "check_sandbox", lambda: None)
     monkeypatch.setattr(do, "check_model", lambda url, timeout=5.0: None)
     _script(monkeypatch, ["tool fs.read\npath: access.log", "run\nwc -l < access.log", "done"])
-    code = do.ask_main(["How many lines are in access.log?", "--workspace", str(workspace), "--state-dir", str(state)])
+    code = do.ask_main(["How many lines are in access.log?", "--workspace", str(workspace), "--state-dir", str(state),
+                     "--url", STUB_URL])
     out = capsys.readouterr().out
     assert code == 0
     assert out.startswith("Answer (output of `wc -l < access.log`, exit 0):\n  3\n")
@@ -208,7 +214,8 @@ def test_cli_ask_refuses_a_write_and_shows_no_answer(tmp_path, monkeypatch, caps
     monkeypatch.setattr(do, "check_sandbox", lambda: None)
     monkeypatch.setattr(do, "check_model", lambda url, timeout=5.0: None)
     _script(monkeypatch, ["run\nwc -l < access.log > count.txt", "done"])
-    code = do.ask_main(["How many lines are in access.log?", "--workspace", str(workspace), "--state-dir", str(state)])
+    code = do.ask_main(["How many lines are in access.log?", "--workspace", str(workspace), "--state-dir", str(state),
+                     "--url", STUB_URL])
     out = capsys.readouterr().out
     assert code == 0
     assert out.startswith("No answer: the model did not finish with a command that lilguy let stand")

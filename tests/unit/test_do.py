@@ -242,25 +242,32 @@ def test_cli_dispatches_do_to_do_main(monkeypatch):
     assert calls == [["--state-dir", "/tmp/x", "fix the thing"]]
 
 
-def test_cli_do_requires_state_dir(capsys):
-    with pytest.raises(SystemExit):
-        do.main(["fix the thing"])
-    assert "--state-dir" in capsys.readouterr().err
+def test_cli_do_state_dir_defaults_to_a_fresh_private_root():
+    assert do._parser("do").parse_args(["fix the thing"]).state_dir is None
+    # main() then uses fresh_state_dir(); see tests/unit/test_serve.py
 
 
 def test_main_fails_safely_without_falling_back_when_sandbox_missing(tmp_path, monkeypatch, capsys):
     monkeypatch.setattr(do, "check_sandbox", lambda: (_ for _ in ()).throw(do.DoSafetyError("no bwrap")))
-    code = do.main(["fix it", "--state-dir", str(tmp_path / "state")])
+    code = do.main(["fix it", "--state-dir", str(tmp_path / "state"), "--url", "http://127.0.0.1:1"])
     assert code == 2
     assert "failed safely" in capsys.readouterr().err
     assert not (tmp_path / "state").exists()  # nothing was staged, nothing was created
+
+
+def test_main_checks_sandbox_before_starting_a_model(tmp_path, monkeypatch, capsys):
+    from lilguy import serve
+    monkeypatch.setattr(do, "check_sandbox", lambda: (_ for _ in ()).throw(do.DoSafetyError("no bwrap")))
+    monkeypatch.setattr(serve, "load_config", lambda: pytest.fail("must not touch the model"))
+    assert do.main(["fix it", "--state-dir", str(tmp_path / "state")]) == 2
+    assert "failed safely" in capsys.readouterr().err
 
 
 def test_main_fails_safely_without_falling_back_when_model_unreachable(tmp_path, monkeypatch, capsys):
     monkeypatch.setattr(do, "check_sandbox", lambda: None)
     monkeypatch.setattr(do, "check_model",
                         lambda url, timeout=5.0: (_ for _ in ()).throw(do.DoSafetyError("no model")))
-    code = do.main(["fix it", "--state-dir", str(tmp_path / "state")])
+    code = do.main(["fix it", "--state-dir", str(tmp_path / "state"), "--url", "http://127.0.0.1:1"])
     assert code == 2
     assert "failed safely" in capsys.readouterr().err
 

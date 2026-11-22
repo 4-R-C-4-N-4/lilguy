@@ -26,3 +26,9 @@ def forbid_network(monkeypatch):
     monkeypatch.setattr(socket.socket, "connect", denied)
     monkeypatch.setattr(socket.socket, "connect_ex", denied)
     monkeypatch.setattr(socket, "create_connection", denied)
+
+
+@pytest.fixture(autouse=True)
+def isolate_lilguy_config(tmp_path_factory, monkeypatch):
+    """No test reads the developer's ~/.config/lilguy (which would point at a real model)."""
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path_factory.mktemp("xdg-config")))
