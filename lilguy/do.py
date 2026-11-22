@@ -214,20 +214,26 @@ def load_record(path: Path) -> dict:
 
 # --- ground-truth session lookup and the human handoff ---------------------------------------
 
-def find_new_session(state_dir: Path) -> Path | None:
+def session_ids(state_dir: Path) -> set[str]:
+    state_dir = Path(state_dir)
+    if not state_dir.is_dir():
+        return set()
+    return {d.name for d in state_dir.iterdir()
+            if d.is_dir() and _SESSION_ID.match(d.name) and (d / "meta.json").is_file()}
+
+
+def find_new_session(state_dir: Path, before: set[str] | None = None) -> Path | None:
     """The sandbox session `lilguy.mcp_server --interface-v1` created under `state_dir`, if
     any -- a trajectory that terminates on `ask` without ever calling a tool opens no
     session at all, which is a legitimate "nothing to hand off" outcome, not a safety
     problem, so zero returns None rather than raising.
 
-    More than one candidate means `state_dir` was reused for more than this run; guessing
-    which session is ours is refused.
+    `before` is the set of session ids that existed when this run started (a shared state
+    root, as the CLI uses by default, holds earlier sessions too). More than one candidate
+    means something else created a session concurrently; guessing which one is ours is refused.
     """
     state_dir = Path(state_dir)
-    if not state_dir.is_dir():
-        return None
-    candidates = [d for d in state_dir.iterdir()
-                  if d.is_dir() and _SESSION_ID.match(d.name) and (d / "meta.json").is_file()]
+    candidates = [state_dir / name for name in sorted(session_ids(state_dir) - (before or set()))]
     if len(candidates) > 1:
         raise DoSafetyError(
             f"expected at most one sandbox session under {state_dir}, found {len(candidates)}; "
@@ -319,9 +325,10 @@ def drive(request: str, workspace: Path, state_dir: Path, *, url: str = DEFAULT_
     if not skip_preflight:
         check_sandbox()
         check_model(url)
+    before = session_ids(state_dir)
     record = asyncio.run(_run(request, workspace, state_dir, url, model, max_turns,
                               use_grammar, timeout, mode))
-    session_dir = find_new_session(state_dir)
+    session_dir = find_new_session(state_dir, before)
     return record, session_dir
 
 
@@ -335,7 +342,7 @@ def _parser(mode="do"):
     parser.add_argument("--workspace", type=Path, default=Path("."))
     parser.add_argument("--state-dir", type=Path, default=None,
                         help="private session state root; must be outside the workspace "
-                             "(default: a fresh directory under the XDG state dir)")
+                             "(default: the XDG state dir that diff/commit/undo/sessions use)")
     parser.add_argument("--url", default=None,
                         help="loopback llama.cpp server (default: the model from `lilguy setup`, "
                              "started on demand)")
@@ -344,15 +351,6 @@ def _parser(mode="do"):
     parser.add_argument("--max-turns", type=int, default=15)
     parser.add_argument("--timeout", type=float, default=300.0, help="overall wall budget, seconds")
     return parser
-
-
-def fresh_state_dir() -> Path:
-    """One new private state root per run (`find_new_session` expects exactly one session),
-    kept under XDG state so the printed diff/commit commands stay valid afterwards."""
-    from .serve import state_home
-    root = state_home() / "runs"
-    root.mkdir(parents=True, exist_ok=True, mode=0o700)
-    return Path(tempfile.mkdtemp(prefix=time.strftime("%Y%m%d-%H%M%S-"), dir=root))
 
 
 def main(argv: list[str] | None = None, mode: str = "do") -> int:
@@ -371,7 +369,7 @@ def main(argv: list[str] | None = None, mode: str = "do") -> int:
         except serve.ServeError as exc:
             print(f"lilguy {mode}: {exc}", file=sys.stderr)
             return 2
-    state_dir = (args.state_dir or fresh_state_dir()).resolve()
+    state_dir = (args.state_dir or persist.default_state_root()).resolve()
 
     try:
         record, session_dir = drive(

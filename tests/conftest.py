@@ -45,3 +45,15 @@ def forbid_network(monkeypatch):
 def isolate_lilguy_config(tmp_path_factory, monkeypatch):
     """No test reads the developer's ~/.config/lilguy (which would point at a real model)."""
     monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path_factory.mktemp("xdg-config")))
+
+
+@pytest.fixture(autouse=True)
+def isolate_lilguy_data(tmp_path_factory, monkeypatch):
+    """No test reads or downloads into the developer's ~/.local/share/lilguy."""
+    monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path_factory.mktemp("xdg-data")))
+
+
+@pytest.fixture(autouse=True)
+def isolate_lilguy_state(tmp_path_factory, monkeypatch):
+    """No test writes sessions, records or server files into the developer's ~/.local/state."""
+    monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path_factory.mktemp("xdg-state")))

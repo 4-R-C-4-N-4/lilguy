@@ -37,7 +37,7 @@ def test_public_help_lists_only_guarded_commands():
                             capture_output=True, text=True, check=True)
     assert "--unsafe-legacy" not in result.stdout
     assert "eval" not in result.stdout
-    assert "{setup,serve,stop,probe,sandbox-run,do,ask,diff,approve,deny,commit,undo,sessions}" in result.stdout
+    assert "{setup,demo,serve,stop,probe,sandbox-run,do,ask,diff,approve,deny,commit,undo,sessions}" in result.stdout
 
 
 def test_stale_runtime_resources_are_absent():

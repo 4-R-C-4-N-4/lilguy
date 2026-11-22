@@ -175,13 +175,15 @@ def test_do_without_url_uses_configured_server_and_fresh_state(xdg, cfg, tmp_pat
     monkeypatch.setattr(do, "drive", fake_drive)
     assert do.main(["hello", "--workspace", str(tmp_path)]) == 2
     assert seen["url"] == "http://127.0.0.1:18999"
-    assert seen["state_dir"].parent == serve.state_home().resolve() / "runs"
+    from lilguy.sandbox import persist
+    assert seen["state_dir"] == persist.default_state_root().resolve()
 
 
 def test_do_without_config_fails_before_creating_state(xdg, tmp_path, capsys, sandbox_ok):
     assert do.main(["hello", "--workspace", str(tmp_path)]) == 2
     assert "lilguy setup" in capsys.readouterr().err
-    assert not (serve.state_home() / "runs").exists()
+    from lilguy.sandbox import persist
+    assert not persist.default_state_root().exists()
 
 
 def test_explicit_url_bypasses_config(xdg, tmp_path, monkeypatch):
@@ -195,3 +197,107 @@ def test_explicit_url_bypasses_config(xdg, tmp_path, monkeypatch):
     do.main(["hi", "--workspace", str(tmp_path), "--state-dir", str(tmp_path / "s"),
              "--url", "http://127.0.0.1:1"])
     assert seen["url"] == "http://127.0.0.1:1"
+
+
+# --- released model download --------------------------------------------------------------
+
+class FakeResponse:
+    def __init__(self, payload):
+        self._data, self._pos = payload, 0
+
+    def read(self, n):
+        chunk = self._data[self._pos:self._pos + n]
+        self._pos += len(chunk)
+        return chunk
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        return False
+
+
+def _release(payload):
+    import hashlib
+    return {"repo": "someone/model", "file": "m.gguf", "bytes": len(payload),
+            "sha256": hashlib.sha256(payload).hexdigest()}
+
+
+@pytest.fixture
+def data_dir(tmp_path, monkeypatch):
+    monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path / "data"))
+    return tmp_path / "data" / "lilguy" / "models"
+
+
+def test_release_url_points_at_hugging_face():
+    assert serve.release_url({"repo": "a/b", "file": "c.gguf"}) == \
+        "https://huggingface.co/a/b/resolve/main/c.gguf"
+
+
+def test_release_pin_is_the_evaluated_artifact():
+    # sha256 of reports/factory/pilot-47sen2f_/control/minicpm/tuned-q8_0.gguf (r8, seed 43)
+    assert serve.RELEASE["sha256"] == "5626927a90f9981d56ab94d4bed8495c183487df818af63651c4d32055b18c94"
+
+
+def test_fetch_downloads_and_verifies(data_dir):
+    payload = b"GGUF" * 1000
+    seen = []
+    path = serve.fetch_release(_release(payload), log=lambda *a, **k: None,
+                               opener=lambda url, timeout: seen.append(url) or FakeResponse(payload))
+    assert path == data_dir / "m.gguf" and path.read_bytes() == payload
+    assert seen == ["https://huggingface.co/someone/model/resolve/main/m.gguf"]
+
+
+def test_fetch_reuses_a_verified_file_without_network(data_dir):
+    payload = b"GGUF-ok"
+    data_dir.mkdir(parents=True)
+    (data_dir / "m.gguf").write_bytes(payload)
+    path = serve.fetch_release(_release(payload), log=lambda *a, **k: None,
+                               opener=lambda *a, **k: pytest.fail("must not download"))
+    assert path.read_bytes() == payload
+
+
+def test_fetch_rejects_a_mismatched_download_and_leaves_nothing(data_dir):
+    release = _release(b"the real bytes")
+    with pytest.raises(serve.ServeError, match="SHA-256"):
+        serve.fetch_release(release, log=lambda *a, **k: None,
+                            opener=lambda url, timeout: FakeResponse(b"other bytes!!!"))
+    assert not list(data_dir.iterdir())
+
+
+def test_fetch_replaces_a_corrupt_local_copy(data_dir):
+    payload = b"good-bytes"
+    data_dir.mkdir(parents=True)
+    (data_dir / "m.gguf").write_bytes(b"bad-bytes!")  # same size, wrong hash
+    path = serve.fetch_release(_release(payload), log=lambda *a, **k: None,
+                               opener=lambda url, timeout: FakeResponse(payload))
+    assert path.read_bytes() == payload
+
+
+# --- CPU mode -----------------------------------------------------------------------------
+
+def test_cpu_mode_hides_gpus_and_offloads_nothing(cfg):
+    cpu = serve.Config(cfg.model, cfg.llama_server, serve.CPU, cfg.port)
+    assert serve.server_env(cpu)["CUDA_VISIBLE_DEVICES"] == ""
+    assert serve.server_command(cpu)[-2:] == ["-ngl", "0"]
+
+
+def test_setup_with_local_model_and_cpu_writes_config(xdg, cfg, capsys):
+    code = serve.setup_main(["--model", str(cfg.model), "--llama-server", str(cfg.llama_server),
+                             "--cpu", "--port", "18999"])
+    assert code == 0, capsys.readouterr().err
+    loaded = serve.load_config()
+    assert loaded.gpu == serve.CPU and loaded.model == cfg.model.resolve()
+    assert "lilguy demo" in capsys.readouterr().out
+
+
+def test_setup_without_model_downloads_the_release(xdg, cfg, monkeypatch, capsys):
+    monkeypatch.setattr(serve, "fetch_release", lambda: cfg.model)
+    assert serve.setup_main(["--llama-server", str(cfg.llama_server), "--cpu"]) == 0
+    assert serve.load_config().model == cfg.model
+
+
+def test_setup_explains_missing_llama_server(xdg, monkeypatch, capsys):
+    monkeypatch.setattr(serve, "find_llama_server", lambda: None)
+    assert serve.setup_main(["--cpu"]) == 2
+    assert "llama.cpp" in capsys.readouterr().err

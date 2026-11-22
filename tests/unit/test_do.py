@@ -232,6 +232,30 @@ def test_find_new_session_requires_meta_json(tmp_path):
     assert do.find_new_session(tmp_path) is None
 
 
+def _session(root, sid):
+    d = root / sid
+    d.mkdir()
+    (d / "meta.json").write_text("{}")
+    return d
+
+
+def test_find_new_session_in_a_shared_root_ignores_earlier_sessions(tmp_path):
+    _session(tmp_path, "1700000000-" + "a" * 16)
+    before = do.session_ids(tmp_path)
+    new = _session(tmp_path, "1700000001-" + "b" * 16)
+    assert do.find_new_session(tmp_path, before) == new
+    assert do.find_new_session(tmp_path, do.session_ids(tmp_path)) is None
+
+
+def test_find_new_session_refuses_two_new_sessions_in_a_shared_root(tmp_path):
+    _session(tmp_path, "1700000000-" + "a" * 16)
+    before = do.session_ids(tmp_path)
+    _session(tmp_path, "1700000001-" + "b" * 16)
+    _session(tmp_path, "1700000002-" + "c" * 16)  # a concurrent run
+    with pytest.raises(do.DoSafetyError, match="found 2"):
+        do.find_new_session(tmp_path, before)
+
+
 # --- CLI dispatch: `lilguy do` reaches do.main, never the legacy runner --------------------
 
 def test_cli_dispatches_do_to_do_main(monkeypatch):
@@ -244,7 +268,7 @@ def test_cli_dispatches_do_to_do_main(monkeypatch):
 
 def test_cli_do_state_dir_defaults_to_a_fresh_private_root():
     assert do._parser("do").parse_args(["fix the thing"]).state_dir is None
-    # main() then uses fresh_state_dir(); see tests/unit/test_serve.py
+    # main() then uses the shared XDG state root that diff/commit/undo/sessions read
 
 
 def test_main_fails_safely_without_falling_back_when_sandbox_missing(tmp_path, monkeypatch, capsys):

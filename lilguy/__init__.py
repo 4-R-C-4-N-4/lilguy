@@ -1,7 +1,7 @@
-"""lilguy: a scaffold that lets a very small model drive a shell.
+"""lilguy: a small local model does everyday file tasks in a reviewed Linux sandbox.
 
-The model only maps (goal, state, observation) -> next action. Knowledge lives in
-retrieval, syntax in a grammar, safety in a policy layer, and output parsing in a
-deterministic digester.
+The model only maps (goal, state, observation) -> next action. lilguy owns the tools, the
+sandbox, the effect policy, approval and apply: nothing reaches the workspace until a
+person commits it.
 """
-__version__ = "0.1.0"
+__version__ = "1.0.0"
