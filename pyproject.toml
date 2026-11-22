@@ -4,9 +4,11 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "lilguy"
-version = "0.1.0"
-description = "Small-model shell scaffold and Linux sandbox foundations"
+version = "1.0.0"
+description = "A small local model for everyday file tasks, run in a reviewed Linux sandbox"
 readme = "README.md"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
 requires-python = ">=3.11"
 dependencies = ["mcp>=1.0,<2", "PyYAML>=6,<7", "bashlex>=0.18,<1"]
 
@@ -14,6 +16,11 @@ dependencies = ["mcp>=1.0,<2", "PyYAML>=6,<7", "bashlex>=0.18,<1"]
 data = ["datasets>=3", "pyarrow>=18"]
 train = []
 dev = ["pytest>=8", "hypothesis>=6", "ruff>=0.9", "build>=1.2"]
+
+[project.urls]
+Homepage = "https://github.com/4-R-C-4-N-4/lilguy"
+Model = "https://huggingface.co/4rc4n4/lilguy-minicpm5-2b-GGUF"
+Changelog = "https://github.com/4-R-C-4-N-4/lilguy/blob/main/CHANGELOG.md"
 
 [project.scripts]
 lilguy = "lilguy.cli:main"

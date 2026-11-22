@@ -1,8 +1,10 @@
 # lilguy model factory
 
+This is the developer guide for training and evaluating lilguy's model. To *use* lilguy, see the [README](../README.md).
+
 The product is a small model that handles everyday shell tasks through lilguy. The model chooses an action; lilguy runs it in a sandbox and owns policy, approval and apply. The factory tests one change to the model without operating servers or grading by hand.
 
-**Current state, open decisions and evidence: [docs/STATUS.md](docs/STATUS.md).**
+**Current state, open decisions and evidence: [STATUS.md](STATUS.md).**
 
 ## Jobs
 
@@ -42,17 +44,7 @@ Model jobs (`fast12`, `broad`, `screen`, `trial`) refuse to start unless:
 
 The held-out suite is never run by these jobs. It is reserved for the one selected shipping GGUF.
 
-`lilguy do "REQUEST"` is the prototype assistant (`lilguy ask "QUESTION"` is its read-only mode). It uses the same loop and guarded tools, stages changes but never applies them, and hands off to `lilguy diff | approve | deny | commit`.
-
-One-time setup points lilguy at its tuned GGUF and pins a GPU by name; after that `ask`/`do` start the model on demand (port 18088, evaluator flags) and refuse to drive any other model found on that port:
-
-```bash
-lilguy setup --model ~/programs/lilguy/minicpm-r8-seed43-q8_0.gguf --gpu 4070
-lilguy ask "What is the timeout in staging.conf?"   # run inside the folder to work on
-lilguy stop                                         # free the GPU
-```
-
-Pass `--url` to drive an already-running server instead (factory jobs do).
+The assistant itself (`lilguy setup | demo | ask | do | diff | approve | commit | undo`) is documented in the [README](../README.md). Factory jobs drive it with an explicit `--url`.
 
 ## Layout
 
@@ -66,4 +58,4 @@ Pass `--url` to drive an already-running server instead (factory jobs do).
 | `lilguy/` | Runtime: protocol, loop, guarded MCP server, sandbox, policy, `lilguy do` |
 | `dev/` | Factory: jobs, Fast12, broader development tasks, held-out corpus and gate, baselines |
 | `tests/` | `unit/` (offline), `sandbox/` and `bypass/` (real bwrap; run one suite at a time), `train/` |
-| `reports/` | Run evidence, gitignored; see [reports/README.md](reports/README.md) |
+| `reports/` | Run evidence, gitignored; see [reports/README.md](../reports/README.md) |
