@@ -133,7 +133,8 @@ def run_development(directory, suite, gguf, server, device, interface=INTERFACE_
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('job', choices=['check', 'trial', 'fast12', 'broad', 'screen', 'pilot', 'audit-splits',
-                                        'compare'])
+                                        'compare', 'assess'])
+    parser.add_argument('--run-dir', type=Path, help='assess: completed matched pilot directory')
     parser.add_argument('--stock', type=Path)
     parser.add_argument('--candidate', type=Path)
     parser.add_argument('--held-out', type=Path)
@@ -164,6 +165,15 @@ def main():
     parser.add_argument('--gpu-name', default=os.environ.get('LILGUY_GPU', 'RTX 3090'),
                         help='model jobs run only when exactly one visible CUDA device matches')
     args = parser.parse_args()
+    if args.job == 'assess':
+        from dev.factory_assess import assess
+        if not args.run_dir or len(args.base) != 1:
+            parser.error('assess needs --run-dir and one --base')
+        try:
+            print(assess(args.run_dir, args.base[0]))
+        except (OSError, ValueError, KeyError) as exc:
+            parser.exit(1, f'Assessment refused: {exc}\n')
+        return 0
     device = None
     models = None
     gate = {}
