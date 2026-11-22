@@ -278,7 +278,7 @@ def describe_handoff(session_dir: Path | None) -> str:
 
 def server_args(workspace: Path, state_dir: Path, mode: str) -> list[str]:
     args = ["-m", "lilguy.mcp_server", "--workspace", str(workspace), "--state-dir", str(state_dir),
-            "--toolset", str(ROOT / "toolset.yaml"), "--interface-v1"]
+            "--toolset", str(p.TOOLSET), "--interface-v1"]
     return args + ["--read-only"] if mode == "ask" else args
 
 

@@ -1,7 +1,14 @@
-# DRAFT for Q1 review, not frozen or executable. Generated from measured utility
-# priorities in reports/coverage/coverage.json. bash blocks drive structural coverage;
-# The tracer field selects the fixed P3 milestone tools without freezing this draft.
-status: draft
+# Frozen served surface for interfaces 1–3. Typed definitions are unchanged.
+# The historical three-tool tracer remains a subset selected by `tracer`.
+# Proposals below are unserved; adding one requires a separate interface decision.
+status: frozen-served
+served: [run, fs.list, fs.find, fs.read, fs.grep, fs.edit]
+run_schema:
+  type: object
+  additionalProperties: false
+  required: [command]
+  properties:
+    command: {type: string, minLength: 1, maxLength: 16384}
 coverage_semantics: syntactic-upper-bound-not-execution-verified
 tools:
   fs.find:
@@ -67,6 +74,7 @@ tools:
       path: {type: path}
       old: {type: string, min_length: 1, max_length: 8192}
       new: {type: string, max_length: 8192}
+proposals:
   text.sort:
     tier: 2
     effect: read

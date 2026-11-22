@@ -22,7 +22,7 @@ lilguy = "lilguy.cli:main"
 include = ["lilguy*"]
 
 [tool.setuptools.package-data]
-lilguy = ["grammar.gbnf", "data/*.json", "data/*.jsonl"]
+lilguy = ["data/*.jsonl", "data/*.yaml"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
