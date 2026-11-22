@@ -1,7 +1,20 @@
 """All tests are offline; data fetching is an explicit CLI operation."""
 import socket
+from pathlib import Path
 
 import pytest
+
+_SANDBOX_DIR = Path(__file__).parent / "sandbox"
+
+
+def pytest_collection_modifyitems(config, items):
+    """Every tests/sandbox/*_live.py drives the real sandbox: mark it so a host without one
+    (e.g. GitHub's runners, where unprivileged user namespaces are restricted) skips it
+    instead of failing, without each new file having to remember `pytestmark`."""
+    for item in items:
+        path = Path(str(item.fspath))
+        if path.parent == _SANDBOX_DIR and path.name.endswith("_live.py"):
+            item.add_marker(pytest.mark.sandbox)
 
 
 @pytest.fixture(scope="session")
