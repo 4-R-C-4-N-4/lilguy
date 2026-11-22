@@ -230,7 +230,7 @@ Gate:
 
 ### Step 2: Give the model the shell (P3)
 
-Status: v1 scope decided; full safety acceptance remains open. Keep `run` and five typed
+Status: v1 scope decided; full safety acceptance passed 2026-11-22 (`reports/factory/check-24wjv4jd`, `ea4e654`, 18/18). Keep `run` and five typed
 file tools. Defer separate `text.*` and `pipe`: `run` already supports pipelines,
 and changing the interface would invalidate candidate comparisons. Any future
 typed additions require a versioned interface change.

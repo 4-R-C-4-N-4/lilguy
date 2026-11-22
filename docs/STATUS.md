@@ -7,7 +7,7 @@ Updated 2026-11-20. This is the one place for current state; the plan and its ga
 | Step | State | Evidence |
 |---|---|---|
 | 1. Interface | v2 current (bare `done`, `ask` only when blocked); v1 kept reproducible | `0091f2e`; `lilguy/protocol.py`, golden prompts `tests/unit/interface_v{1,2}_system_prompt.txt` |
-| 2. Guarded tool server | Scope fixed; full safety acceptance blocked by missing rsync | `reports/factory/check-4hy_n9nc/result.json`; the gate requires all 18 cases |
+| 2. Guarded tool server | Accepted: full `factory check` passed 2026-11-22 at `ea4e654`, all 18 safety cases including #17 (rsync) | `reports/factory/check-24wjv4jd/result.json`, `v1-bypass-corpus.xml` |
 | 3. Shared loop and recorder | Done | `292a28b`; `lilguy/loop.py`, `lilguy/do.py`, `tests/sandbox/test_loop_live.py` |
 | 4. Protected evaluation | Re-frozen for v2 (pin `e10789bc…`), oracle 100/100, null 0/100; development suite at 80 of 150 | [Roadmap re-freeze note](plan/ROADMAP.md); no model has run on held-out |
 | 5. Baselines and family choice | MiniCPM5-2B is the main experimental base, Qwen3.5-0.8B the same-corpus control; no shipping selection | `reports/factory/pilot-w74u7u0b/comparison.json` |
@@ -188,7 +188,7 @@ had 95 GiB available after that cleanup, above the 30 GiB floor.
 2. In a separate experiment, test the agreed 3% warmup/cosine schedule against a fixed-data
    constant-rate control. Do not change dropout, base or data simultaneously; preserve a fixed
    training-fit probe when comparing fit across recipes.
-3. Install rsync and complete the exact 18-case safety gate before calling the tool server accepted.
+3. ~~Install rsync and complete the exact 18-case safety gate.~~ Done 2026-11-22 (`check-24wjv4jd`, `ea4e654`).
 4. Expand the shared development roster toward 150, including a distinct archive category, and
    rerun matched stock/tuned comparisons after its fingerprint changes.
 5. Choose the shipping reference/latency metric; run held-out only when the promotion gates pass.
@@ -252,7 +252,7 @@ Full table with terminals, policy stops and per-task passes: `reports/factory/ba
 
 ## Gaps and known limits
 
-- **Safety corpus #17** is unverified: rsync is absent from the sandbox's executable path. `factory check` now stops at `safety-prerequisites` rather than deselecting the case. The historical 17-case report does not satisfy the full gate.
+- **Safety acceptance covers the guarded tool server, not model quality.** The full gate passed on 2026-11-22 (`reports/factory/check-24wjv4jd`, clean tree `ea4e654`): protocol, split protection, guarded tools, `/usr/bin/rsync` prerequisite, all 18 bypass cases including #17, trainer smoke. It does not make v3 shipped: no held-out evaluation has run.
 - **The development suite** has 80 sandbox-calibrated tasks: Fast12 plus six batches registered in `dev/broad_runner.py`. The new text-workflow batch covers script syntax, literal quoting, byte-level comparison, and packaging manifests. Its scripted controls passed and immediate false completions failed on separate guarded fixtures. Fast12 itself is unchanged. The target is 150.
 - **The held-out suite** has 100 tasks from 10 template families. It was re-frozen once on 2026-11-19, before any model ran on it, to fix three grader defects found on development evidence (see roadmap). It has been checked by unit tests only; its first live run is the shipping evaluation.
 - **No release evaluation has run.** Corpus v2 training and matched deployed-artifact development evaluation have run, but no adapter has qualified for promotion. Earlier adapters under `reports/archive/pilots/` predate interface v1.
