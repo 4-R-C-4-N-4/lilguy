@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Held-out result for the 1.0.0 model: 74/100 on the frozen suite (run once). It is now in the README and model card. Added the `factory held-out` job and the v3 held-out recalibration.
+
 ## 1.0.0 — first release
 
 The first version of lilguy meant for people other than its author.

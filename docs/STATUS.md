@@ -5,10 +5,11 @@ Updated 2026-11-22. This is the one place for current state; the plan and its ga
 ## Release v1.0.0 (2026-11-22)
 
 - **Shipped artifact:** MiniCPM5-2B r8 (interface v3, seed 43), Q8_0, SHA-256 `5626927a…8c94`, from `reports/factory/pilot-47sen2f_/control/minicpm/tuned-q8_0.gguf`; published as `4rc4n4/lilguy-minicpm5-2b-GGUF`. The card is `release/huggingface/README.md`.
-- **Evidence:** development suite 51/80 for this exact artifact. Stock MiniCPM scored 18/80. Other r8 trainings scored 44, 46 and 47, so this pick is best-of-four. **Held-out has not been run**, and the card and README say so.
+- **Held-out (run once, 2026-11-22):** 74/100 (95% CI 65–82%) on the frozen suite at clean `b0c905d`, RTX 3090, interface v3 (`reports/factory/held-out-1oupctb4/holdout.json`). That meets the SCOPE ≥ 70% completion target, and zero changes reached the workspace without a commit. Six families scored 10/10. Missing named file 8/10, read-only answers 4/10, exact-context edits 2/10 and multi-line append 0/10. The model said "done" on 21 of its 26 misses. Before the run, the v3 recalibration of scoring (`dev/holdout_v3.py`) passed its controls: oracle 100/100, false-done 0/100.
+- **Development:** 51/80 for this exact artifact. Stock MiniCPM scored 18/80. Other r8 trainings scored 44, 46 and 47, so this pick is best-of-four.
 - **Safety:** the full `factory check` passed on the release commit `e2aae4b` (`reports/factory/check-qhnezxw9`, clean tree, 18/18 bypass cases), and earlier at `ea4e654`.
 - **User path verified:** an installed wheel was run end to end on CPU. Setup, demo, three `ask`s, two `do`s, commit, approve + commit, undo list and undo all worked. The GPU path was verified earlier on the 4070 and 3090.
-- **Next for v1.x:** run the frozen held-out suite on this artifact and add the result to the card.
+- **Not met yet:** the SCOPE latency target (< 10% of a 30B reference) has no matched measurement.
 
 ## Summary
 

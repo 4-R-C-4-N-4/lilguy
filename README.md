@@ -103,7 +103,17 @@ When you're done: `lilguy stop` frees the GPU or CPU.
 
 Use it for **small, explicit, reviewable jobs**: name the file, say what to change, and say what to leave alone. It is a 2B model.
 
-On lilguy's 80-task development suite (real files in the sandbox, graded on exact results), the released model passes **51/80 (95% CI 53–73%)**; unmodified MiniCPM5-2B in the same harness passes 18/80.
+On lilguy's **frozen held-out suite**, the released model completes **74/100 tasks (95% CI 65–82%)**. Those are 100 tasks it was never trained or tuned on, run once. **None** of its changes reached the real folder without a commit. On the 80-task development suite it passes 51/80; unmodified MiniCPM5-2B in the same harness passes 18/80.
+
+| Held-out family | Passed |
+|---|---|
+| Update a setting; pick the named file; protected-file refusal; delete approval; build-artifact delete; recover from a wrong path | 10/10 each |
+| Named file is missing: stop and say so | 8/10 |
+| Answer a question from a file | 4/10 |
+| Edit only the right one of two near-identical lines | 2/10 |
+| Append a multi-line block to a log | 0/10 |
+
+Development-suite breakdown:
 
 | Kind of task | Passed |
 |---|---|
@@ -119,9 +129,9 @@ On lilguy's 80-task development suite (real files in the sandbox, graded on exac
 
 Read these numbers with care:
 
-- **They are development numbers, not a held-out score.** We iterated on the training data while looking at this suite, and this checkpoint was chosen as the best of four comparable training runs (44, 46, 47 and 51 of 80). Expect lower on your own tasks. A frozen 100-task held-out suite exists and has not been run yet.
-- **"Done" is not proof.** On 12 of the 80 tasks the model said it was done while the result was wrong. That is why lilguy shows you the diff and never applies anything by itself.
-- **Weak spots:** multi-file edits that need exact text, comparing file sizes, writing scripts, and some permission requests (`chmod` modes stated in words rather than numbers, e.g. "make it readable only by me" vs. "chmod 600").
+- **The development numbers are optimistic.** We iterated on training data while watching that suite, and this checkpoint was the best of four comparable training runs (44, 46, 47 and 51 of 80). The held-out score is the unbiased one.
+- **"Done" is not proof.** On the held-out suite the model said "done" on 21 of its 26 misses. That is why lilguy shows you the diff and never applies anything by itself.
+- **Weak spots:** multi-line appends, edits where the same text appears twice, answering questions with an exact quoted value, scripts, and `chmod` modes stated in words rather than numbers ("readable only by me" vs. "chmod 600").
 
 ## Safety model
 

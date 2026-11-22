@@ -46,6 +46,8 @@ lilguy serves it with `llama-server -c 4096 -np 1 -ngl all` and sends each reque
 
 ## Results
 
+### Development suite: 51/80
+
 lilguy's development suite has 80 tasks that run in the real sandbox on real files and are graded on exact results: files written, text answered, and originals left untouched. Each task also runs a scripted correct solution and a false "done" control, so infrastructure faults are counted separately from model misses. There were none in these runs.
 
 | | Passed (of 80) |
@@ -63,11 +65,32 @@ lilguy's development suite has 80 tasks that run in the real sandbox on real fil
 
 Measured on an RTX 3090, the median task took 1.1 s end to end, of which 0.24 s was model time.
 
+### Held-out suite: 74/100
+
+The frozen held-out suite has 100 tasks in 10 families written apart from the development tasks. It was never used for training or tuning, and it was run once on this exact file. Scoring was adapted to interface v3 before the run, and that adaptation was checked with controls: the scripted solution passed 100/100 and an immediate "done" passed 0/100.
+
+| | |
+|---|---|
+| **Completed** | **74/100** (95% CI 65–82%). The project target is ≥ 70%. |
+| **Changes reaching the real folder without a commit** | **0**. The target is 0. |
+| Infrastructure failures | 0 |
+| Said "done" on a task it got wrong | 21 of the 26 misses |
+
+| Family | Passed | Family | Passed |
+|---|---|---|---|
+| Update a setting value | 10/10 | Protected file: edit must be refused | 10/10 |
+| Named file is missing: stop and say so | 8/10 | Delete outside safe paths: waits for approval | 10/10 |
+| Pick the explicitly named file of two | 10/10 | Delete a build artifact (auto-approved) | 10/10 |
+| Answer a question from a file | 4/10 | Find the file when the path is wrong | 10/10 |
+| Append a multi-line block to a log | **0/10** | Edit only the right one of two near-identical lines | 2/10 |
+
+The model is reliable on single-value edits, file selection, the approval and protection gates, and recovering from a wrong path. It fails multi-line appends and context-sensitive edits, and it answers only 4 of 10 read-only questions with a correct quoted value. As in development, a "done" is not proof: review the diff.
+
 **Caveats. Please read before quoting the score:**
 
-- **These are development numbers.** The training data was revised while watching this suite. This checkpoint is also the best of four comparable training runs of the same recipe, which scored 44, 46, 47 and 51. Expect lower results on your own tasks. A frozen 100-task held-out suite exists and has **not** been run on this release.
-- **It can claim success wrongly.** On 12 of the 80 tasks it ended with `done` while the result was wrong. lilguy never applies anything without you, and that is the reason.
-- **Known weak spots:** edits that need exact text across several files, comparing file sizes, writing scripts, and `chmod` requests phrased in words ("only I can read it") rather than octal ("600").
+- **The development numbers are optimistic.** The training data was revised while watching that suite. This checkpoint is also the best of four comparable training runs of the same recipe, which scored 44, 46, 47 and 51. The held-out result above is the unbiased figure.
+- **It can claim success wrongly.** It ended with `done` on 12 wrong development tasks and on 21 of its 26 held-out misses. lilguy never applies anything without you, and that is the reason.
+- **Known weak spots:** multi-line appends, edits where the same text appears twice, exact quoted answers, edits that need exact text across several files, comparing file sizes, scripts, and `chmod` requests phrased in words ("only I can read it") rather than octal ("600").
 
 ## Intended use
 
@@ -75,7 +98,7 @@ Use it for small, explicit, reviewable jobs on your own machine:
 - read a setting;
 - count matching lines;
 - change one value;
-- append an item;
+- append a single line;
 - create a file;
 - move named files into a folder.
 
