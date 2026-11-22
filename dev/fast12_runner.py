@@ -329,8 +329,11 @@ def interface_grade(grade, *, answer_required, version):
     answer to a question is the quoted output of the last step, so the same answer checks run
     on that quote instead of on the model's words (a v3 done has none)."""
     if version >= 3 and answer_required:
-        def quoted(task, *, events, answer, **kwargs):
-            return grade(task, events=events, answer=quote_text(events, task.files), **kwargs)
+        def quoted(task, *, events, answer, terminal, **kwargs):
+            # An `ask` is the one terminal whose own text the user is shown ("what is missing");
+            # every other answer is the quote. No development task accepts an ask terminal.
+            shown = answer if terminal == "ask" else quote_text(events, task.files)
+            return grade(task, events=events, answer=shown, terminal=terminal, **kwargs)
         return quoted
     if version < 2 or answer_required:
         return grade
@@ -351,13 +354,15 @@ def quote_text(events, files=None) -> str:
     return "" if quote.text.rstrip("\n") in inputs else quote.text
 
 
-def task_mode(task, version=p.INTERFACE_VERSION) -> str:
-    """Interface v3 mode an evaluation task is issued in: `ask` for the development questions
-    listed in dev/oracles_v3.py (the user would type `lilguy ask`), `do` for everything else."""
+def task_mode(task, version=p.INTERFACE_VERSION, ask_ids=None) -> str:
+    """Interface v3 mode an evaluation task is issued in: `ask` for the questions listed in
+    `ask_ids` (default: the development questions in dev/oracles_v3.py; the user would type
+    `lilguy ask`), `do` for everything else."""
     if version < 3:
         return "do"
-    from dev.oracles_v3 import ASK
-    return "ask" if task.id in ASK else "do"
+    if ask_ids is None:
+        from dev.oracles_v3 import ASK as ask_ids
+    return "ask" if task.id in ask_ids else "do"
 
 
 def with_oracle(task, oracle):
@@ -369,18 +374,20 @@ def _events(run):
     return [(p.Action(**e["action"]), e["observation"], e["is_error"]) for e in run["events"]]
 
 
-def oracle_for(task, version):
+def oracle_for(task, version, oracles=None):
     """v3 replaces the oracle of a question with one whose last command prints the answer."""
     if version >= 3:
-        from dev.oracles_v3 import ORACLES
-        if task.id in ORACLES:
-            return with_oracle(task, ORACLES[task.id])
+        if oracles is None:
+            from dev.oracles_v3 import ORACLES as oracles
+        if task.id in oracles:
+            return with_oracle(task, oracles[task.id])
     return task
 
 
-def judge_task(root: Path, task, tools, port, opener, grade, version=p.INTERFACE_VERSION) -> dict:
-    task = oracle_for(task, version)
-    mode = task_mode(task, version)  # the controls run in the mode the model gets
+def judge_task(root: Path, task, tools, port, opener, grade, version=p.INTERFACE_VERSION, *,
+               ask_ids=None, oracles=None) -> dict:
+    task = oracle_for(task, version, oracles)
+    mode = task_mode(task, version, ask_ids)  # the controls run in the mode the model gets
     oracle = run_oracle(root / "oracle", task, tools, grade, version=version, mode=mode)
     scored = grade if oracle["infra_error"] else interface_grade(
         grade, answer_required=answer_required(oracle), version=version)

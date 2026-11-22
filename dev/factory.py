@@ -118,6 +118,26 @@ def execute(directory, stages, *, required_cases=None):
     return 0
 
 
+def previous_held_out(gguf_sha256, base=ROOT / 'reports' / 'factory'):
+    """Earlier held-out jobs on these exact model bytes: the suite runs once per candidate."""
+    found = []
+    for identity in sorted(Path(base).glob('held-out-*/identity.json')):
+        try:
+            if json.loads(identity.read_text()).get('gguf_sha256') == gguf_sha256:
+                found.append(identity.parent)
+        except (OSError, ValueError):
+            found.append(identity.parent)  # unreadable: count it, never silently rerun
+    return found
+
+
+def run_held_out(directory, gguf, server, device):
+    from dev.holdout_runner import SOURCES
+    identity = {**fast12_identity(gguf, server, extra_sources=SOURCES, interface=3), 'device': device}
+    (directory / 'identity.json').write_text(json.dumps(identity, indent=2, sort_keys=True) + '\n')
+    return execute(directory, [('held-out', ['.venv/bin/python', '-m', 'dev.holdout_runner',
+        server.resolve(), gguf.resolve(), directory], None)])
+
+
 def run_development(directory, suite, gguf, server, device, interface=INTERFACE_VERSION):
     if suite == 'broad':
         from dev.broad_runner import SOURCES
@@ -133,7 +153,7 @@ def run_development(directory, suite, gguf, server, device, interface=INTERFACE_
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('job', choices=['check', 'trial', 'fast12', 'broad', 'screen', 'pilot', 'audit-splits',
-                                        'compare', 'assess'])
+                                        'compare', 'assess', 'held-out'])
     parser.add_argument('--run-dir', type=Path, help='assess: completed matched pilot directory')
     parser.add_argument('--stock', type=Path)
     parser.add_argument('--candidate', type=Path)
@@ -212,6 +232,13 @@ def main():
         gate = evaluation_gate()
         if not gate['ok']:
             parser.exit(1, f"Evaluation gate failed: {gate['reason']}\n")
+        if args.job == 'held-out':
+            with args.gguf.open('rb') as stream:
+                digest = hashlib.file_digest(stream, 'sha256').hexdigest()
+            earlier = previous_held_out(digest)
+            if earlier:
+                parser.exit(1, f'The held-out suite already ran on this model ({earlier[0]}); '
+                               'it runs once per candidate.\n')
         device = gpu_device(args.server, args.gpu_name)
         if device is None:
             parser.exit(1, f'Expected exactly one visible CUDA device matching {args.gpu_name!r}; '
@@ -269,6 +296,8 @@ def main():
                 parser.exit(1, f'Pilot stopped: {exc}; see {directory}\n')
             print(directory / 'comparison.json', flush=True)
             return 0
+        if args.job == 'held-out':
+            return run_held_out(directory, args.gguf, args.server, device)
         if args.job in ('fast12', 'broad'):
             return run_development(directory, args.job, args.gguf, args.server, device)
         if args.job == 'trial':
