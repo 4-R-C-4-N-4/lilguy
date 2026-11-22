@@ -1591,7 +1591,7 @@ BOOST_R6 = {'read_value': 2, 'count': 2, 'largest': 2, 'grep_find': 2, 'awk_sum'
 # Asking is kept only where the request cannot be done with the workspace (a named input is
 # absent); asks that judged ambiguity are dropped.
 BLOCKED_ASK_FAMILIES = ('recover_absent',)
-_INTERFACE = {1: 1, 2: 1, 3: 1, 4: 1, 5: 2, 6: 2, 7: 3, 8: 3}
+_INTERFACE = {1: 1, 2: 1, 3: 1, 4: 1, 5: 2, 6: 2, 7: 3, 8: 3, 9: 3}
 
 
 def interface_for(revision):
@@ -1770,6 +1770,10 @@ def generate(seed=DEFAULT_SEED, scale=1.0, families=None, revision=1):
     out = []
     table = {**FAMILIES, **(FAMILIES_R2 if revision >= 2 else {}), **(FAMILIES_R4 if revision >= 4 else {}),
              **(FAMILIES_R6 if revision >= 6 else {})}
+    if revision >= 9:
+        import sys
+        from dev import corpus_r9
+        table.update(corpus_r9.families(sys.modules[__name__]))
     for name, (fn, count) in table.items():
         if families and name not in families:
             continue
