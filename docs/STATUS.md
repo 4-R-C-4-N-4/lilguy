@@ -6,7 +6,7 @@ Updated 2026-11-22. This is the one place for current state; the plan and its ga
 
 - **Shipped artifact:** MiniCPM5-2B r8 (interface v3, seed 43), Q8_0, SHA-256 `5626927a…8c94`, from `reports/factory/pilot-47sen2f_/control/minicpm/tuned-q8_0.gguf`; published as `4rc4n4/lilguy-minicpm5-2b-GGUF`. The card is `release/huggingface/README.md`.
 - **Evidence:** development suite 51/80 for this exact artifact. Stock MiniCPM scored 18/80. Other r8 trainings scored 44, 46 and 47, so this pick is best-of-four. **Held-out has not been run**, and the card and README say so.
-- **Safety:** the full `factory check` passed at `ea4e654` with 18/18 bypass cases.
+- **Safety:** the full `factory check` passed on the release commit `e2aae4b` (`reports/factory/check-qhnezxw9`, clean tree, 18/18 bypass cases), and earlier at `ea4e654`.
 - **User path verified:** an installed wheel was run end to end on CPU. Setup, demo, three `ask`s, two `do`s, commit, approve + commit, undo list and undo all worked. The GPU path was verified earlier on the 4070 and 3090.
 - **Next for v1.x:** run the frozen held-out suite on this artifact and add the result to the card.
 
