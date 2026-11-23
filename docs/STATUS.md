@@ -11,7 +11,13 @@ Updated 2026-11-22. This is the one place for current state; the plan and its ga
 - **User path verified:** an installed wheel was run end to end on CPU. Setup, demo, three `ask`s, two `do`s, commit, approve + commit, undo list and undo all worked. The GPU path was verified earlier on the 4070 and 3090.
 - **Not met yet:** the SCOPE latency target (< 10% of a 30B reference) has no matched measurement.
 
-## In progress: interface v4 + corpus r10 (2026-11-23)
+## Release v2.0.0 (2026-11-23)
+
+- **Shipped model:** r10 seed 42 on interface v4, SHA-256 `0d90e036…f233`, from `reports/factory/pilot-5bw___5q/minicpm/tuned-q8_0.gguf`. Published as `lilguy-v2-minicpm5-2b-q8_0.gguf`.
+- **Held-out v2** (frozen at `d687603` with pin `cb96c819…`, run once per model): 2.0 scored 83/100 (`reports/factory/held-out-1zp8qiwo`) and 1.0 scored 76/100 (`held-out-x2dz8iro`). Neither made a change outside review. Named-block edits went from 0/10 to 9/10; quote and count questions went from 20/20 to 16/20. The paired difference has an exact McNemar p ≈ 0.14.
+- **The app runs each model on its own interface:** v4 for 2.0, v3 for 1.x (config `interface`).
+
+## Interface v4 + corpus r10 (2026-11-23)
 
 - **Interface v4** (development only; 1.x ships v3): output is framed by `<<< >>>` and unindented, and `fs.edit` refusals now say "not found" or "occurs N times (lines …)". See [plan/INTERFACE-V4.md](plan/INTERFACE-V4.md) and the [diagnosis](data/FOCUS-V4-DIAGNOSIS.md).
 - **r10 results:** 53/80 and 52/80 on the 80-task roster (1.0: 51) and 14/15 and 13/15 on the focus set (1.0: 7/15). Repeated-text edits went from 0/5 to 5/5 on both seeds. See the [round report](data/R10-V4-RESULT.md).

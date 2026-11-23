@@ -97,25 +97,26 @@ def _chat_complete(url: str, model: str | None, messages: list[dict], grammar: s
 
 
 def make_model_driver(tools, request: str, url: str, model: str | None = None,
-                       use_grammar: bool = True, timeout: float = 120.0, mode: str = "do"):
+                       use_grammar: bool = True, timeout: float = 120.0, mode: str = "do",
+                       version: int = p.INTERFACE_VERSION):
     """Build the `next_action` run_loop needs: stateless in `turns` (rebuilt every call, no
     closure state to drift from the Record), using interface v1's own system prompt,
     grammar and canonical action rendering -- the one definition of the protocol, not a
     second one. Network errors and `protocol.ProtocolError` are the only ways this raises;
     the former propagates uncaught by design (loop.py's contract) and is turned into a
     safe abort by the caller, the latter is caught by run_loop itself."""
-    system = p.system_prompt(tools)
-    grammar = p.grammar(tools) if use_grammar else None
-    opening = p.user_message(request, mode)
+    system = p.system_prompt(tools, version)
+    grammar = p.grammar(tools, version) if use_grammar else None
+    opening = p.user_message(request, mode, version)
 
     def next_action(turns, policy):
         messages = [{"role": "system", "content": system},
                     {"role": "user", "content": opening}]
         for turn in turns:
-            messages.append({"role": "assistant", "content": p.render_action(turn.action, tools)})
+            messages.append({"role": "assistant", "content": p.render_action(turn.action, tools, version)})
             messages.append({"role": "user", "content": p.observation_message(turn.observation)})
         raw = _chat_complete(url, model, messages, grammar, timeout)
-        return p.parse_action(raw, tools)
+        return p.parse_action(raw, tools, version)
 
     return next_action
 
@@ -206,9 +207,9 @@ def load_record(path: Path) -> dict:
     data = json.loads(Path(path).read_text(encoding="utf8"))
     if data.get("schema_version") != RECORD_SCHEMA_VERSION:
         raise DoSafetyError(f"unsupported record schema_version {data.get('schema_version')!r}")
-    if data.get("version") != p.INTERFACE_VERSION:
+    if data.get("version") not in p.SUPPORTED_VERSIONS or data.get("version") == 1:
         raise DoSafetyError(f"record is for interface v{data.get('version')!r}, "
-                            f"not v{p.INTERFACE_VERSION}")
+                            f"not one of v{', v'.join(map(str, p.SUPPORTED_VERSIONS[1:]))}")
     return data
 
 
@@ -293,9 +294,9 @@ def describe_handoff(session_dir: Path | None) -> str:
 
 # --- the drive itself: guarded MCP only, never a direct in-process GuardedSession -----------
 
-def server_args(workspace: Path, state_dir: Path, mode: str) -> list[str]:
+def server_args(workspace: Path, state_dir: Path, mode: str, version: int = p.INTERFACE_VERSION) -> list[str]:
     args = ["-m", "lilguy.mcp_server", "--workspace", str(workspace), "--state-dir", str(state_dir),
-            "--toolset", str(p.TOOLSET), "--interface-v1"]
+            "--toolset", str(p.TOOLSET), "--interface-v1", "--interface", str(version)]
     return args + ["--read-only"] if mode == "ask" else args
 
 
@@ -310,7 +311,8 @@ def _errlog():
 
 
 async def _run(request: str, workspace: Path, state_dir: Path, url: str, model: str | None,
-                max_turns: int, use_grammar: bool, timeout: float, mode: str = "do") -> "loop.Record":
+                max_turns: int, use_grammar: bool, timeout: float, mode: str = "do",
+                version: int = p.INTERFACE_VERSION) -> "loop.Record":
     import anyio
     from mcp import ClientSession, StdioServerParameters
     from mcp.client.stdio import stdio_client
@@ -318,7 +320,7 @@ async def _run(request: str, workspace: Path, state_dir: Path, url: str, model: 
     tools = p.load_tools()
     env = {k: os.environ[k] for k in ("XDG_RUNTIME_DIR", "DBUS_SESSION_BUS_ADDRESS") if k in os.environ}
     params = StdioServerParameters(command=sys.executable, cwd=str(ROOT), env=env,
-                                   args=server_args(workspace, state_dir, mode))
+                                   args=server_args(workspace, state_dir, mode, version))
     with anyio.fail_after(timeout):
         async with stdio_client(params, errlog=_errlog()) as (read, write):
             async with ClientSession(read, write) as client:
@@ -330,14 +332,14 @@ async def _run(request: str, workspace: Path, state_dir: Path, url: str, model: 
                         f"the guarded MCP server exposes approval authority to the model: "
                         f"{sorted(forbidden)}; refusing to drive it")
                 call_tool = make_call_tool(client)
-                next_action = make_model_driver(tools, request, url, model, use_grammar, timeout, mode)
-                return await loop.run_loop(call_tool, request, next_action, max_turns, mode=mode)
+                next_action = make_model_driver(tools, request, url, model, use_grammar, timeout, mode, version)
+                return await loop.run_loop(call_tool, request, next_action, max_turns, version=version, mode=mode)
 
 
 def drive(request: str, workspace: Path, state_dir: Path, *, url: str = DEFAULT_URL,
           model: str | None = None, max_turns: int = 15, use_grammar: bool = True,
           timeout: float = 300.0, skip_preflight: bool = False,
-          mode: str = "do") -> tuple["loop.Record", Path | None]:
+          mode: str = "do", version: int = p.INTERFACE_VERSION) -> tuple["loop.Record", Path | None]:
     """Run one `do` trajectory end to end and return (record, session_dir). `session_dir` is
     None iff the trajectory never opened a sandbox session (e.g. it ended on `ask` without
     any tool call) -- a legitimate outcome, not a failure. Preflight is skippable only for
@@ -348,7 +350,7 @@ def drive(request: str, workspace: Path, state_dir: Path, *, url: str = DEFAULT_
         check_model(url)
     before = session_ids(state_dir)
     record = asyncio.run(_run(request, workspace, state_dir, url, model, max_turns,
-                              use_grammar, timeout, mode))
+                              use_grammar, timeout, mode, version))
     session_dir = find_new_session(state_dir, before)
     return record, session_dir
 
@@ -368,6 +370,9 @@ def _parser(mode="do"):
                         help="loopback llama.cpp server (default: the model from `lilguy setup`, "
                              "started on demand)")
     parser.add_argument("--model", default=None)
+    parser.add_argument("--interface", type=int, default=None, choices=p.SUPPORTED_VERSIONS[1:],
+                        help="interface the model was trained on (default: from `lilguy setup`, else "
+                             f"v{p.INTERFACE_VERSION})")
     parser.add_argument("--no-grammar", action="store_true")
     parser.add_argument("--max-turns", type=int, default=15)
     parser.add_argument("--timeout", type=float, default=300.0, help="overall wall budget, seconds")
@@ -381,12 +386,14 @@ def main(argv: list[str] | None = None, mode: str = "do") -> int:
     args = _parser(mode).parse_args(argv)
     workspace = args.workspace.resolve()
 
-    url = args.url
+    url, version = args.url, args.interface or p.INTERFACE_VERSION
     if url is None:
         from . import serve
         try:
             check_sandbox()  # before spending a GPU on a run that cannot happen
-            url = serve.ensure_server(serve.load_config())
+            cfg = serve.load_config()
+            version = args.interface or cfg.interface
+            url = serve.ensure_server(cfg)
         except DoSafetyError as exc:
             print(f"lilguy {mode} failed safely: {exc}", file=sys.stderr)
             return 2
@@ -398,7 +405,8 @@ def main(argv: list[str] | None = None, mode: str = "do") -> int:
     try:
         record, session_dir = drive(
             args.request, workspace, state_dir, url=url, model=args.model,
-            max_turns=args.max_turns, use_grammar=not args.no_grammar, timeout=args.timeout, mode=mode)
+            max_turns=args.max_turns, use_grammar=not args.no_grammar, timeout=args.timeout, mode=mode,
+            version=version)
     except DoSafetyError as exc:
         print(f"lilguy {mode} failed safely: {exc}", file=sys.stderr)
         return 2

@@ -1,5 +1,30 @@
 # Changelog
 
+## 2.0.0
+
+**New model:** `lilguy-v2-minicpm5-2b-q8_0.gguf`.
+- MiniCPM5-2B with LoRA, trained on corpus revision 10 for interface v4. SHA-256 `0d90e036…f233`.
+- **Held-out v2: 83/100.** This is a new frozen suite, run once. 1.0 scores 76/100 on it.
+- Edits inside a named block went from 0/10 to 9/10.
+- Zero changes reached the workspace without a commit.
+- Development suite: 53/80.
+
+**Interface v4.**
+- Command output is shown between `<<<` and `>>>`, unindented, so copied text matches the file exactly.
+- `fs.edit` refusals say whether the old text was not found or occurs several times, and on which lines.
+
+**Each model runs on the interface it was trained on.**
+- `lilguy setup` records the interface: v4 for the 2.0 download; known 1.x files are detected as v3, and other files need `--interface N`.
+- 1.x configs keep working on v3.
+- `lilguy do`/`ask` build the prompt, grammar and observations for that interface.
+
+**Factory.**
+- Held-out v2: 100 tasks in 10 families, frozen and pinned.
+- `factory held-out --suite v1|v2 --interface N` runs each suite only once per model.
+- New v4 focus fixtures and a focus runner.
+- Corpus revision 10.
+
+
 ## 1.1.0
 
 - **One question instead of a commit workflow.** `lilguy do` shows the diff and then asks `Apply …? [y/N]`. For a change that crossed an approval threshold it asks `Approve and apply …? [y/N]`: one yes approves exactly the shown change and writes it, bound to its diff hash. Anything else leaves it staged. Use `--stage-only`, or run without a terminal, to never be asked.

@@ -40,7 +40,7 @@ import yaml
 
 from .digest import digest
 
-INTERFACE_VERSION = 3
+INTERFACE_VERSION = 4
 SUPPORTED_VERSIONS = (1, 2, 3, 4)
 # The development interface (newest). INTERFACE_VERSION stays the one the shipped model was
 # trained on until a model trained on a newer version is released.

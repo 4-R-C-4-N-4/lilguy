@@ -235,8 +235,11 @@ def test_release_url_points_at_hugging_face():
 
 
 def test_release_pin_is_the_evaluated_artifact():
-    # sha256 of reports/factory/pilot-47sen2f_/control/minicpm/tuned-q8_0.gguf (r8, seed 43)
-    assert serve.RELEASE["sha256"] == "5626927a90f9981d56ab94d4bed8495c183487df818af63651c4d32055b18c94"
+    # sha256 of reports/factory/pilot-5bw___5q/minicpm/tuned-q8_0.gguf (r10, seed 42), the file
+    # held-out v2 scored 83/100 on (reports/factory/held-out-1zp8qiwo)
+    assert serve.RELEASE["sha256"] == "0d90e036f52ee7890df33e877898963d9a657785e0c4cb58532538689be8f233"
+    assert serve.RELEASE["interface"] == 4 == serve.KNOWN_MODELS[serve.RELEASE["sha256"]]
+    assert serve.KNOWN_MODELS["5626927a90f9981d56ab94d4bed8495c183487df818af63651c4d32055b18c94"] == 3
 
 
 def test_fetch_downloads_and_verifies(data_dir):
@@ -284,10 +287,10 @@ def test_cpu_mode_hides_gpus_and_offloads_nothing(cfg):
 
 def test_setup_with_local_model_and_cpu_writes_config(xdg, cfg, capsys):
     code = serve.setup_main(["--model", str(cfg.model), "--llama-server", str(cfg.llama_server),
-                             "--cpu", "--port", "18999"])
+                             "--cpu", "--port", "18999", "--interface", "4"])
     assert code == 0, capsys.readouterr().err
     loaded = serve.load_config()
-    assert loaded.gpu == serve.CPU and loaded.model == cfg.model.resolve()
+    assert loaded.gpu == serve.CPU and loaded.model == cfg.model.resolve() and loaded.interface == 4
     assert "lilguy demo" in capsys.readouterr().out
 
 
@@ -301,3 +304,36 @@ def test_setup_explains_missing_llama_server(xdg, monkeypatch, capsys):
     monkeypatch.setattr(serve, "find_llama_server", lambda: None)
     assert serve.setup_main(["--cpu"]) == 2
     assert "llama.cpp" in capsys.readouterr().err
+
+
+def test_setup_refuses_an_unknown_model_without_an_interface(xdg, cfg, capsys):
+    assert serve.setup_main(["--model", str(cfg.model), "--llama-server", str(cfg.llama_server), "--cpu"]) == 2
+    assert "--interface" in capsys.readouterr().err
+
+
+def test_setup_detects_the_interface_of_a_known_release_file(xdg, cfg, monkeypatch):
+    import hashlib
+    monkeypatch.setitem(serve.KNOWN_MODELS, hashlib.sha256(b"GGUF").hexdigest(), 4)
+    assert serve.setup_main(["--model", str(cfg.model), "--llama-server", str(cfg.llama_server), "--cpu"]) == 0
+    assert serve.load_config().interface == 4
+
+
+def test_configs_from_1x_without_interface_mean_v3(xdg, cfg):
+    path = serve.write_config(cfg)
+    path.write_text("\n".join(line for line in path.read_text().splitlines() if not line.startswith("interface")))
+    assert serve.load_config().interface == 3
+
+
+def test_do_drives_the_configured_interface(xdg, cfg, tmp_path, monkeypatch):
+    import dataclasses
+    seen = {}
+    monkeypatch.setattr(do, "check_sandbox", lambda: None)
+    monkeypatch.setattr(serve, "load_config", lambda: dataclasses.replace(cfg, interface=4))
+    monkeypatch.setattr(serve, "ensure_server", lambda c: "http://127.0.0.1:18999")
+
+    def fake_drive(request, workspace, state_dir, **kw):
+        seen["version"] = kw["version"]
+        raise do.DoSafetyError("stop here")
+    monkeypatch.setattr(do, "drive", fake_drive)
+    do.main(["hello", "--workspace", str(tmp_path)])
+    assert seen["version"] == 4

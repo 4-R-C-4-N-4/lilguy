@@ -11,8 +11,8 @@ V2_GOLDEN = Path(__file__).with_name("interface_v2_system_prompt.txt")
 V3_GOLDEN = Path(__file__).with_name("interface_v3_system_prompt.txt")
 
 
-def test_current_version_is_3_and_earlier_versions_stay_supported():
-    assert p.INTERFACE_VERSION == 3  # the shipped model's; v4 is in development
+def test_shipped_version_is_4_and_earlier_versions_stay_supported():
+    assert p.INTERFACE_VERSION == 4  # the 2.0 model's; 1.x models run on v3
     assert p.SUPPORTED_VERSIONS == (1, 2, 3, 4)
     with pytest.raises(p.ProtocolError):
         p.system_prompt(TOOLS, version=5)
@@ -20,7 +20,7 @@ def test_current_version_is_3_and_earlier_versions_stay_supported():
 
 def test_v2_prompt_is_unchanged_and_v3_is_frozen():
     assert p.system_prompt(TOOLS, version=2) == V2_GOLDEN.read_text(encoding="utf8")
-    assert p.system_prompt(TOOLS) == V3_GOLDEN.read_text(encoding="utf8"), (
+    assert p.system_prompt(TOOLS, version=3) == V3_GOLDEN.read_text(encoding="utf8"), (
         "The v3 system prompt changed. If intended, bump INTERFACE_VERSION and regenerate data.")
 
 

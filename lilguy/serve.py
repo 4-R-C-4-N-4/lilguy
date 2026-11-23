@@ -27,6 +27,7 @@ import time
 import tomllib
 import urllib.error
 import urllib.request
+import dataclasses
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -38,9 +39,17 @@ _START_TIMEOUT = 180.0
 # The released model: the exact bytes the round reports and the safety gate were run against.
 RELEASE = {
     "repo": "4rc4n4/lilguy-minicpm5-2b-GGUF",
-    "file": "lilguy-v1-minicpm5-2b-q8_0.gguf",
-    "sha256": "5626927a90f9981d56ab94d4bed8495c183487df818af63651c4d32055b18c94",
+    "file": "lilguy-v2-minicpm5-2b-q8_0.gguf",
+    "sha256": "0d90e036f52ee7890df33e877898963d9a657785e0c4cb58532538689be8f233",
     "bytes": 2679706816,
+    "interface": 4,
+}
+
+# Every released model, by SHA-256, and the interface it was trained on, so `setup --model`
+# with a known file needs no flag and the app never drives a model on the wrong interface.
+KNOWN_MODELS = {
+    "5626927a90f9981d56ab94d4bed8495c183487df818af63651c4d32055b18c94": 3,  # 1.x: r8, interface v3
+    "0d90e036f52ee7890df33e877898963d9a657785e0c4cb58532538689be8f233": 4,  # 2.0: r10, interface v4
 }
 
 
@@ -54,6 +63,7 @@ class Config:
     llama_server: Path
     gpu: str | None = None
     port: int = DEFAULT_PORT
+    interface: int = 3  # the interface the model was trained on; configs from 1.x omit it (= 3)
 
     @property
     def url(self) -> str:
@@ -94,7 +104,8 @@ def load_config(path: Path | None = None) -> Config:
     try:
         cfg = Config(model=Path(raw["model"]).expanduser(),
                      llama_server=Path(raw["llama_server"]).expanduser(),
-                     gpu=raw.get("gpu") or None, port=int(raw.get("port", DEFAULT_PORT)))
+                     gpu=raw.get("gpu") or None, port=int(raw.get("port", DEFAULT_PORT)),
+                     interface=int(raw.get("interface", 3)))
     except (KeyError, TypeError, ValueError) as exc:
         raise ServeError(f"{path}: missing or invalid setting: {exc}") from None
     for label, file in (("model", cfg.model), ("llama_server", cfg.llama_server)):
@@ -108,7 +119,8 @@ def write_config(cfg: Config, path: Path | None = None) -> Path:
     path.parent.mkdir(parents=True, exist_ok=True)
     lines = [f"model = {json.dumps(str(cfg.model))}",
              f"llama_server = {json.dumps(str(cfg.llama_server))}",
-             f"port = {cfg.port}"]
+             f"port = {cfg.port}",
+             f"interface = {cfg.interface}"]
     if cfg.gpu:
         lines.insert(2, f"gpu = {json.dumps(cfg.gpu)}")
     path.write_text("# written by `lilguy setup`\n" + "\n".join(lines) + "\n")
@@ -306,6 +318,8 @@ def setup_main(argv: list[str] | None = None) -> int:
     device.add_argument("--gpu", default=None, help="NVIDIA GPU name to pin, e.g. 4070 (default: any)")
     device.add_argument("--cpu", action="store_true", help="run on the CPU only (slower, no GPU needed)")
     ap.add_argument("--port", type=int, default=DEFAULT_PORT)
+    ap.add_argument("--interface", type=int, default=None, choices=(2, 3, 4),
+                    help="interface the --model GGUF was trained on (known release files are detected)")
     args = ap.parse_args(argv)
     server = args.llama_server or find_llama_server()
     if server is None:
@@ -318,11 +332,19 @@ def setup_main(argv: list[str] | None = None) -> int:
     except ServeError as exc:
         print(f"lilguy setup: {exc}", file=sys.stderr)
         return 2
-    cfg = Config(model=model, llama_server=server.expanduser().resolve(),
-                 gpu=CPU if args.cpu else args.gpu, port=args.port)
     try:
-        if not cfg.model.is_file():
-            raise ServeError(f"model not found: {cfg.model}")
+        if not model.is_file():
+            raise ServeError(f"model not found: {model}")
+        interface = args.interface or (RELEASE["interface"] if not args.model else
+                                       KNOWN_MODELS.get(sha256_file(model)))
+        if interface is None:
+            raise ServeError("unknown model file: pass --interface N (the interface it was trained on)")
+    except ServeError as exc:
+        print(f"lilguy setup: {exc}", file=sys.stderr)
+        return 2
+    cfg = Config(model=model, llama_server=server.expanduser().resolve(),
+                 gpu=CPU if args.cpu else args.gpu, port=args.port, interface=interface)
+    try:
         if not os.access(cfg.llama_server, os.X_OK):
             raise ServeError(f"llama-server not executable: {cfg.llama_server}")
         device = ("CPU" if cfg.gpu == CPU else _verify_device(cfg) if cfg.gpu
@@ -332,7 +354,7 @@ def setup_main(argv: list[str] | None = None) -> int:
         return 2
     path = write_config(cfg)
     print(f"Wrote {path}\n  model:  {cfg.model}\n  server: {cfg.llama_server}\n"
-          f"  device: {device}\n  url:    {cfg.url}\n"
+          f"  device: {device}\n  url:    {cfg.url}\n  interface: v{cfg.interface}\n"
           "Next: lilguy demo   (makes a practice folder and shows what to try)")
     return 0
 
@@ -360,7 +382,7 @@ def serve_main(argv: list[str] | None = None) -> int:
     try:
         cfg = load_config()
         if args.port is not None:
-            cfg = Config(cfg.model, cfg.llama_server, cfg.gpu, args.port)
+            cfg = dataclasses.replace(cfg, port=args.port)
         if served_model(cfg.url) is not None:
             raise ServeError(f"something is already serving on port {cfg.port}")
         env = server_env(cfg)

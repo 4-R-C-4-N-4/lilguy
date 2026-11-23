@@ -41,7 +41,7 @@ lilguy is two halves that only make sense together:
 ## Install
 
 ```bash
-uv tool install git+https://github.com/4-R-C-4-N-4/lilguy@v1.1.0
+uv tool install git+https://github.com/4-R-C-4-N-4/lilguy@v2.0.0
 lilguy probe          # checks the sandbox prerequisites; every "required" row must pass
 ```
 
@@ -115,35 +115,37 @@ When you're done: `lilguy stop` frees the GPU or CPU.
 
 Use it for **small, explicit, reviewable jobs**: name the file, say what to change, and say what to leave alone. It is a 2B model.
 
-On lilguy's **frozen held-out suite**, the released model completes **74/100 tasks (95% CI 65–82%)**. Those are 100 tasks it was never trained or tuned on, run once. **None** of its changes reached the real folder without a commit. On the 80-task development suite it passes 51/80; unmodified MiniCPM5-2B in the same harness passes 18/80.
+On lilguy's **frozen held-out suite v2**, the 2.0 model completes **83/100 tasks (95% CI 75–89%)**. Those are 100 tasks it was never trained or tuned on, frozen before it ran and run once. **None** of its changes reached the real folder without a commit. The 1.0 model scores 76/100 on the same suite. The difference comes almost entirely from edits inside a named block: 9/10 for 2.0 against 0/10 for 1.0.
 
-| Held-out family | Passed |
-|---|---|
-| Update a setting; pick the named file; protected-file refusal; delete approval; build-artifact delete; recover from a wrong path | 10/10 each |
-| Named file is missing: stop and say so | 8/10 |
-| Answer a question from a file | 4/10 |
-| Edit only the right one of two near-identical lines | 2/10 |
-| Append a multi-line block to a log | 0/10 |
+| Held-out v2 family | 2.0 | 1.0 |
+|---|---|---|
+| Move into a folder (waits for approval) | 10/10 | 10/10 |
+| Protected file refused | 10/10 | 10/10 |
+| Find a file in a subfolder, then edit | 10/10 | 10/10 |
+| Append two or three lines | 10/10 | 9/10 |
+| Change one setting | 9/10 | 9/10 |
+| **Change a line that also appears in another block** | **9/10** | **0/10** |
+| Quote a value from a file | 8/10 | 10/10 |
+| Count matching lines | 8/10 | 10/10 |
+| Named file is missing: ask instead of guessing | 5/10 | 4/10 |
+| Create a file with exact lines | 4/10 | 4/10 |
 
-Development-suite breakdown:
-
-| Kind of task | Passed |
-|---|---|
-| Explicit single-file changes | 9/9 |
-| Deletes (with approval) | 2/2 |
-| Organising files | 7/9 |
-| Permissions | 3/4 |
-| Inspecting files | 8/12 |
-| Read-only questions | 4/7 |
-| Edits in general | 16/32 |
-| Recovering from a failed command | 1/2 |
-| Writing scripts | 1/3 |
+On the 80-task development suite, 2.0 passes 53/80. 1.0 passes 51/80, and unmodified MiniCPM5-2B passes 19/80.
 
 Read these numbers with care:
 
-- **The development numbers are optimistic.** We iterated on training data while watching that suite, and this checkpoint was the best of four comparable training runs (44, 46, 47 and 51 of 80). The held-out score is the unbiased one.
-- **"Done" is not proof.** On the held-out suite the model said "done" on 21 of its 26 misses. That is why lilguy shows you the diff and never applies anything by itself.
-- **Weak spots:** multi-line appends, edits where the same text appears twice, answering questions with an exact quoted value, scripts, and `chmod` modes stated in words rather than numbers ("readable only by me" vs. "chmod 600").
+- **Overall, 2.0 is better on one skill, not everywhere.**
+  - Across the whole suite, 83 against 76 is not statistically significant on its own: 12 tasks only 2.0 passed, 5 only 1.0 passed, exact McNemar p ≈ 0.14.
+  - The named-block result is clear-cut.
+  - 2.0 is slightly worse at quoting values and counts: 4 tasks lost.
+- **"Done" is not proof.** On held-out v2, the model said "done" on 16 of its 17 misses. That is why lilguy shows you the diff and asks before applying anything.
+- **Weak spots:**
+  - creating a file with exact multi-line content;
+  - noticing that a named file is missing rather than picking a similar one;
+  - appending to a file that has no final newline;
+  - scripts;
+  - `chmod` modes stated in words rather than numbers.
+- **Coming from 1.x:** run `lilguy setup` again to download the 2.0 model. A 1.x config keeps working: lilguy runs each model on the interface it was trained on (2.0 on v4, 1.x on v3).
 
 ## Safety model
 
