@@ -164,7 +164,8 @@ def main():
     parser.add_argument('--held-out', type=Path)
     parser.add_argument('--suite', choices=('v1', 'v2', 'v3'), default='v1', help='held-out: which frozen suite')
     parser.add_argument('--interface', type=int, default=None,
-                        help="held-out: interface the model was trained on (default: the suite's)")
+                        help="held-out, fast12, broad: interface the model was trained on "
+                             "(default: the suite's, or the shipped model's)")
     parser.add_argument('--manifest', type=Path)
     parser.add_argument('--held-out-sha256', help='previously pinned digest; never derive from current input')
     parser.add_argument('--gguf', type=Path)
@@ -310,7 +311,8 @@ def main():
         if args.job == 'held-out':
             return run_held_out(directory, args.gguf, args.server, device, args.suite, args.interface)
         if args.job in ('fast12', 'broad'):
-            return run_development(directory, args.job, args.gguf, args.server, device)
+            return run_development(directory, args.job, args.gguf, args.server, device,
+                                   args.interface or INTERFACE_VERSION)
         if args.job == 'trial':
             return execute(directory, [('dev-task', ['.venv/bin/python', '-m', 'dev.factory_trial',
                 args.server.resolve(), args.gguf.resolve(), directory], None)])

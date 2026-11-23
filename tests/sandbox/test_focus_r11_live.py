@@ -1,4 +1,4 @@
-"""Calibrate the round-11 focus fixtures under interfaces 3 and 4: oracle passes, immediate done fails."""
+"""Calibrate the round-11 focus fixtures under interfaces 3, 4 and 5: oracle passes, immediate done fails."""
 import pytest
 
 from dev import focus_r11, fast12_runner
@@ -8,7 +8,7 @@ from lilguy import protocol
 pytestmark = pytest.mark.sandbox
 
 
-@pytest.mark.parametrize('version', (3, 4))
+@pytest.mark.parametrize('version', (3, 4, 5))
 @pytest.mark.parametrize('task', focus_r11.TASKS, ids=lambda task: task.id)
 def test_focus_r11_controls(tmp_path, task, version):
     tools = protocol.load_tools()

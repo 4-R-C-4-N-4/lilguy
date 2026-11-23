@@ -13,9 +13,9 @@ V3_GOLDEN = Path(__file__).with_name("interface_v3_system_prompt.txt")
 
 def test_shipped_version_is_4_and_earlier_versions_stay_supported():
     assert p.INTERFACE_VERSION == 4  # the 2.0 model's; 1.x models run on v3
-    assert p.SUPPORTED_VERSIONS == (1, 2, 3, 4)
+    assert p.SUPPORTED_VERSIONS == (1, 2, 3, 4, 5)  # v5 is in development
     with pytest.raises(p.ProtocolError):
-        p.system_prompt(TOOLS, version=5)
+        p.system_prompt(TOOLS, version=6)
 
 
 def test_v2_prompt_is_unchanged_and_v3_is_frozen():

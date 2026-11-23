@@ -1590,8 +1590,8 @@ BOOST_R6 = {'read_value': 2, 'count': 2, 'largest': 2, 'grep_find': 2, 'awk_sum'
 # a pending handoff or a rejection is bare; a question's answer or a no-op report keeps its text.
 # Asking is kept only where the request cannot be done with the workspace (a named input is
 # absent); asks that judged ambiguity are dropped.
-BLOCKED_ASK_FAMILIES = ('recover_absent',)
-_INTERFACE = {1: 1, 2: 1, 3: 1, 4: 1, 5: 2, 6: 2, 7: 3, 8: 3, 9: 3, 10: 4}
+BLOCKED_ASK_FAMILIES = ('recover_absent', 'named_file_missing')  # the latter: revision 11 only
+_INTERFACE = {1: 1, 2: 1, 3: 1, 4: 1, 5: 2, 6: 2, 7: 3, 8: 3, 9: 3, 10: 4, 11: 5}
 
 
 def interface_for(revision):
@@ -1778,6 +1778,9 @@ def generate(seed=DEFAULT_SEED, scale=1.0, families=None, revision=1):
         import sys
         from dev import corpus_r10
         table.update(corpus_r10.families(sys.modules[__name__]))
+    if revision >= 11:
+        from dev import corpus_r11
+        table.update(corpus_r11.families(sys.modules[__name__]))
     for name, (fn, count) in table.items():
         if families and name not in families:
             continue
@@ -1791,7 +1794,7 @@ def generate(seed=DEFAULT_SEED, scale=1.0, families=None, revision=1):
             out.append(Example(**spec))
     if interface_for(revision) >= 3:
         out = [ex for ex in map(_to_interface_v3, out) if ex is not None]
-        if interface_for(revision) > 3:  # v4 changes observations only: same episodes, newer interface
+        if interface_for(revision) > 3:  # v4/v5 change observations only: same episodes, newer interface
             out = [replace(ex, interface=interface_for(revision)) for ex in out]
     elif interface_for(revision) >= 2:
         out = [ex for ex in map(_to_interface_v2, out) if ex is not None]
@@ -1909,6 +1912,10 @@ def _dev_rows():
         from dev import dev_focus
         rows += [dict(id=t.id, split='dev', template_id=t.id, request=t.request, files=t.files)
                  for t in dev_focus.TASKS]
+    if _REV >= 11:  # the round-11 focus fixtures measure exactly what revision 11 trains
+        from dev import focus_r11
+        rows += [dict(id='r11-' + t.id, split='dev', template_id='r11-' + t.id, request=t.request, files=t.files)
+                 for t in focus_r11.TASKS]
     return rows
 
 
@@ -1937,8 +1944,16 @@ def gate(examples):
     with tempfile.TemporaryDirectory() as tmp:
         path = Path(tmp) / 'candidate.json'
         path.write_text(json.dumps(rows), encoding='utf8')
-        pin = (ROOT / 'dev/holdout_manifest.sha256').read_text().split()[0]
-        return eval_gate.verify(ROOT / 'dev/holdout_manifest.json', pin, path)
+        suites = [('dev/holdout_manifest.json', 'dev/holdout_manifest.sha256')]
+        if _REV >= 11:  # later held-out suites too (earlier revisions keep their original gate)
+            suites += [('dev/holdout_v2_manifest.json', 'dev/holdout_v2_manifest.sha256'),
+                       ('dev/holdout_suite_v3_manifest.json', 'dev/holdout_suite_v3_manifest.sha256')]
+        for manifest, pin_path in suites:
+            pin = (ROOT / pin_path).read_text().split()[0]
+            result = eval_gate.verify(ROOT / manifest, pin, path)
+            if not result['ok']:
+                return {**result, 'held_out_manifest': manifest}
+        return result
 
 
 def next_action_rows(messages, skip=()):

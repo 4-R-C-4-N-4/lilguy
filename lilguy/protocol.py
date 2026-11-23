@@ -41,10 +41,10 @@ import yaml
 from .digest import digest
 
 INTERFACE_VERSION = 4
-SUPPORTED_VERSIONS = (1, 2, 3, 4)
+SUPPORTED_VERSIONS = (1, 2, 3, 4, 5)
 # The development interface (newest). INTERFACE_VERSION stays the one the shipped model was
 # trained on until a model trained on a newer version is released.
-LATEST_VERSION = 4
+LATEST_VERSION = 5
 MODES = ("do", "ask")
 TOOLSET = Path(__file__).resolve().parent / "data" / "toolset.yaml"
 # Typed tools served in v1. The text tools in toolset.yaml are thin wrappers that `run` already
@@ -281,11 +281,12 @@ def render_action(action, tools=None, version=INTERFACE_VERSION):
 def render_observation(*, exit_code, stdout="", stderr="", tags=(), changes=(), policy="ok", reason="",
                        version=INTERFACE_VERSION):
     """What the model sees after a step: digested output, the step's file changes, the policy outcome.
-    From v4 output lines are framed by <<< and >>> and shown unindented."""
+    From v4 output lines are framed by <<< and >>> and shown unindented; from v5 exactly
+    (trailing spaces and blank lines kept), with a line saying when output lacks a final newline."""
     _check_version(version)
     if policy not in POLICIES:
         raise ProtocolError(f"policy must be one of {', '.join(POLICIES)}")
-    parts = [digest(exit_code, stdout, stderr, list(tags), framed=version >= 4).text]
+    parts = [digest(exit_code, stdout, stderr, list(tags), framed=version >= 4, exact=version >= 5).text]
     changes = list(changes)
     if changes:
         shown = "; ".join(f"{op} {path}" for op, path in changes[:MAX_CHANGES_SHOWN])
@@ -501,6 +502,23 @@ _HEADERS[4] = _HEADERS[4].replace(
     "and the policy result (ok; pending: waiting for the user's approval; rejected: not allowed). "
     "Output is shown between <<< and >>> exactly as printed: copy it without adding or removing spaces.\n",
 )
+
+# v5 (docs/plan/INTERFACE-V5.md): output keeps trailing spaces and blank lines, a missing final
+# newline is announced, typed tools say "No such file: PATH", and a named file that does not exist
+# is a reason to ask. Everything else is v4 unchanged.
+_HEADERS[5] = _HEADERS[4].replace(
+    "Output is shown between <<< and >>> exactly as printed: copy it without adding or removing spaces.\n",
+    "Output is shown between <<< and >>> exactly as printed: copy it without adding or removing spaces. "
+    "If it does not end with a newline, the line after >>> says (no newline at end of output); "
+    "add a newline before appending to such a file.\n",
+).replace(
+    "ask, then on the next line what is missing, only when you cannot do the request with what is in "
+    "the workspace.\n",
+    "ask, then on the next line what is missing, only when you cannot do the request with what is in "
+    "the workspace. If a file the user names does not exist, ask: never change a file with a similar "
+    "name instead.\n",
+)
+assert _HEADERS[5].count("never change a file with a similar name") == 1
 
 
 def _describe(arg):

@@ -51,6 +51,24 @@ def _clean(s: str) -> list[str]:
     return out
 
 
+def _exact(s: str) -> list[str]:
+    """Interface v5: every line as printed, trailing spaces and blank lines included."""
+    if not s:
+        return []
+    body = s.replace("\r\n", "\n").replace("\r", "\n")
+    lines = [ANSI.sub("", ln)[:MAX_LINE] for ln in body.split("\n")]
+    if body.endswith("\n"):
+        lines.pop()
+    out: list[str] = []
+    for line, repeats in groupby(lines):
+        count = sum(1 for _ in repeats)
+        out.append(f"{line}  (x{count})" if count > 1 else line)
+    return out
+
+
+NO_FINAL_NEWLINE = "(no newline at end of output)"
+
+
 def _clip(lines: list[str]) -> list[str]:
     if len(lines) <= STDOUT_FULL:
         return lines
@@ -78,10 +96,14 @@ def tag_errors(stderr: str, stdout: str = "") -> list[str]:
 
 
 def digest(exit_code: int, stdout: str, stderr: str, extra_tags: list[str] | None = None,
-           *, framed: bool = False) -> Digest:
+           *, framed: bool = False, exact: bool = False) -> Digest:
     """`framed` (interface v4) shows output lines exactly as printed, between `<<<` and `>>>`,
-    instead of indenting each by two spaces: copied text must match the file byte for byte."""
-    out_lines, err_lines = _clean(stdout), _clean(stderr)
+    instead of indenting each by two spaces: copied text must match the file byte for byte.
+    `exact` (interface v5, implies framed) also keeps trailing spaces and blank lines, and says
+    when stdout does not end with a newline, which a framed listing otherwise hides."""
+    framed = framed or exact
+    clean = _exact if exact else _clean
+    out_lines, err_lines = clean(stdout), clean(stderr)
     tags = list(extra_tags or [])
     if exit_code != 0 or err_lines:
         tags += tag_errors(stderr, stdout if exit_code != 0 else "")
@@ -100,6 +122,8 @@ def digest(exit_code: int, stdout: str, stderr: str, extra_tags: list[str] | Non
         parts += _section("stderr", len(err_lines), shown, framed)
     if out_lines:
         parts += _section("stdout", len(out_lines), _clip(out_lines), framed)
+        if exact and not stdout.endswith("\n"):
+            parts.append(NO_FINAL_NEWLINE)
     if not out_lines and not err_lines:
         parts.append("(no output)")
 

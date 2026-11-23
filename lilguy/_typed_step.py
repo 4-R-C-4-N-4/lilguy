@@ -12,6 +12,20 @@ from pathlib import Path
 EDIT_LIMIT = 1024 * 1024
 
 
+def _missing(path, target):
+    """Interface v5 names a path that does not exist instead of calling it the wrong type."""
+    if INTERFACE >= 5:
+        if not target.exists() and not target.is_symlink():
+            return f"No such file: {path}"
+        if target.is_dir():
+            return f"{path} is a directory, not a file"
+    return "Expected a regular file"
+
+
+def _absent(path):
+    return f"No such file or directory: {path}" if INTERFACE >= 5 else "Path does not exist"
+
+
 def checked_path(value):
     root = Path.cwd()
     relative = Path(value)
@@ -40,7 +54,7 @@ def candidates(path, depth):
 def find(path, name_glob=None, type=None, max_depth=None, max_results=200):
     start, _ = checked_path(path)
     if not start.exists() and not start.is_symlink():
-        raise ValueError("Path does not exist")
+        raise ValueError(_absent(path))
     matches = {"f": stat.S_ISREG, "d": stat.S_ISDIR, "l": stat.S_ISLNK}
     paths = (
         entry.relative_to(Path.cwd()).as_posix()
@@ -73,7 +87,7 @@ def _listable(path, depth):
 def list_(path, depth=1, show_hidden=False, detailed=True):
     start, _ = checked_path(path)
     if not start.exists() and not start.is_symlink():
-        raise ValueError("Path does not exist")
+        raise ValueError(_absent(path))
     if start.is_symlink() or not start.is_dir():
         entries = [start]
     else:
@@ -107,7 +121,7 @@ def grep(pattern, path=".", glob=None, regex=False, ignore_case=False, line_numb
           invert=False, recursive=True, filenames_only=False, max_results=200):
     start, _ = checked_path(path)
     if not start.exists() and not start.is_symlink():
-        raise ValueError("Path does not exist")
+        raise ValueError(_absent(path))
     if start.is_symlink():
         raise ValueError("Path does not exist")
     if start.is_dir():
@@ -124,7 +138,7 @@ def grep(pattern, path=".", glob=None, regex=False, ignore_case=False, line_numb
             )
     else:
         if not start.is_file():
-            raise ValueError("Expected a regular file")
+            raise ValueError(_missing(path, start))
         targets = iter([start])
     if glob is not None:
         targets = (entry for entry in targets if fnmatch.fnmatchcase(entry.name, glob))
@@ -171,7 +185,7 @@ def grep(pattern, path=".", glob=None, regex=False, ignore_case=False, line_numb
 def read(path, offset, limit):
     _, target = checked_path(path)
     if not target.is_file():
-        raise ValueError("Expected a regular file")
+        raise ValueError(_missing(path, target))
     with target.open("rb") as stream:
         for line in itertools.islice(stream, offset - 1, offset - 1 + limit):
             sys.stdout.buffer.write(line)
@@ -194,7 +208,7 @@ def _edit_refusal(path, text, old):
 def edit(path, old, new):
     _, target = checked_path(path)
     if not target.is_file():
-        raise ValueError("Expected a regular file")
+        raise ValueError(_missing(path, target))
     with target.open("rb") as stream:
         mode = stat.S_IMODE(os.fstat(stream.fileno()).st_mode)
         original = stream.read(EDIT_LIMIT + 1)
