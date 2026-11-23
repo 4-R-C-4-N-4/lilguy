@@ -11,6 +11,13 @@ Updated 2026-11-22. This is the one place for current state; the plan and its ga
 - **User path verified:** an installed wheel was run end to end on CPU. Setup, demo, three `ask`s, two `do`s, commit, approve + commit, undo list and undo all worked. The GPU path was verified earlier on the 4070 and 3090.
 - **Not met yet:** the SCOPE latency target (< 10% of a 30B reference) has no matched measurement.
 
+## In progress: interface v4 + corpus r10 (2026-11-23)
+
+- **Interface v4** (development only; 1.x ships v3): output is framed by `<<< >>>` and unindented, and `fs.edit` refusals now say "not found" or "occurs N times (lines …)". See [plan/INTERFACE-V4.md](plan/INTERFACE-V4.md) and the [diagnosis](data/FOCUS-V4-DIAGNOSIS.md).
+- **r10 results:** 53/80 and 52/80 on the 80-task roster (1.0: 51) and 14/15 and 13/15 on the focus set (1.0: 7/15). Repeated-text edits went from 0/5 to 5/5 on both seeds. See the [round report](data/R10-V4-RESULT.md).
+- **Stock MiniCPM held-out:** 37/100, against 74/100 for 1.0 (`reports/factory/held-out-gr0qf39x`).
+- **Next:** freeze held-out v2, then run it once on the r10 seed-42 candidate before any 2.0 decision.
+
 ## Summary
 
 | Step | State | Evidence |
