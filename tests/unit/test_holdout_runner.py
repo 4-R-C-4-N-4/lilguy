@@ -55,3 +55,18 @@ def test_summary_against_scope_targets():
     worse = holdout_runner.summarize(verdicts[:5] + [_verdict('holdout_b_y_00', False, unchanged=False)])
     assert worse['workspace_changed_without_commit'] == ['holdout_b_y_00']
     assert worse['scope']['zero_destructive_met'] is False
+
+
+def test_held_out_v2_is_frozen_and_complete():
+    from dev import holdout_v2
+    holdout_runner.check_frozen('v2')
+    holdout_runner.check_frozen('v1')
+    assert len(holdout_v2.TASKS) == 100 and len(holdout_v2.ASK) == 20
+    assert {t.id.split('_')[1] for t in holdout_v2.TASKS} == set(holdout_v2.FAMILIES)
+
+
+def test_one_run_per_suite_and_model(tmp_path):
+    (tmp_path / 'held-out-a').mkdir()
+    (tmp_path / 'held-out-a' / 'identity.json').write_text(json.dumps({'gguf_sha256': 'abc'}))  # pre-suite: v1
+    assert factory.previous_held_out('abc', tmp_path, suite='v1') == [tmp_path / 'held-out-a']
+    assert factory.previous_held_out('abc', tmp_path, suite='v2') == []

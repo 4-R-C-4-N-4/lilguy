@@ -118,24 +118,28 @@ def execute(directory, stages, *, required_cases=None):
     return 0
 
 
-def previous_held_out(gguf_sha256, base=ROOT / 'reports' / 'factory'):
-    """Earlier held-out jobs on these exact model bytes: the suite runs once per candidate."""
+def previous_held_out(gguf_sha256, base=ROOT / 'reports' / 'factory', suite='v1'):
+    """Earlier held-out jobs of `suite` on these exact model bytes: each suite runs once per
+    candidate. Jobs from before suites were recorded are v1."""
     found = []
     for identity in sorted(Path(base).glob('held-out-*/identity.json')):
         try:
-            if json.loads(identity.read_text()).get('gguf_sha256') == gguf_sha256:
+            data = json.loads(identity.read_text())
+            if data.get('gguf_sha256') == gguf_sha256 and data.get('held_out_suite', 'v1') == suite:
                 found.append(identity.parent)
         except (OSError, ValueError):
             found.append(identity.parent)  # unreadable: count it, never silently rerun
     return found
 
 
-def run_held_out(directory, gguf, server, device):
-    from dev.holdout_runner import SOURCES
-    identity = {**fast12_identity(gguf, server, extra_sources=SOURCES, interface=3), 'device': device}
+def run_held_out(directory, gguf, server, device, suite='v1', interface=None):
+    from dev.holdout_runner import SUITES
+    interface = interface or SUITES[suite]['interface']
+    identity = {**fast12_identity(gguf, server, extra_sources=SUITES[suite]['sources'], interface=interface),
+                'device': device, 'held_out_suite': suite}
     (directory / 'identity.json').write_text(json.dumps(identity, indent=2, sort_keys=True) + '\n')
     return execute(directory, [('held-out', ['.venv/bin/python', '-m', 'dev.holdout_runner',
-        server.resolve(), gguf.resolve(), directory], None)])
+        server.resolve(), gguf.resolve(), directory, '--suite', suite, '--interface', str(interface)], None)])
 
 
 def run_development(directory, suite, gguf, server, device, interface=INTERFACE_VERSION):
@@ -158,6 +162,9 @@ def main():
     parser.add_argument('--stock', type=Path)
     parser.add_argument('--candidate', type=Path)
     parser.add_argument('--held-out', type=Path)
+    parser.add_argument('--suite', choices=('v1', 'v2'), default='v1', help='held-out: which frozen suite')
+    parser.add_argument('--interface', type=int, default=None,
+                        help="held-out: interface the model was trained on (default: the suite's)")
     parser.add_argument('--manifest', type=Path)
     parser.add_argument('--held-out-sha256', help='previously pinned digest; never derive from current input')
     parser.add_argument('--gguf', type=Path)
@@ -235,7 +242,7 @@ def main():
         if args.job == 'held-out':
             with args.gguf.open('rb') as stream:
                 digest = hashlib.file_digest(stream, 'sha256').hexdigest()
-            earlier = previous_held_out(digest)
+            earlier = previous_held_out(digest, suite=args.suite)
             if earlier:
                 parser.exit(1, f'The held-out suite already ran on this model ({earlier[0]}); '
                                'it runs once per candidate.\n')
@@ -297,7 +304,7 @@ def main():
             print(directory / 'comparison.json', flush=True)
             return 0
         if args.job == 'held-out':
-            return run_held_out(directory, args.gguf, args.server, device)
+            return run_held_out(directory, args.gguf, args.server, device, args.suite, args.interface)
         if args.job in ('fast12', 'broad'):
             return run_development(directory, args.job, args.gguf, args.server, device)
         if args.job == 'trial':
