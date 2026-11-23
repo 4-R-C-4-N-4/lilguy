@@ -17,6 +17,12 @@ Updated 2026-11-22. This is the one place for current state; the plan and its ga
 - **Held-out v2** (frozen at `d687603` with pin `cb96c819…`, run once per model): 2.0 scored 83/100 (`reports/factory/held-out-1zp8qiwo`) and 1.0 scored 76/100 (`held-out-x2dz8iro`). Neither made a change outside review. Named-block edits went from 0/10 to 9/10; quote and count questions went from 20/20 to 16/20. The paired difference has an exact McNemar p ≈ 0.14.
 - **The app runs each model on its own interface:** v4 for 2.0, v3 for 1.x (config `interface`).
 
+## Corpus r12 (2026-11-23): not promoted
+
+- **Revision 12** = revision 11 plus contrasts: insert under a heading, recover after a failed or empty step, copy a folder's contents. The focus gains held (24/25 at both seeds), but the roster scored 50 and 51 against 54, short of the gate.
+- **Every targeted family left a habit behind:** header-skipping on headerless files, and a nested folder copy. See [the round report](data/R12-V5-RESULT.md).
+- **2.0 stays the release.** Held-out v3 is still unused.
+
 ## Interface v5 + corpus r11 (2026-11-23): not promoted
 
 - **Interface v5** is in development; the app ships v4. Output is shown exactly, a missing final newline is marked, typed tools say `No such file: PATH`, and the prompt tells the model to ask rather than substitute a file. See [plan/INTERFACE-V5.md](plan/INTERFACE-V5.md).
