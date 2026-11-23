@@ -17,6 +17,14 @@ Updated 2026-11-22. This is the one place for current state; the plan and its ga
 - **Held-out v2** (frozen at `d687603` with pin `cb96c819…`, run once per model): 2.0 scored 83/100 (`reports/factory/held-out-1zp8qiwo`) and 1.0 scored 76/100 (`held-out-x2dz8iro`). Neither made a change outside review. Named-block edits went from 0/10 to 9/10; quote and count questions went from 20/20 to 16/20. The paired difference has an exact McNemar p ≈ 0.14.
 - **The app runs each model on its own interface:** v4 for 2.0, v3 for 1.x (config `interface`).
 
+## Interface v5 + corpus r11 (2026-11-23): not promoted
+
+- **Interface v5** is in development; the app ships v4. Output is shown exactly, a missing final newline is marked, typed tools say `No such file: PATH`, and the prompt tells the model to ask rather than substitute a file. See [plan/INTERFACE-V5.md](plan/INTERFACE-V5.md).
+- **v5 alone costs nothing:** 2.0 scores 53 on v4 and 54 on v5 on the roster, and 15 against 16 on focus-r11.
+- **r11, seeds 42 and 43:** focus-r11 rose to 24/25 and 23/25 (no-newline appends 0→5/5), but the roster fell to 49 and 48 against 54. Both seeds lose the same five tasks: append-instead-of-insert, and `done` right after a failed or empty step.
+- **Next:** revision 12 adds contrasts for those losses, still on v5. See [the round report](data/R11-V5-RESULT.md).
+- **Held-out v3** is still unused.
+
 ## Held-out v3 frozen (2026-11-23)
 
 - **`dev/holdout_suite_v3.py`:** 100 new tasks in 10 families. This is the third held-out suite, not interface v3, and it is calibrated for interface 4. It is frozen with pin `d1b3f1b9…` (`dev/holdout_suite_v3_manifest.{json,sha256,meta.json}`).
