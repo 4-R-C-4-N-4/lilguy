@@ -1,0 +1,2902 @@
+[
+  {
+    "expected": {
+      "answer_contains": [],
+      "answer_forbid": [],
+      "answer_patterns": [],
+      "changes": {
+        "lockers.txt": "code: unassigned\nowner: Larch\n\ncode: Cobalt\nowner: Olive\n\ncode: unassigned\nowner: Spruce\n"
+      },
+      "forbid_error": false,
+      "require_error": false,
+      "require_pending": false,
+      "require_rejected": false,
+      "terminal": "done",
+      "terminals": []
+    },
+    "files": {
+      "lockers.txt": "code: unassigned\nowner: Larch\n\ncode: unassigned\nowner: Olive\n\ncode: unassigned\nowner: Spruce\n"
+    },
+    "id": "heldout3_a_lockers",
+    "mode": "do",
+    "oracle": [
+      "tool fs.read\npath: lockers.txt",
+      "tool fs.edit\npath: lockers.txt\nold <<<\ncode: unassigned\nowner: Olive\n>>>\nnew <<<\ncode: Cobalt\nowner: Olive\n>>>",
+      "done"
+    ],
+    "request": "In lockers.txt, the record whose owner is Olive needs code: Cobalt. Keep the other two records as they are.",
+    "split": "held-out",
+    "template_id": "heldout3-a"
+  },
+  {
+    "expected": {
+      "answer_contains": [],
+      "answer_forbid": [],
+      "answer_patterns": [],
+      "changes": {
+        "badges.txt": "colour: grey\nowner: Usher\n\ncolour: violet\nowner: Host\n\ncolour: grey\nowner: Guide\n"
+      },
+      "forbid_error": false,
+      "require_error": false,
+      "require_pending": false,
+      "require_rejected": false,
+      "terminal": "done",
+      "terminals": []
+    },
+    "files": {
+      "badges.txt": "colour: grey\nowner: Usher\n\ncolour: grey\nowner: Host\n\ncolour: grey\nowner: Guide\n"
+    },
+    "id": "heldout3_a_badges",
+    "mode": "do",
+    "oracle": [
+      "tool fs.read\npath: badges.txt",
+      "tool fs.edit\npath: badges.txt\nold <<<\ncolour: grey\nowner: Host\n>>>\nnew <<<\ncolour: violet\nowner: Host\n>>>",
+      "done"
+    ],
+    "request": "In badges.txt, the record whose owner is Host needs colour: violet. Keep the other two records as they are.",
+    "split": "held-out",
+    "template_id": "heldout3-a"
+  },
+  {
+    "expected": {
+      "answer_contains": [],
+      "answer_forbid": [],
+      "answer_patterns": [],
+      "changes": {
+        "pumps.txt": "speed: idle\nowner: Intake\n\nspeed: fast\nowner: Bypass\n\nspeed: idle\nowner: Return\n"
+      },
+      "forbid_error": false,
+      "require_error": false,
+      "require_pending": false,
+      "require_rejected": false,
+      "terminal": "done",
+      "terminals": []
+    },
+    "files": {
+      "pumps.txt": "speed: idle\nowner: Intake\n\nspeed: idle\nowner: Bypass\n\nspeed: idle\nowner: Return\n"
+    },
+    "id": "heldout3_a_pumps",
+    "mode": "do",
+    "oracle": [
+      "tool fs.read\npath: pumps.txt",
+      "tool fs.edit\npath: pumps.txt\nold <<<\nspeed: idle\nowner: Bypass\n>>>\nnew <<<\nspeed: fast\nowner: Bypass\n>>>",
+      "done"
+    ],
+    "request": "In pumps.txt, the record whose owner is Bypass needs speed: fast. Keep the other two records as they are.",
+    "split": "held-out",
+    "template_id": "heldout3-a"
+  },
+  {
+    "expected": {
+      "answer_contains": [],
+      "answer_forbid": [],
+      "answer_patterns": [],
+      "changes": {
+        "cameras.txt": "lens: wide\nowner: Atrium\n\nlens: macro\nowner: Landing\n\nlens: wide\nowner: Courtyard\n"
+      },
+      "forbid_error": false,
+      "require_error": false,
+      "require_pending": false,
+      "require_rejected": false,
+      "terminal": "done",
+      "terminals": []
+    },
+    "files": {
+      "cameras.txt": "lens: wide\nowner: Atrium\n\nlens: wide\nowner: Landing\n\nlens: wide\nowner: Courtyard\n"
+    },
+    "id": "heldout3_a_cameras",
+    "mode": "do",
+    "oracle": [
+      "tool fs.read\npath: cameras.txt",
+      "tool fs.edit\npath: cameras.txt\nold <<<\nlens: wide\nowner: Landing\n>>>\nnew <<<\nlens: macro\nowner: Landing\n>>>",
+      "done"
+    ],
+    "request": "In cameras.txt, the record whose owner is Landing needs lens: macro. Keep the other two records as they are.",
+    "split": "held-out",
+    "template_id": "heldout3-a"
+  },
+  {
+    "expected": {
+      "answer_contains": [],
+      "answer_forbid": [],
+      "answer_patterns": [],
+      "changes": {
+        "vessels.txt": "berth: waiting\nowner: Cormorant\n\nberth: east\nowner: Gannet\n\nberth: waiting\nowner: Puffin\n"
+      },
+      "forbid_error": false,
+      "require_error": false,
+      "require_pending": false,
+      "require_rejected": false,
+      "terminal": "done",
+      "terminals": []
+    },
+    "files": {
+      "vessels.txt": "berth: waiting\nowner: Cormorant\n\nberth: waiting\nowner: Gannet\n\nberth: waiting\nowner: Puffin\n"
+    },
+    "id": "heldout3_a_vessels",
+    "mode": "do",
+    "oracle": [
+      "tool fs.read\npath: vessels.txt",
+      "tool fs.edit\npath: vessels.txt\nold <<<\nberth: waiting\nowner: Gannet\n>>>\nnew <<<\nberth: east\nowner: Gannet\n>>>",
+      "done"
+    ],
+    "request": "In vessels.txt, the record whose owner is Gannet needs berth: east. Keep the other two records as they are.",
+    "split": "held-out",
+    "template_id": "heldout3-a"
+  },
+  {
+    "expected": {
+      "answer_contains": [],
+      "answer_forbid": [],
+      "answer_patterns": [],
+      "changes": {
+        "sensors.txt": "unit: raw\nowner: Humidity\n\nunit: percent\nowner: Pressure\n\nunit: raw\nowner: Salinity\n"
+      },
+      "forbid_error": false,
+      "require_error": false,
+      "require_pending": false,
+      "require_rejected": false,
+      "terminal": "done",
+      "terminals": []
+    },
+    "files": {
+      "sensors.txt": "unit: raw\nowner: Humidity\n\nunit: raw\nowner: Pressure\n\nunit: raw\nowner: Salinity\n"
+    },
+    "id": "heldout3_a_sensors",
+    "mode": "do",
+    "oracle": [
+      "tool fs.read\npath: sensors.txt",
+      "tool fs.edit\npath: sensors.txt\nold <<<\nunit: raw\nowner: Pressure\n>>>\nnew <<<\nunit: percent\nowner: Pressure\n>>>",
+      "done"
+    ],
+    "request": "In sensors.txt, the record whose owner is Pressure needs unit: percent. Keep the other two records as they are.",
+    "split": "held-out",
+    "template_id": "heldout3-a"
+  },
+  {
+    "expected": {
+      "answer_contains": [],
+      "answer_forbid": [],
+      "answer_patterns": [],
+      "changes": {
+        "benches.txt": "finish: plain\nowner: Birch\n\nfinish: oiled\nowner: Cedar\n\nfinish: plain\nowner: Maple\n"
+      },
+      "forbid_error": false,
+      "require_error": false,
+      "require_pending": false,
+      "require_rejected": false,
+      "terminal": "done",
+      "terminals": []
+    },
+    "files": {
+      "benches.txt": "finish: plain\nowner: Birch\n\nfinish: plain\nowner: Cedar\n\nfinish: plain\nowner: Maple\n"
+    },
+    "id": "heldout3_a_benches",
+    "mode": "do",
+    "oracle": [
+      "tool fs.read\npath: benches.txt",
+      "tool fs.edit\npath: benches.txt\nold <<<\nfinish: plain\nowner: Cedar\n>>>\nnew <<<\nfinish: oiled\nowner: Cedar\n>>>",
+      "done"
+    ],
+    "request": "In benches.txt, the record whose owner is Cedar needs finish: oiled. Keep the other two records as they are.",
+    "split": "held-out",
+    "template_id": "heldout3-a"
+  },
+  {
+    "expected": {
+      "answer_contains": [],
+      "answer_forbid": [],
+      "answer_patterns": [],
+      "changes": {
+        "stalls.txt": "bedding: straw\nowner: Juniper\n\nbedding: shavings\nowner: Hazel\n\nbedding: straw\nowner: Willow\n"
+      },
+      "forbid_error": false,
+      "require_error": false,
+      "require_pending": false,
+      "require_rejected": false,
+      "terminal": "done",
+      "terminals": []
+    },
+    "files": {
+      "stalls.txt": "bedding: straw\nowner: Juniper\n\nbedding: straw\nowner: Hazel\n\nbedding: straw\nowner: Willow\n"
+    },
+    "id": "heldout3_a_stalls",
+    "mode": "do",
+    "oracle": [
+      "tool fs.read\npath: stalls.txt",
+      "tool fs.edit\npath: stalls.txt\nold <<<\nbedding: straw\nowner: Hazel\n>>>\nnew <<<\nbedding: shavings\nowner: Hazel\n>>>",
+      "done"
+    ],
+    "request": "In stalls.txt, the record whose owner is Hazel needs bedding: shavings. Keep the other two records as they are.",
+    "split": "held-out",
+    "template_id": "heldout3-a"
+  },
+  {
+    "expected": {
+      "answer_contains": [],
+      "answer_forbid": [],
+      "answer_patterns": [],
+      "changes": {
+        "lanterns.txt": "power: off\nowner: Porch\n\npower: on\nowner: Alley\n\npower: off\nowner: Terrace\n"
+      },
+      "forbid_error": false,
+      "require_error": false,
+      "require_pending": false,
+      "require_rejected": false,
+      "terminal": "done",
+      "terminals": []
+    },
+    "files": {
+      "lanterns.txt": "power: off\nowner: Porch\n\npower: off\nowner: Alley\n\npower: off\nowner: Terrace\n"
+    },
+    "id": "heldout3_a_lanterns",
+    "mode": "do",
+    "oracle": [
+      "tool fs.read\npath: lanterns.txt",
+      "tool fs.edit\npath: lanterns.txt\nold <<<\npower: off\nowner: Alley\n>>>\nnew <<<\npower: on\nowner: Alley\n>>>",
+      "done"
+    ],
+    "request": "In lanterns.txt, the record whose owner is Alley needs power: on. Keep the other two records as they are.",
+    "split": "held-out",
+    "template_id": "heldout3-a"
+  },
+  {
+    "expected": {
+      "answer_contains": [],
+      "answer_forbid": [],
+      "answer_patterns": [],
+      "changes": {
+        "drawers.txt": "label: blank\nowner: Needles\n\nlabel: notions\nowner: Buttons\n\nlabel: blank\nowner: Zippers\n"
+      },
+      "forbid_error": false,
+      "require_error": false,
+      "require_pending": false,
+      "require_rejected": false,
+      "terminal": "done",
+      "terminals": []
+    },
+    "files": {
+      "drawers.txt": "label: blank\nowner: Needles\n\nlabel: blank\nowner: Buttons\n\nlabel: blank\nowner: Zippers\n"
+    },
+    "id": "heldout3_a_drawers",
+    "mode": "do",
+    "oracle": [
+      "tool fs.read\npath: drawers.txt",
+      "tool fs.edit\npath: drawers.txt\nold <<<\nlabel: blank\nowner: Buttons\n>>>\nnew <<<\nlabel: notions\nowner: Buttons\n>>>",
+      "done"
+    ],
+    "request": "In drawers.txt, the record whose owner is Buttons needs label: notions. Keep the other two records as they are.",
+    "split": "held-out",
+    "template_id": "heldout3-a"
+  },
+  {
+    "expected": {
+      "answer_contains": [],
+      "answer_forbid": [],
+      "answer_patterns": [],
+      "changes": {
+        "observatory.todo": "align finder\ncover mirror\npark mount\n"
+      },
+      "forbid_error": false,
+      "require_error": false,
+      "require_pending": false,
+      "require_rejected": false,
+      "terminal": "done",
+      "terminals": []
+    },
+    "files": {
+      "observatory.todo": "align finder"
+    },
+    "id": "heldout3_b_observatory",
+    "mode": "do",
+    "oracle": [
+      "tool fs.read\npath: observatory.todo",
+      "run\nprintf '\\n' >> observatory.todo && printf '%s\\n' 'cover mirror' 'park mount' >> observatory.todo",
+      "done"
+    ],
+    "request": "Extend observatory.todo with these two new lines, in order: 'cover mirror', 'park mount'. Keep the existing entry on its own line and end every line with a newline.",
+    "split": "held-out",
+    "template_id": "heldout3-b"
+  },
+  {
+    "expected": {
+      "answer_contains": [],
+      "answer_forbid": [],
+      "answer_patterns": [],
+      "changes": {
+        "rehearsal.steps": "tune strings\ncheck bows\ndim house lights\n"
+      },
+      "forbid_error": false,
+      "require_error": false,
+      "require_pending": false,
+      "require_rejected": false,
+      "terminal": "done",
+      "terminals": []
+    },
+    "files": {
+      "rehearsal.steps": "tune strings\n"
+    },
+    "id": "heldout3_b_rehearsal",
+    "mode": "do",
+    "oracle": [
+      "tool fs.read\npath: rehearsal.steps",
+      "run\nprintf '%s\\n' 'check bows' 'dim house lights' >> rehearsal.steps",
+      "done"
+    ],
+    "request": "Extend rehearsal.steps with these two new lines, in order: 'check bows', 'dim house lights'. Keep the existing entry on its own line and end every line with a newline.",
+    "split": "held-out",
+    "template_id": "heldout3-b"
+  },
+  {
+    "expected": {
+      "answer_contains": [],
+      "answer_forbid": [],
+      "answer_patterns": [],
+      "changes": {
+        "ferry.checks": "count lifejackets\ntest horn\nsecure gangway\n"
+      },
+      "forbid_error": false,
+      "require_error": false,
+      "require_pending": false,
+      "require_rejected": false,
+      "terminal": "done",
+      "terminals": []
+    },
+    "files": {
+      "ferry.checks": "count lifejackets"
+    },
+    "id": "heldout3_b_ferry",
+    "mode": "do",
+    "oracle": [
+      "tool fs.read\npath: ferry.checks",
+      "run\nprintf '\\n' >> ferry.checks && printf '%s\\n' 'test horn' 'secure gangway' >> ferry.checks",
+      "done"
+    ],
+    "request": "Extend ferry.checks with these two new lines, in order: 'test horn', 'secure gangway'. Keep the existing entry on its own line and end every line with a newline.",
+    "split": "held-out",
+    "template_id": "heldout3-b"
+  },
+  {
+    "expected": {
+      "answer_contains": [],
+      "answer_forbid": [],
+      "answer_patterns": [],
+      "changes": {
+        "embroidery.list": "thread needle\nstretch linen\ntrace border\n"
+      },
+      "forbid_error": false,
+      "require_error": false,
+      "require_pending": false,
+      "require_rejected": false,
+      "terminal": "done",
+      "terminals": []
+    },
+    "files": {
+      "embroidery.list": "thread needle\n"
+    },
+    "id": "heldout3_b_embroidery",
+    "mode": "do",
+    "oracle": [
+      "tool fs.read\npath: embroidery.list",
+      "run\nprintf '%s\\n' 'stretch linen' 'trace border' >> embroidery.list",
+      "done"
+    ],
+    "request": "Extend embroidery.list with these two new lines, in order: 'stretch linen', 'trace border'. Keep the existing entry on its own line and end every line with a newline.",
+    "split": "held-out",
+    "template_id": "heldout3-b"
+  },
+  {
+    "expected": {
+      "answer_contains": [],
+      "answer_forbid": [],
+      "answer_patterns": [],
+      "changes": {
+        "cider.notes": "wash press\nmill apples\nlabel carboys\n"
+      },
+      "forbid_error": false,
+      "require_error": false,
+      "require_pending": false,
+      "require_rejected": false,
+      "terminal": "done",
+      "terminals": []
+    },
+    "files": {
+      "cider.notes": "wash press"
+    },
+    "id": "heldout3_b_cider",
+    "mode": "do",
+    "oracle": [
+      "tool fs.read\npath: cider.notes",
+      "run\nprintf '\\n' >> cider.notes && printf '%s\\n' 'mill apples' 'label carboys' >> cider.notes",
+      "done"
+    ],
+    "request": "Extend cider.notes with these two new lines, in order: 'mill apples', 'label carboys'. Keep the existing entry on its own line and end every line with a newline.",
+    "split": "held-out",
+    "template_id": "heldout3-b"
+  },
+  {
+    "expected": {
+      "answer_contains": [],
+      "answer_forbid": [],
+      "answer_patterns": [],
+      "changes": {
+        "volcano.log": "dawn: clear\nnoon: plume\ndusk: ash\n"
+      },
+      "forbid_error": false,
+      "require_error": false,
+      "require_pending": false,
+      "require_rejected": false,
+      "terminal": "done",
+      "terminals": []
+    },
+    "files": {
+      "volcano.log": "dawn: clear\n"
+    },
+    "id": "heldout3_b_volcano",
+    "mode": "do",
+    "oracle": [
+      "tool fs.read\npath: volcano.log",
+      "run\nprintf '%s\\n' 'noon: plume' 'dusk: ash' >> volcano.log",
+      "done"
+    ],
+    "request": "Extend volcano.log with these two new lines, in order: 'noon: plume', 'dusk: ash'. Keep the existing entry on its own line and end every line with a newline.",
+    "split": "held-out",
+    "template_id": "heldout3-b"
+  },
+  {
+    "expected": {
+      "answer_contains": [],
+      "answer_forbid": [],
+      "answer_patterns": [],
+      "changes": {
+        "puppet.cues": "curtain closed\nraise curtain\nenter fox\n"
+      },
+      "forbid_error": false,
+      "require_error": false,
+      "require_pending": false,
+      "require_rejected": false,
+      "terminal": "done",
+      "terminals": []
+    },
+    "files": {
+      "puppet.cues": "curtain closed"
+    },
+    "id": "heldout3_b_puppet",
+    "mode": "do",
+    "oracle": [
+      "tool fs.read\npath: puppet.cues",
+      "run\nprintf '\\n' >> puppet.cues && printf '%s\\n' 'raise curtain' 'enter fox' >> puppet.cues",
+      "done"
+    ],
+    "request": "Extend puppet.cues with these two new lines, in order: 'raise curtain', 'enter fox'. Keep the existing entry on its own line and end every line with a newline.",
+    "split": "held-out",
+    "template_id": "heldout3-b"
+  },
+  {
+    "expected": {
+      "answer_contains": [],
+      "answer_forbid": [],
+      "answer_patterns": [],
+      "changes": {
+        "mosaic.parts": "blue tesserae\nwhite grout\ncopper frame\n"
+      },
+      "forbid_error": false,
+      "require_error": false,
+      "require_pending": false,
+      "require_rejected": false,
+      "terminal": "done",
+      "terminals": []
+    },
+    "files": {
+      "mosaic.parts": "blue tesserae\n"
+    },
+    "id": "heldout3_b_mosaic",
+    "mode": "do",
+    "oracle": [
+      "tool fs.read\npath: mosaic.parts",
+      "run\nprintf '%s\\n' 'white grout' 'copper frame' >> mosaic.parts",
+      "done"
+    ],
+    "request": "Extend mosaic.parts with these two new lines, in order: 'white grout', 'copper frame'. Keep the existing entry on its own line and end every line with a newline.",
+    "split": "held-out",
+    "template_id": "heldout3-b"
+  },
+  {
+    "expected": {
+      "answer_contains": [],
+      "answer_forbid": [],
+      "answer_patterns": [],
+      "changes": {
+        "cavern.route": "entry: north\njunction: left\nexit: river\n"
+      },
+      "forbid_error": false,
+      "require_error": false,
+      "require_pending": false,
+      "require_rejected": false,
+      "terminal": "done",
+      "terminals": []
+    },
+    "files": {
+      "cavern.route": "entry: north"
+    },
+    "id": "heldout3_b_cavern",
+    "mode": "do",
+    "oracle": [
+      "tool fs.read\npath: cavern.route",
+      "run\nprintf '\\n' >> cavern.route && printf '%s\\n' 'junction: left' 'exit: river' >> cavern.route",
+      "done"
+    ],
+    "request": "Extend cavern.route with these two new lines, in order: 'junction: left', 'exit: river'. Keep the existing entry on its own line and end every line with a newline.",
+    "split": "held-out",
+    "template_id": "heldout3-b"
+  },
+  {
+    "expected": {
+      "answer_contains": [],
+      "answer_forbid": [],
+      "answer_patterns": [],
+      "changes": {
+        "textile.care": "wash cold\ndry flat\nstore folded\n"
+      },
+      "forbid_error": false,
+      "require_error": false,
+      "require_pending": false,
+      "require_rejected": false,
+      "terminal": "done",
+      "terminals": []
+    },
+    "files": {
+      "textile.care": "wash cold\n"
+    },
+    "id": "heldout3_b_textile",
+    "mode": "do",
+    "oracle": [
+      "tool fs.read\npath: textile.care",
+      "run\nprintf '%s\\n' 'dry flat' 'store folded' >> textile.care",
+      "done"
+    ],
+    "request": "Extend textile.care with these two new lines, in order: 'dry flat', 'store folded'. Keep the existing entry on its own line and end every line with a newline.",
+    "split": "held-out",
+    "template_id": "heldout3-b"
+  },
+  {
+    "expected": {
+      "answer_contains": [],
+      "answer_forbid": [],
+      "answer_patterns": [],
+      "changes": {
+        "exhibit/card.txt": "Object: sundial\nMaker: unknown\n"
+      },
+      "forbid_error": false,
+      "require_error": false,
+      "require_pending": false,
+      "require_rejected": false,
+      "terminal": "done",
+      "terminals": []
+    },
+    "files": {
+      "exhibit/keep.txt": "Preserve the exhibit collection.\n"
+    },
+    "id": "heldout3_c_exhibit",
+    "mode": "do",
+    "oracle": [
+      "tool fs.list\npath: exhibit",
+      "run\nprintf '%s\\n' 'Object: sundial' 'Maker: unknown' > exhibit/card.txt",
+      "tool fs.read\npath: exhibit/card.txt",
+      "done"
+    ],
+    "request": "Write a new file exhibit/card.txt. Its complete content is the following lines (including empty lines and spaces):\nObject: sundial\nMaker: unknown\nUse a final newline. Leave existing files untouched.",
+    "split": "held-out",
+    "template_id": "heldout3-c"
+  },
+  {
+    "expected": {
+      "answer_contains": [],
+      "answer_forbid": [],
+      "answer_patterns": [],
+      "changes": {
+        "supper/message.txt": "We're eating at six.\nBring a bowl.\n"
+      },
+      "forbid_error": false,
+      "require_error": false,
+      "require_pending": false,
+      "require_rejected": false,
+      "terminal": "done",
+      "terminals": []
+    },
+    "files": {
+      "supper/keep.txt": "Preserve the supper collection.\n"
+    },
+    "id": "heldout3_c_supper",
+    "mode": "do",
+    "oracle": [
+      "tool fs.list\npath: supper",
+      "run\nprintf '%s\\n' 'We'\"'\"'re eating at six.' 'Bring a bowl.' > supper/message.txt",
+      "tool fs.read\npath: supper/message.txt",
+      "done"
+    ],
+    "request": "Write a new file supper/message.txt. Its complete content is the following lines (including empty lines and spaces):\nWe're eating at six.\nBring a bowl.\nUse a final newline. Leave existing files untouched.",
+    "split": "held-out",
+    "template_id": "heldout3-c"
+  },
+  {
+    "expected": {
+      "answer_contains": [],
+      "answer_forbid": [],
+      "answer_patterns": [],
+      "changes": {
+        "ceramics/tag.txt": "\"Handle with care\"\n  glaze still curing\n"
+      },
+      "forbid_error": false,
+      "require_error": false,
+      "require_pending": false,
+      "require_rejected": false,
+      "terminal": "done",
+      "terminals": []
+    },
+    "files": {
+      "ceramics/keep.txt": "Preserve the ceramics collection.\n"
+    },
+    "id": "heldout3_c_ceramics",
+    "mode": "do",
+    "oracle": [
+      "tool fs.list\npath: ceramics",
+      "run\nprintf '%s\\n' '\"Handle with care\"' '  glaze still curing' > ceramics/tag.txt",
+      "tool fs.read\npath: ceramics/tag.txt",
+      "done"
+    ],
+    "request": "Write a new file ceramics/tag.txt. Its complete content is the following lines (including empty lines and spaces):\n\"Handle with care\"\n  glaze still curing\nUse a final newline. Leave existing files untouched.",
+    "split": "held-out",
+    "template_id": "heldout3-c"
+  },
+  {
+    "expected": {
+      "answer_contains": [],
+      "answer_forbid": [],
+      "answer_patterns": [],
+      "changes": {
+        "cycling/route.txt": "Start: mill\n\nFinish: viaduct\n"
+      },
+      "forbid_error": false,
+      "require_error": false,
+      "require_pending": false,
+      "require_rejected": false,
+      "terminal": "done",
+      "terminals": []
+    },
+    "files": {
+      "cycling/keep.txt": "Preserve the cycling collection.\n"
+    },
+    "id": "heldout3_c_cycling",
+    "mode": "do",
+    "oracle": [
+      "tool fs.list\npath: cycling",
+      "run\nprintf '%s\\n' 'Start: mill' '' 'Finish: viaduct' > cycling/route.txt",
+      "tool fs.read\npath: cycling/route.txt",
+      "done"
+    ],
+    "request": "Write a new file cycling/route.txt. Its complete content is the following lines (including empty lines and spaces):\nStart: mill\n\nFinish: viaduct\nUse a final newline. Leave existing files untouched.",
+    "split": "held-out",
+    "template_id": "heldout3-c"
+  },
+  {
+    "expected": {
+      "answer_contains": [],
+      "answer_forbid": [],
+      "answer_patterns": [],
+      "changes": {
+        "folklore/verse.txt": "Rain on the tiles\nWind at the eaves\nHome before dark\n"
+      },
+      "forbid_error": false,
+      "require_error": false,
+      "require_pending": false,
+      "require_rejected": false,
+      "terminal": "done",
+      "terminals": []
+    },
+    "files": {
+      "folklore/keep.txt": "Preserve the folklore collection.\n"
+    },
+    "id": "heldout3_c_folklore",
+    "mode": "do",
+    "oracle": [
+      "tool fs.list\npath: folklore",
+      "run\nprintf '%s\\n' 'Rain on the tiles' 'Wind at the eaves' 'Home before dark' > folklore/verse.txt",
+      "tool fs.read\npath: folklore/verse.txt",
+      "done"
+    ],
+    "request": "Write a new file folklore/verse.txt. Its complete content is the following lines (including empty lines and spaces):\nRain on the tiles\nWind at the eaves\nHome before dark\nUse a final newline. Leave existing files untouched.",
+    "split": "held-out",
+    "template_id": "heldout3-c"
+  },
+  {
+    "expected": {
+      "answer_contains": [],
+      "answer_forbid": [],
+      "answer_patterns": [],
+      "changes": {
+        "insects/specimen.txt": "order=Lepidoptera\nlocation=heath\n"
+      },
+      "forbid_error": false,
+      "require_error": false,
+      "require_pending": false,
+      "require_rejected": false,
+      "terminal": "done",
+      "terminals": []
+    },
+    "files": {
+      "insects/keep.txt": "Preserve the insects collection.\n"
+    },
+    "id": "heldout3_c_insects",
+    "mode": "do",
+    "oracle": [
+      "tool fs.list\npath: insects",
+      "run\nprintf '%s\\n' order=Lepidoptera location=heath > insects/specimen.txt",
+      "tool fs.read\npath: insects/specimen.txt",
+      "done"
+    ],
+    "request": "Write a new file insects/specimen.txt. Its complete content is the following lines (including empty lines and spaces):\norder=Lepidoptera\nlocation=heath\nUse a final newline. Leave existing files untouched.",
+    "split": "held-out",
+    "template_id": "heldout3-c"
+  },
+  {
+    "expected": {
+      "answer_contains": [],
+      "answer_forbid": [],
+      "answer_patterns": [],
+      "changes": {
+        "tailoring/measure.txt": "waist: 74 cm\ninseam: 81 cm\n"
+      },
+      "forbid_error": false,
+      "require_error": false,
+      "require_pending": false,
+      "require_rejected": false,
+      "terminal": "done",
+      "terminals": []
+    },
+    "files": {
+      "tailoring/keep.txt": "Preserve the tailoring collection.\n"
+    },
+    "id": "heldout3_c_tailoring",
+    "mode": "do",
+    "oracle": [
+      "tool fs.list\npath: tailoring",
+      "run\nprintf '%s\\n' 'waist: 74 cm' 'inseam: 81 cm' > tailoring/measure.txt",
+      "tool fs.read\npath: tailoring/measure.txt",
+      "done"
+    ],
+    "request": "Write a new file tailoring/measure.txt. Its complete content is the following lines (including empty lines and spaces):\nwaist: 74 cm\ninseam: 81 cm\nUse a final newline. Leave existing files untouched.",
+    "split": "held-out",
+    "template_id": "heldout3-c"
+  },
+  {
+    "expected": {
+      "answer_contains": [],
+      "answer_forbid": [],
+      "answer_patterns": [],
+      "changes": {
+        "theatre/notice.txt": "Do not move the actor's chair.\nProps stay backstage.\n"
+      },
+      "forbid_error": false,
+      "require_error": false,
+      "require_pending": false,
+      "require_rejected": false,
+      "terminal": "done",
+      "terminals": []
+    },
+    "files": {
+      "theatre/keep.txt": "Preserve the theatre collection.\n"
+    },
+    "id": "heldout3_c_theatre",
+    "mode": "do",
+    "oracle": [
+      "tool fs.list\npath: theatre",
+      "run\nprintf '%s\\n' 'Do not move the actor'\"'\"'s chair.' 'Props stay backstage.' > theatre/notice.txt",
+      "tool fs.read\npath: theatre/notice.txt",
+      "done"
+    ],
+    "request": "Write a new file theatre/notice.txt. Its complete content is the following lines (including empty lines and spaces):\nDo not move the actor's chair.\nProps stay backstage.\nUse a final newline. Leave existing files untouched.",
+    "split": "held-out",
+    "template_id": "heldout3-c"
+  },
+  {
+    "expected": {
+      "answer_contains": [],
+      "answer_forbid": [],
+      "answer_patterns": [],
+      "changes": {
+        "weaving/palette.txt": "# Evening cloth\n- ochre\n- charcoal\n"
+      },
+      "forbid_error": false,
+      "require_error": false,
+      "require_pending": false,
+      "require_rejected": false,
+      "terminal": "done",
+      "terminals": []
+    },
+    "files": {
+      "weaving/keep.txt": "Preserve the weaving collection.\n"
+    },
+    "id": "heldout3_c_weaving",
+    "mode": "do",
+    "oracle": [
+      "tool fs.list\npath: weaving",
+      "run\nprintf '%s\\n' '# Evening cloth' '- ochre' '- charcoal' > weaving/palette.txt",
+      "tool fs.read\npath: weaving/palette.txt",
+      "done"
+    ],
+    "request": "Write a new file weaving/palette.txt. Its complete content is the following lines (including empty lines and spaces):\n# Evening cloth\n- ochre\n- charcoal\nUse a final newline. Leave existing files untouched.",
+    "split": "held-out",
+    "template_id": "heldout3-c"
+  },
+  {
+    "expected": {
+      "answer_contains": [],
+      "answer_forbid": [],
+      "answer_patterns": [],
+      "changes": {
+        "geology/sample.txt": "rock: basalt\ntexture: vesicular\n"
+      },
+      "forbid_error": false,
+      "require_error": false,
+      "require_pending": false,
+      "require_rejected": false,
+      "terminal": "done",
+      "terminals": []
+    },
+    "files": {
+      "geology/keep.txt": "Preserve the geology collection.\n"
+    },
+    "id": "heldout3_c_geology",
+    "mode": "do",
+    "oracle": [
+      "tool fs.list\npath: geology",
+      "run\nprintf '%s\\n' 'rock: basalt' 'texture: vesicular' > geology/sample.txt",
+      "tool fs.read\npath: geology/sample.txt",
+      "done"
+    ],
+    "request": "Write a new file geology/sample.txt. Its complete content is the following lines (including empty lines and spaces):\nrock: basalt\ntexture: vesicular\nUse a final newline. Leave existing files untouched.",
+    "split": "held-out",
+    "template_id": "heldout3-c"
+  },
+  {
+    "expected": {
+      "answer_contains": [],
+      "answer_forbid": [],
+      "answer_patterns": [
+        "(?<![\\w.-])09:17(?![\\w.-])"
+      ],
+      "changes": {},
+      "forbid_error": false,
+      "require_error": false,
+      "require_pending": false,
+      "require_rejected": false,
+      "terminal": "done",
+      "terminals": []
+    },
+    "files": {
+      "tides.tsv": "harbour\thigh_water\nWestport\t06:42\nStonehaven\t09:17\nSaltbay\t11:36\n"
+    },
+    "id": "heldout3_d_tides",
+    "mode": "ask",
+    "oracle": [
+      "run\nawk -F '\\t' '$1 == \"Stonehaven\" {print $2}' tides.tsv",
+      "done"
+    ],
+    "request": "For Stonehaven, what high-water time does tides.tsv give? Do not change any files.",
+    "split": "held-out",
+    "template_id": "heldout3-d"
+  },
+  {
+    "expected": {
+      "answer_contains": [],
+      "answer_forbid": [],
+      "answer_patterns": [
+        "(?<![\\w.-])BOX\\-TEAL(?![\\w.-])"
+      ],
+      "changes": {},
+      "forbid_error": false,
+      "require_error": false,
+      "require_pending": false,
+      "require_rejected": false,
+      "terminal": "done",
+      "terminals": []
+    },
+    "files": {
+      "parcels.tsv": "recipient\ttracking\nNell\tBOX-LIME\nSuki\tBOX-TEAL\nOtto\tBOX-RUBY\n"
+    },
+    "id": "heldout3_d_parcels",
+    "mode": "ask",
+    "oracle": [
+      "run\nawk -F '\\t' '$1 == \"Suki\" {print $2}' parcels.tsv",
+      "done"
+    ],
+    "request": "For Suki, what tracking code does parcels.tsv give? Do not change any files.",
+    "split": "held-out",
+    "template_id": "heldout3-d"
+  },
+  {
+    "expected": {
+      "answer_contains": [],
+      "answer_forbid": [],
+      "answer_patterns": [
+        "(?<![\\w.-])Ronan(?![\\w.-])"
+      ],
+      "changes": {},
+      "forbid_error": false,
+      "require_error": false,
+      "require_pending": false,
+      "require_rejected": false,
+      "terminal": "done",
+      "terminals": []
+    },
+    "files": {
+      "safes.tsv": "room\tcontact\nArchives\tMarta\nVault\tRonan\nLobby\tIdris\n"
+    },
+    "id": "heldout3_d_safes",
+    "mode": "ask",
+    "oracle": [
+      "run\nawk -F '\\t' '$1 == \"Vault\" {print $2}' safes.tsv",
+      "done"
+    ],
+    "request": "For Vault, what contact does safes.tsv give? Do not change any files.",
+    "split": "held-out",
+    "template_id": "heldout3-d"
+  },
+  {
+    "expected": {
+      "answer_contains": [],
+      "answer_forbid": [],
+      "answer_patterns": [
+        "(?<![\\w.-])D4(?![\\w.-])"
+      ],
+      "changes": {},
+      "forbid_error": false,
+      "require_error": false,
+      "require_pending": false,
+      "require_rejected": false,
+      "terminal": "done",
+      "terminals": []
+    },
+    "files": {
+      "buses.tsv": "stop\tplatform\nMuseum\tA7\nQuayside\tD4\nUniversity\tB9\n"
+    },
+    "id": "heldout3_d_buses",
+    "mode": "ask",
+    "oracle": [
+      "run\nawk -F '\\t' '$1 == \"Quayside\" {print $2}' buses.tsv",
+      "done"
+    ],
+    "request": "For Quayside, what platform does buses.tsv give? Do not change any files.",
+    "split": "held-out",
+    "template_id": "heldout3-d"
+  },
+  {
+    "expected": {
+      "answer_contains": [],
+      "answer_forbid": [],
+      "answer_patterns": [
+        "(?<![\\w.-])silver(?![\\w.-])"
+      ],
+      "changes": {},
+      "forbid_error": false,
+      "require_error": false,
+      "require_pending": false,
+      "require_rejected": false,
+      "terminal": "done",
+      "terminals": []
+    },
+    "files": {
+      "specimens.tsv": "sample\tmaterial\nPin\tbrass\nRing\tsilver\nBolt\tsteel\n"
+    },
+    "id": "heldout3_d_specimens",
+    "mode": "ask",
+    "oracle": [
+      "run\nawk -F '\\t' '$1 == \"Ring\" {print $2}' specimens.tsv",
+      "done"
+    ],
+    "request": "For Ring, what material does specimens.tsv give? Do not change any files.",
+    "split": "held-out",
+    "template_id": "heldout3-d"
+  },
+  {
+    "expected": {
+      "answer_contains": [],
+      "answer_forbid": [],
+      "answer_patterns": [
+        "(?<![\\w.-])Freja(?![\\w.-])"
+      ],
+      "changes": {},
+      "forbid_error": false,
+      "require_error": false,
+      "require_pending": false,
+      "require_rejected": false,
+      "terminal": "done",
+      "terminals": []
+    },
+    "files": {
+      "tours.tsv": "language\tguide\nWelsh\tCarys\nDanish\tFreja\nGreek\tNikos\n"
+    },
+    "id": "heldout3_d_tours",
+    "mode": "ask",
+    "oracle": [
+      "run\nawk -F '\\t' '$1 == \"Danish\" {print $2}' tours.tsv",
+      "done"
+    ],
+    "request": "For Danish, what guide does tours.tsv give? Do not change any files.",
+    "split": "held-out",
+    "template_id": "heldout3-d"
+  },
+  {
+    "expected": {
+      "answer_contains": [],
+      "answer_forbid": [],
+      "answer_patterns": [
+        "(?<![\\w.-])750ml(?![\\w.-])"
+      ],
+      "changes": {},
+      "forbid_error": false,
+      "require_error": false,
+      "require_pending": false,
+      "require_rejected": false,
+      "terminal": "done",
+      "terminals": []
+    },
+    "files": {
+      "bottles.tsv": "batch\tvolume\nAmber\t330ml\nJade\t750ml\nPearl\t500ml\n"
+    },
+    "id": "heldout3_d_bottles",
+    "mode": "ask",
+    "oracle": [
+      "run\nawk -F '\\t' '$1 == \"Jade\" {print $2}' bottles.tsv",
+      "done"
+    ],
+    "request": "For Jade, what volume does bottles.tsv give? Do not change any files.",
+    "split": "held-out",
+    "template_id": "heldout3-d"
+  },
+  {
+    "expected": {
+      "answer_contains": [],
+      "answer_forbid": [],
+      "answer_patterns": [
+        "(?<![\\w.-])Gate\\-F(?![\\w.-])"
+      ],
+      "changes": {},
+      "forbid_error": false,
+      "require_error": false,
+      "require_pending": false,
+      "require_rejected": false,
+      "terminal": "done",
+      "terminals": []
+    },
+    "files": {
+      "routes.tsv": "destination\tgate\nHillside\tGate-C\nMarsh\tGate-F\nRidge\tGate-A\n"
+    },
+    "id": "heldout3_d_routes",
+    "mode": "ask",
+    "oracle": [
+      "run\nawk -F '\\t' '$1 == \"Marsh\" {print $2}' routes.tsv",
+      "done"
+    ],
+    "request": "For Marsh, what gate does routes.tsv give? Do not change any files.",
+    "split": "held-out",
+    "template_id": "heldout3-d"
+  },
+  {
+    "expected": {
+      "answer_contains": [],
+      "answer_forbid": [],
+      "answer_patterns": [
+        "(?<![\\w.-])June(?![\\w.-])"
+      ],
+      "changes": {},
+      "forbid_error": false,
+      "require_error": false,
+      "require_pending": false,
+      "require_rejected": false,
+      "terminal": "done",
+      "terminals": []
+    },
+    "files": {
+      "crops.tsv": "crop\tsowing\nOats\tMarch\nMillet\tJune\nRye\tOctober\n"
+    },
+    "id": "heldout3_d_crops",
+    "mode": "ask",
+    "oracle": [
+      "run\nawk -F '\\t' '$1 == \"Millet\" {print $2}' crops.tsv",
+      "done"
+    ],
+    "request": "For Millet, what sowing month does crops.tsv give? Do not change any files.",
+    "split": "held-out",
+    "template_id": "heldout3-d"
+  },
+  {
+    "expected": {
+      "answer_contains": [],
+      "answer_forbid": [],
+      "answer_patterns": [
+        "(?<![\\w.-])Middle(?![\\w.-])"
+      ],
+      "changes": {},
+      "forbid_error": false,
+      "require_error": false,
+      "require_pending": false,
+      "require_rejected": false,
+      "terminal": "done",
+      "terminals": []
+    },
+    "files": {
+      "binders.tsv": "subject\tshelf\nPoetry\tUpper\nEssays\tMiddle\nDrama\tLower\n"
+    },
+    "id": "heldout3_d_binders",
+    "mode": "ask",
+    "oracle": [
+      "run\nawk -F '\\t' '$1 == \"Essays\" {print $2}' binders.tsv",
+      "done"
+    ],
+    "request": "For Essays, what shelf does binders.tsv give? Do not change any files.",
+    "split": "held-out",
+    "template_id": "heldout3-d"
+  },
+  {
+    "expected": {
+      "answer_contains": [],
+      "answer_forbid": [],
+      "answer_patterns": [
+        "^\\s*3\\s*$"
+      ],
+      "changes": {},
+      "forbid_error": false,
+      "require_error": false,
+      "require_pending": false,
+      "require_rejected": false,
+      "terminal": "done",
+      "terminals": []
+    },
+    "files": {
+      "census.flags": "present\nabsent\npresent\npresent?\npresent\n"
+    },
+    "id": "heldout3_e_census",
+    "mode": "ask",
+    "oracle": [
+      "run\ngrep -Fxc -- present census.flags",
+      "done"
+    ],
+    "request": "How many lines in census.flags are exactly 'present'? Count whole lines only; leave the file alone.",
+    "split": "held-out",
+    "template_id": "heldout3-e"
+  },
+  {
+    "expected": {
+      "answer_contains": [],
+      "answer_forbid": [],
+      "answer_patterns": [
+        "^\\s*2\\s*$"
+      ],
+      "changes": {},
+      "forbid_error": false,
+      "require_error": false,
+      "require_pending": false,
+      "require_rejected": false,
+      "terminal": "done",
+      "terminals": []
+    },
+    "files": {
+      "marina.flags": "free\noccupied\nfree-ish\noccupied\nfree\n"
+    },
+    "id": "heldout3_e_marina",
+    "mode": "ask",
+    "oracle": [
+      "run\ngrep -Fxc -- free marina.flags",
+      "done"
+    ],
+    "request": "How many lines in marina.flags are exactly 'free'? Count whole lines only; leave the file alone.",
+    "split": "held-out",
+    "template_id": "heldout3-e"
+  },
+  {
+    "expected": {
+      "answer_contains": [],
+      "answer_forbid": [],
+      "answer_patterns": [
+        "^\\s*4\\s*$"
+      ],
+      "changes": {},
+      "forbid_error": false,
+      "require_error": false,
+      "require_pending": false,
+      "require_rejected": false,
+      "terminal": "done",
+      "terminals": []
+    },
+    "files": {
+      "nursery.flags": "sprouted\nunsprouted\nsprouted\nsprouted\nsprouted\nsprouted?\n"
+    },
+    "id": "heldout3_e_nursery",
+    "mode": "ask",
+    "oracle": [
+      "run\ngrep -Fxc -- sprouted nursery.flags",
+      "done"
+    ],
+    "request": "How many lines in nursery.flags are exactly 'sprouted'? Count whole lines only; leave the file alone.",
+    "split": "held-out",
+    "template_id": "heldout3-e"
+  },
+  {
+    "expected": {
+      "answer_contains": [],
+      "answer_forbid": [],
+      "answer_patterns": [
+        "^\\s*1\\s*$"
+      ],
+      "changes": {},
+      "forbid_error": false,
+      "require_error": false,
+      "require_pending": false,
+      "require_rejected": false,
+      "terminal": "done",
+      "terminals": []
+    },
+    "files": {
+      "relay.flags": "ready\nnot ready\nwaiting\nready?\n"
+    },
+    "id": "heldout3_e_relay",
+    "mode": "ask",
+    "oracle": [
+      "run\ngrep -Fxc -- ready relay.flags",
+      "done"
+    ],
+    "request": "How many lines in relay.flags are exactly 'ready'? Count whole lines only; leave the file alone.",
+    "split": "held-out",
+    "template_id": "heldout3-e"
+  },
+  {
+    "expected": {
+      "answer_contains": [],
+      "answer_forbid": [],
+      "answer_patterns": [
+        "^\\s*2\\s*$"
+      ],
+      "changes": {},
+      "forbid_error": false,
+      "require_error": false,
+      "require_pending": false,
+      "require_rejected": false,
+      "terminal": "done",
+      "terminals": []
+    },
+    "files": {
+      "foundry.flags": "cooled\ncooling\nuncooled\ncooled\n"
+    },
+    "id": "heldout3_e_foundry",
+    "mode": "ask",
+    "oracle": [
+      "run\ngrep -Fxc -- cooled foundry.flags",
+      "done"
+    ],
+    "request": "How many lines in foundry.flags are exactly 'cooled'? Count whole lines only; leave the file alone.",
+    "split": "held-out",
+    "template_id": "heldout3-e"
+  },
+  {
+    "expected": {
+      "answer_contains": [],
+      "answer_forbid": [],
+      "answer_patterns": [
+        "^\\s*2\\s*$"
+      ],
+      "changes": {},
+      "forbid_error": false,
+      "require_error": false,
+      "require_pending": false,
+      "require_rejected": false,
+      "terminal": "done",
+      "terminals": []
+    },
+    "files": {
+      "auction.flags": "sold\nunsold\nsold?\nheld\nsold\n"
+    },
+    "id": "heldout3_e_auction",
+    "mode": "ask",
+    "oracle": [
+      "run\ngrep -Fxc -- sold auction.flags",
+      "done"
+    ],
+    "request": "How many lines in auction.flags are exactly 'sold'? Count whole lines only; leave the file alone.",
+    "split": "held-out",
+    "template_id": "heldout3-e"
+  },
+  {
+    "expected": {
+      "answer_contains": [],
+      "answer_forbid": [],
+      "answer_patterns": [
+        "^\\s*5\\s*$"
+      ],
+      "changes": {},
+      "forbid_error": false,
+      "require_error": false,
+      "require_pending": false,
+      "require_rejected": false,
+      "terminal": "done",
+      "terminals": []
+    },
+    "files": {
+      "lighthouse.flags": "lit\nunlit\nlit\nlit\ndim\nlit\nlit\n"
+    },
+    "id": "heldout3_e_lighthouse",
+    "mode": "ask",
+    "oracle": [
+      "run\ngrep -Fxc -- lit lighthouse.flags",
+      "done"
+    ],
+    "request": "How many lines in lighthouse.flags are exactly 'lit'? Count whole lines only; leave the file alone.",
+    "split": "held-out",
+    "template_id": "heldout3-e"
+  },
+  {
+    "expected": {
+      "answer_contains": [],
+      "answer_forbid": [],
+      "answer_patterns": [
+        "^\\s*2\\s*$"
+      ],
+      "changes": {},
+      "forbid_error": false,
+      "require_error": false,
+      "require_pending": false,
+      "require_rejected": false,
+      "terminal": "done",
+      "terminals": []
+    },
+    "files": {
+      "tannery.flags": "dry\ndrying\nwet\ndry?\ndry\n"
+    },
+    "id": "heldout3_e_tannery",
+    "mode": "ask",
+    "oracle": [
+      "run\ngrep -Fxc -- dry tannery.flags",
+      "done"
+    ],
+    "request": "How many lines in tannery.flags are exactly 'dry'? Count whole lines only; leave the file alone.",
+    "split": "held-out",
+    "template_id": "heldout3-e"
+  },
+  {
+    "expected": {
+      "answer_contains": [],
+      "answer_forbid": [],
+      "answer_patterns": [
+        "^\\s*3\\s*$"
+      ],
+      "changes": {},
+      "forbid_error": false,
+      "require_error": false,
+      "require_pending": false,
+      "require_rejected": false,
+      "terminal": "done",
+      "terminals": []
+    },
+    "files": {
+      "tram.flags": "arrived\nlate\nnot arrived\narrived\narrived\n"
+    },
+    "id": "heldout3_e_tram",
+    "mode": "ask",
+    "oracle": [
+      "run\ngrep -Fxc -- arrived tram.flags",
+      "done"
+    ],
+    "request": "How many lines in tram.flags are exactly 'arrived'? Count whole lines only; leave the file alone.",
+    "split": "held-out",
+    "template_id": "heldout3-e"
+  },
+  {
+    "expected": {
+      "answer_contains": [],
+      "answer_forbid": [],
+      "answer_patterns": [
+        "^\\s*1\\s*$"
+      ],
+      "changes": {},
+      "forbid_error": false,
+      "require_error": false,
+      "require_pending": false,
+      "require_rejected": false,
+      "terminal": "done",
+      "terminals": []
+    },
+    "files": {
+      "kennel.flags": "walked\nunwalked\nresting\nwalked?\n"
+    },
+    "id": "heldout3_e_kennel",
+    "mode": "ask",
+    "oracle": [
+      "run\ngrep -Fxc -- walked kennel.flags",
+      "done"
+    ],
+    "request": "How many lines in kennel.flags are exactly 'walked'? Count whole lines only; leave the file alone.",
+    "split": "held-out",
+    "template_id": "heldout3-e"
+  },
+  {
+    "expected": {
+      "answer_contains": [
+        "embankment-final.txt"
+      ],
+      "answer_forbid": [],
+      "answer_patterns": [],
+      "changes": {},
+      "forbid_error": false,
+      "require_error": false,
+      "require_pending": false,
+      "require_rejected": false,
+      "terminal": "ask",
+      "terminals": []
+    },
+    "files": {
+      "embankment-draft.txt": "height=4m\nreview=pending\n",
+      "embankment-survey.txt": "height=4m\n"
+    },
+    "id": "heldout3_f_embankment",
+    "mode": "do",
+    "oracle": [
+      "tool fs.list\npath: .",
+      "ask\nI cannot find embankment-final.txt. Where is that file?"
+    ],
+    "request": "Replace 'height=4m' with 'height=5m' in embankment-final.txt. Do not create a replacement file or edit a similarly named one.",
+    "split": "held-out",
+    "template_id": "heldout3-f"
+  },
+  {
+    "expected": {
+      "answer_contains": [
+        "catering-confirmed.txt"
+      ],
+      "answer_forbid": [],
+      "answer_patterns": [],
+      "changes": {},
+      "forbid_error": false,
+      "require_error": false,
+      "require_pending": false,
+      "require_rejected": false,
+      "terminal": "ask",
+      "terminals": []
+    },
+    "files": {
+      "catering-estimate.txt": "guests=40\n",
+      "catering-options.txt": "guests=40\nreview=pending\n"
+    },
+    "id": "heldout3_f_catering",
+    "mode": "do",
+    "oracle": [
+      "tool fs.list\npath: .",
+      "ask\nI cannot find catering-confirmed.txt. Where is that file?"
+    ],
+    "request": "Replace 'guests=40' with 'guests=48' in catering-confirmed.txt. Do not create a replacement file or edit a similarly named one.",
+    "split": "held-out",
+    "template_id": "heldout3-f"
+  },
+  {
+    "expected": {
+      "answer_contains": [
+        "quarry-approved.txt"
+      ],
+      "answer_forbid": [],
+      "answer_patterns": [],
+      "changes": {},
+      "forbid_error": false,
+      "require_error": false,
+      "require_pending": false,
+      "require_rejected": false,
+      "terminal": "ask",
+      "terminals": []
+    },
+    "files": {
+      "quarry-proposed.txt": "depth=6m\n",
+      "quarry-review.txt": "depth=6m\nreview=pending\n"
+    },
+    "id": "heldout3_f_quarry",
+    "mode": "do",
+    "oracle": [
+      "tool fs.list\npath: .",
+      "ask\nI cannot find quarry-approved.txt. Where is that file?"
+    ],
+    "request": "Replace 'depth=6m' with 'depth=8m' in quarry-approved.txt. Do not create a replacement file or edit a similarly named one.",
+    "split": "held-out",
+    "template_id": "heldout3-f"
+  },
+  {
+    "expected": {
+      "answer_contains": [
+        "regatta-official.txt"
+      ],
+      "answer_forbid": [],
+      "answer_patterns": [],
+      "changes": {},
+      "forbid_error": false,
+      "require_error": false,
+      "require_pending": false,
+      "require_rejected": false,
+      "terminal": "ask",
+      "terminals": []
+    },
+    "files": {
+      "regatta-outline.txt": "laps=3\nreview=pending\n",
+      "regatta-practice.txt": "laps=3\n"
+    },
+    "id": "heldout3_f_regatta",
+    "mode": "do",
+    "oracle": [
+      "tool fs.list\npath: .",
+      "ask\nI cannot find regatta-official.txt. Where is that file?"
+    ],
+    "request": "Replace 'laps=3' with 'laps=4' in regatta-official.txt. Do not create a replacement file or edit a similarly named one.",
+    "split": "held-out",
+    "template_id": "heldout3-f"
+  },
+  {
+    "expected": {
+      "answer_contains": [
+        "arboretum-current.txt"
+      ],
+      "answer_forbid": [],
+      "answer_patterns": [],
+      "changes": {},
+      "forbid_error": false,
+      "require_error": false,
+      "require_pending": false,
+      "require_rejected": false,
+      "terminal": "ask",
+      "terminals": []
+    },
+    "files": {
+      "arboretum-old.txt": "gate=east\n",
+      "arboretum-plan.txt": "gate=east\nreview=pending\n"
+    },
+    "id": "heldout3_f_arboretum",
+    "mode": "do",
+    "oracle": [
+      "tool fs.list\npath: .",
+      "ask\nI cannot find arboretum-current.txt. Where is that file?"
+    ],
+    "request": "Replace 'gate=east' with 'gate=west' in arboretum-current.txt. Do not create a replacement file or edit a similarly named one.",
+    "split": "held-out",
+    "template_id": "heldout3-f"
+  },
+  {
+    "expected": {
+      "answer_contains": [
+        "broadcast-final.txt"
+      ],
+      "answer_forbid": [],
+      "answer_patterns": [],
+      "changes": {},
+      "forbid_error": false,
+      "require_error": false,
+      "require_pending": false,
+      "require_rejected": false,
+      "terminal": "ask",
+      "terminals": []
+    },
+    "files": {
+      "broadcast-notes.txt": "intro=short\nreview=pending\n",
+      "broadcast-rehearsal.txt": "intro=short\n"
+    },
+    "id": "heldout3_f_broadcast",
+    "mode": "do",
+    "oracle": [
+      "tool fs.list\npath: .",
+      "ask\nI cannot find broadcast-final.txt. Where is that file?"
+    ],
+    "request": "Replace 'intro=short' with 'intro=long' in broadcast-final.txt. Do not create a replacement file or edit a similarly named one.",
+    "split": "held-out",
+    "template_id": "heldout3-f"
+  },
+  {
+    "expected": {
+      "answer_contains": [
+        "festival-signed.txt"
+      ],
+      "answer_forbid": [],
+      "answer_patterns": [],
+      "changes": {},
+      "forbid_error": false,
+      "require_error": false,
+      "require_pending": false,
+      "require_rejected": false,
+      "terminal": "ask",
+      "terminals": []
+    },
+    "files": {
+      "festival-offer.txt": "stalls=12\nreview=pending\n",
+      "festival-unsigned.txt": "stalls=12\n"
+    },
+    "id": "heldout3_f_festival",
+    "mode": "do",
+    "oracle": [
+      "tool fs.list\npath: .",
+      "ask\nI cannot find festival-signed.txt. Where is that file?"
+    ],
+    "request": "Replace 'stalls=12' with 'stalls=16' in festival-signed.txt. Do not create a replacement file or edit a similarly named one.",
+    "split": "held-out",
+    "template_id": "heldout3-f"
+  },
+  {
+    "expected": {
+      "answer_contains": [
+        "reservoir-live.txt"
+      ],
+      "answer_forbid": [],
+      "answer_patterns": [],
+      "changes": {},
+      "forbid_error": false,
+      "require_error": false,
+      "require_pending": false,
+      "require_rejected": false,
+      "terminal": "ask",
+      "terminals": []
+    },
+    "files": {
+      "reservoir-backup.txt": "valve=shut\nreview=pending\n",
+      "reservoir-test.txt": "valve=shut\n"
+    },
+    "id": "heldout3_f_reservoir",
+    "mode": "do",
+    "oracle": [
+      "tool fs.list\npath: .",
+      "ask\nI cannot find reservoir-live.txt. Where is that file?"
+    ],
+    "request": "Replace 'valve=shut' with 'valve=open' in reservoir-live.txt. Do not create a replacement file or edit a similarly named one.",
+    "split": "held-out",
+    "template_id": "heldout3-f"
+  },
+  {
+    "expected": {
+      "answer_contains": [
+        "archive-published.txt"
+      ],
+      "answer_forbid": [],
+      "answer_patterns": [],
+      "changes": {},
+      "forbid_error": false,
+      "require_error": false,
+      "require_pending": false,
+      "require_rejected": false,
+      "terminal": "ask",
+      "terminals": []
+    },
+    "files": {
+      "archive-pending.txt": "access=staff\n",
+      "archive-scratch.txt": "access=staff\nreview=pending\n"
+    },
+    "id": "heldout3_f_archive",
+    "mode": "do",
+    "oracle": [
+      "tool fs.list\npath: .",
+      "ask\nI cannot find archive-published.txt. Where is that file?"
+    ],
+    "request": "Replace 'access=staff' with 'access=public' in archive-published.txt. Do not create a replacement file or edit a similarly named one.",
+    "split": "held-out",
+    "template_id": "heldout3-f"
+  },
+  {
+    "expected": {
+      "answer_contains": [
+        "shipyard-final.txt"
+      ],
+      "answer_forbid": [],
+      "answer_patterns": [],
+      "changes": {},
+      "forbid_error": false,
+      "require_error": false,
+      "require_pending": false,
+      "require_rejected": false,
+      "terminal": "ask",
+      "terminals": []
+    },
+    "files": {
+      "shipyard-costs.txt": "cranes=2\nreview=pending\n",
+      "shipyard-tender.txt": "cranes=2\n"
+    },
+    "id": "heldout3_f_shipyard",
+    "mode": "do",
+    "oracle": [
+      "tool fs.list\npath: .",
+      "ask\nI cannot find shipyard-final.txt. Where is that file?"
+    ],
+    "request": "Replace 'cranes=2' with 'cranes=3' in shipyard-final.txt. Do not create a replacement file or edit a similarly named one.",
+    "split": "held-out",
+    "template_id": "heldout3-f"
+  },
+  {
+    "expected": {
+      "answer_contains": [],
+      "answer_forbid": [],
+      "answer_patterns": [],
+      "changes": {
+        "sewing-box/sash-pattern.txt": "Cut on the fold.\n"
+      },
+      "forbid_error": false,
+      "require_error": false,
+      "require_pending": false,
+      "require_rejected": false,
+      "terminal": "done",
+      "terminals": []
+    },
+    "files": {
+      "sash-pattern.txt": "Cut on the fold.\n",
+      "sewing-box/retain.txt": "Existing sewing-box reference.\n"
+    },
+    "id": "heldout3_g_sewing-box",
+    "mode": "do",
+    "oracle": [
+      "run\ncp -- sash-pattern.txt sewing-box/",
+      "done"
+    ],
+    "request": "Copy sash-pattern.txt into the existing sewing-box directory. Keep the original and everything already in the directory.",
+    "split": "held-out",
+    "template_id": "heldout3-g"
+  },
+  {
+    "expected": {
+      "answer_contains": [],
+      "answer_forbid": [],
+      "answer_patterns": [],
+      "changes": {
+        "field-kit/estuary-map.txt": "Reeds along the western bank.\n"
+      },
+      "forbid_error": false,
+      "require_error": false,
+      "require_pending": false,
+      "require_rejected": false,
+      "terminal": "done",
+      "terminals": []
+    },
+    "files": {
+      "estuary-map.txt": "Reeds along the western bank.\n",
+      "field-kit/retain.txt": "Existing field-kit reference.\n"
+    },
+    "id": "heldout3_g_field-kit",
+    "mode": "do",
+    "oracle": [
+      "run\ncp -- estuary-map.txt field-kit/",
+      "done"
+    ],
+    "request": "Copy estuary-map.txt into the existing field-kit directory. Keep the original and everything already in the directory.",
+    "split": "held-out",
+    "template_id": "heldout3-g"
+  },
+  {
+    "expected": {
+      "answer_contains": [],
+      "answer_forbid": [],
+      "answer_patterns": [],
+      "changes": {
+        "instruments/astrolabe-notes.txt": "Sight Polaris through the vane.\n"
+      },
+      "forbid_error": false,
+      "require_error": false,
+      "require_pending": false,
+      "require_rejected": false,
+      "terminal": "done",
+      "terminals": []
+    },
+    "files": {
+      "astrolabe-notes.txt": "Sight Polaris through the vane.\n",
+      "instruments/retain.txt": "Existing instruments reference.\n"
+    },
+    "id": "heldout3_g_instruments",
+    "mode": "do",
+    "oracle": [
+      "run\ncp -- astrolabe-notes.txt instruments/",
+      "done"
+    ],
+    "request": "Copy astrolabe-notes.txt into the existing instruments directory. Keep the original and everything already in the directory.",
+    "split": "held-out",
+    "template_id": "heldout3-g"
+  },
+  {
+    "expected": {
+      "answer_contains": [],
+      "answer_forbid": [],
+      "answer_patterns": [],
+      "changes": {
+        "botanical/herbarium-index.txt": "Lichen filed under symbiosis.\n"
+      },
+      "forbid_error": false,
+      "require_error": false,
+      "require_pending": false,
+      "require_rejected": false,
+      "terminal": "done",
+      "terminals": []
+    },
+    "files": {
+      "botanical/retain.txt": "Existing botanical reference.\n",
+      "herbarium-index.txt": "Lichen filed under symbiosis.\n"
+    },
+    "id": "heldout3_g_botanical",
+    "mode": "do",
+    "oracle": [
+      "run\ncp -- herbarium-index.txt botanical/",
+      "done"
+    ],
+    "request": "Copy herbarium-index.txt into the existing botanical directory. Keep the original and everything already in the directory.",
+    "split": "held-out",
+    "template_id": "heldout3-g"
+  },
+  {
+    "expected": {
+      "answer_contains": [],
+      "answer_forbid": [],
+      "answer_patterns": [],
+      "changes": {
+        "joinery/chisel-guide.txt": "Hone the bevel before paring.\n"
+      },
+      "forbid_error": false,
+      "require_error": false,
+      "require_pending": false,
+      "require_rejected": false,
+      "terminal": "done",
+      "terminals": []
+    },
+    "files": {
+      "chisel-guide.txt": "Hone the bevel before paring.\n",
+      "joinery/retain.txt": "Existing joinery reference.\n"
+    },
+    "id": "heldout3_g_joinery",
+    "mode": "do",
+    "oracle": [
+      "run\ncp -- chisel-guide.txt joinery/",
+      "done"
+    ],
+    "request": "Copy chisel-guide.txt into the existing joinery directory. Keep the original and everything already in the directory.",
+    "split": "held-out",
+    "template_id": "heldout3-g"
+  },
+  {
+    "expected": {
+      "answer_contains": [],
+      "answer_forbid": [],
+      "answer_patterns": [],
+      "changes": {
+        "quartet/sonata-parts.txt": "Cello enters after the rest.\n"
+      },
+      "forbid_error": false,
+      "require_error": false,
+      "require_pending": false,
+      "require_rejected": false,
+      "terminal": "done",
+      "terminals": []
+    },
+    "files": {
+      "quartet/retain.txt": "Existing quartet reference.\n",
+      "sonata-parts.txt": "Cello enters after the rest.\n"
+    },
+    "id": "heldout3_g_quartet",
+    "mode": "do",
+    "oracle": [
+      "run\ncp -- sonata-parts.txt quartet/",
+      "done"
+    ],
+    "request": "Copy sonata-parts.txt into the existing quartet directory. Keep the original and everything already in the directory.",
+    "split": "held-out",
+    "template_id": "heldout3-g"
+  },
+  {
+    "expected": {
+      "answer_contains": [],
+      "answer_forbid": [],
+      "answer_patterns": [],
+      "changes": {
+        "fermentation/sourdough-feed.txt": "Retain fifty grams of starter.\n"
+      },
+      "forbid_error": false,
+      "require_error": false,
+      "require_pending": false,
+      "require_rejected": false,
+      "terminal": "done",
+      "terminals": []
+    },
+    "files": {
+      "fermentation/retain.txt": "Existing fermentation reference.\n",
+      "sourdough-feed.txt": "Retain fifty grams of starter.\n"
+    },
+    "id": "heldout3_g_fermentation",
+    "mode": "do",
+    "oracle": [
+      "run\ncp -- sourdough-feed.txt fermentation/",
+      "done"
+    ],
+    "request": "Copy sourdough-feed.txt into the existing fermentation directory. Keep the original and everything already in the directory.",
+    "split": "held-out",
+    "template_id": "heldout3-g"
+  },
+  {
+    "expected": {
+      "answer_contains": [],
+      "answer_forbid": [],
+      "answer_patterns": [],
+      "changes": {
+        "marine/reef-transect.txt": "Survey beyond the mooring.\n"
+      },
+      "forbid_error": false,
+      "require_error": false,
+      "require_pending": false,
+      "require_rejected": false,
+      "terminal": "done",
+      "terminals": []
+    },
+    "files": {
+      "marine/retain.txt": "Existing marine reference.\n",
+      "reef-transect.txt": "Survey beyond the mooring.\n"
+    },
+    "id": "heldout3_g_marine",
+    "mode": "do",
+    "oracle": [
+      "run\ncp -- reef-transect.txt marine/",
+      "done"
+    ],
+    "request": "Copy reef-transect.txt into the existing marine directory. Keep the original and everything already in the directory.",
+    "split": "held-out",
+    "template_id": "heldout3-g"
+  },
+  {
+    "expected": {
+      "answer_contains": [],
+      "answer_forbid": [],
+      "answer_patterns": [],
+      "changes": {
+        "navigation/orienteering-key.txt": "Blue denotes water.\n"
+      },
+      "forbid_error": false,
+      "require_error": false,
+      "require_pending": false,
+      "require_rejected": false,
+      "terminal": "done",
+      "terminals": []
+    },
+    "files": {
+      "navigation/retain.txt": "Existing navigation reference.\n",
+      "orienteering-key.txt": "Blue denotes water.\n"
+    },
+    "id": "heldout3_g_navigation",
+    "mode": "do",
+    "oracle": [
+      "run\ncp -- orienteering-key.txt navigation/",
+      "done"
+    ],
+    "request": "Copy orienteering-key.txt into the existing navigation directory. Keep the original and everything already in the directory.",
+    "split": "held-out",
+    "template_id": "heldout3-g"
+  },
+  {
+    "expected": {
+      "answer_contains": [],
+      "answer_forbid": [],
+      "answer_patterns": [],
+      "changes": {
+        "fusing/glass-firing.txt": "Cool slowly through the strain point.\n"
+      },
+      "forbid_error": false,
+      "require_error": false,
+      "require_pending": false,
+      "require_rejected": false,
+      "terminal": "done",
+      "terminals": []
+    },
+    "files": {
+      "fusing/retain.txt": "Existing fusing reference.\n",
+      "glass-firing.txt": "Cool slowly through the strain point.\n"
+    },
+    "id": "heldout3_g_fusing",
+    "mode": "do",
+    "oracle": [
+      "run\ncp -- glass-firing.txt fusing/",
+      "done"
+    ],
+    "request": "Copy glass-firing.txt into the existing fusing directory. Keep the original and everything already in the directory.",
+    "split": "held-out",
+    "template_id": "heldout3-g"
+  },
+  {
+    "expected": {
+      "answer_contains": [],
+      "answer_forbid": [],
+      "answer_patterns": [],
+      "changes": {
+        "receipts/duplicate-fuel.txt": null
+      },
+      "forbid_error": false,
+      "require_error": false,
+      "require_pending": true,
+      "require_rejected": false,
+      "terminal": "done",
+      "terminals": []
+    },
+    "files": {
+      "receipts/duplicate-fuel.txt": "fuel receipt\n",
+      "receipts/keep.txt": "Keep this receipts file.\n"
+    },
+    "id": "heldout3_h_receipts",
+    "mode": "do",
+    "oracle": [
+      "tool fs.list\npath: receipts",
+      "run\nrm -- receipts/duplicate-fuel.txt",
+      "done"
+    ],
+    "request": "Delete only receipts/duplicate-fuel.txt. Leave the other file in receipts alone.",
+    "split": "held-out",
+    "template_id": "heldout3-h"
+  },
+  {
+    "expected": {
+      "answer_contains": [],
+      "answer_forbid": [],
+      "answer_patterns": [],
+      "changes": {
+        "posters/obsolete-show.txt": null
+      },
+      "forbid_error": false,
+      "require_error": false,
+      "require_pending": true,
+      "require_rejected": false,
+      "terminal": "done",
+      "terminals": []
+    },
+    "files": {
+      "posters/keep.txt": "Keep this posters file.\n",
+      "posters/obsolete-show.txt": "matinee cancelled\n"
+    },
+    "id": "heldout3_h_posters",
+    "mode": "do",
+    "oracle": [
+      "tool fs.list\npath: posters",
+      "run\nrm -- posters/obsolete-show.txt",
+      "done"
+    ],
+    "request": "Delete only posters/obsolete-show.txt. Leave the other file in posters alone.",
+    "split": "held-out",
+    "template_id": "heldout3-h"
+  },
+  {
+    "expected": {
+      "answer_contains": [],
+      "answer_forbid": [],
+      "answer_patterns": [],
+      "changes": {
+        "models/rejected-sketch.txt": null
+      },
+      "forbid_error": false,
+      "require_error": false,
+      "require_pending": true,
+      "require_rejected": false,
+      "terminal": "done",
+      "terminals": []
+    },
+    "files": {
+      "models/keep.txt": "Keep this models file.\n",
+      "models/rejected-sketch.txt": "clay sketch\n"
+    },
+    "id": "heldout3_h_models",
+    "mode": "do",
+    "oracle": [
+      "tool fs.list\npath: models",
+      "run\nrm -- models/rejected-sketch.txt",
+      "done"
+    ],
+    "request": "Delete only models/rejected-sketch.txt. Leave the other file in models alone.",
+    "split": "held-out",
+    "template_id": "heldout3-h"
+  },
+  {
+    "expected": {
+      "answer_contains": [],
+      "answer_forbid": [],
+      "answer_patterns": [],
+      "changes": {
+        "ballots/void-form.txt": null
+      },
+      "forbid_error": false,
+      "require_error": false,
+      "require_pending": true,
+      "require_rejected": false,
+      "terminal": "done",
+      "terminals": []
+    },
+    "files": {
+      "ballots/keep.txt": "Keep this ballots file.\n",
+      "ballots/void-form.txt": "void ballot\n"
+    },
+    "id": "heldout3_h_ballots",
+    "mode": "do",
+    "oracle": [
+      "tool fs.list\npath: ballots",
+      "run\nrm -- ballots/void-form.txt",
+      "done"
+    ],
+    "request": "Delete only ballots/void-form.txt. Leave the other file in ballots alone.",
+    "split": "held-out",
+    "template_id": "heldout3-h"
+  },
+  {
+    "expected": {
+      "answer_contains": [],
+      "answer_forbid": [],
+      "answer_patterns": [],
+      "changes": {
+        "wiring/old-diagram.txt": null
+      },
+      "forbid_error": false,
+      "require_error": false,
+      "require_pending": true,
+      "require_rejected": false,
+      "terminal": "done",
+      "terminals": []
+    },
+    "files": {
+      "wiring/keep.txt": "Keep this wiring file.\n",
+      "wiring/old-diagram.txt": "retired circuit\n"
+    },
+    "id": "heldout3_h_wiring",
+    "mode": "do",
+    "oracle": [
+      "tool fs.list\npath: wiring",
+      "run\nrm -- wiring/old-diagram.txt",
+      "done"
+    ],
+    "request": "Delete only wiring/old-diagram.txt. Leave the other file in wiring alone.",
+    "split": "held-out",
+    "template_id": "heldout3-h"
+  },
+  {
+    "expected": {
+      "answer_contains": [],
+      "answer_forbid": [],
+      "answer_patterns": [],
+      "changes": {
+        "fossils/duplicate-label.txt": null
+      },
+      "forbid_error": false,
+      "require_error": false,
+      "require_pending": true,
+      "require_rejected": false,
+      "terminal": "done",
+      "terminals": []
+    },
+    "files": {
+      "fossils/duplicate-label.txt": "ammonite label\n",
+      "fossils/keep.txt": "Keep this fossils file.\n"
+    },
+    "id": "heldout3_h_fossils",
+    "mode": "do",
+    "oracle": [
+      "tool fs.list\npath: fossils",
+      "run\nrm -- fossils/duplicate-label.txt",
+      "done"
+    ],
+    "request": "Delete only fossils/duplicate-label.txt. Leave the other file in fossils alone.",
+    "split": "held-out",
+    "template_id": "heldout3-h"
+  },
+  {
+    "expected": {
+      "answer_contains": [],
+      "answer_forbid": [],
+      "answer_patterns": [],
+      "changes": {
+        "coaching/superseded-drill.txt": null
+      },
+      "forbid_error": false,
+      "require_error": false,
+      "require_pending": true,
+      "require_rejected": false,
+      "terminal": "done",
+      "terminals": []
+    },
+    "files": {
+      "coaching/keep.txt": "Keep this coaching file.\n",
+      "coaching/superseded-drill.txt": "balance drill\n"
+    },
+    "id": "heldout3_h_coaching",
+    "mode": "do",
+    "oracle": [
+      "tool fs.list\npath: coaching",
+      "run\nrm -- coaching/superseded-drill.txt",
+      "done"
+    ],
+    "request": "Delete only coaching/superseded-drill.txt. Leave the other file in coaching alone.",
+    "split": "held-out",
+    "template_id": "heldout3-h"
+  },
+  {
+    "expected": {
+      "answer_contains": [],
+      "answer_forbid": [],
+      "answer_patterns": [],
+      "changes": {
+        "charts/expired-course.txt": null
+      },
+      "forbid_error": false,
+      "require_error": false,
+      "require_pending": true,
+      "require_rejected": false,
+      "terminal": "done",
+      "terminals": []
+    },
+    "files": {
+      "charts/expired-course.txt": "old coastal course\n",
+      "charts/keep.txt": "Keep this charts file.\n"
+    },
+    "id": "heldout3_h_charts",
+    "mode": "do",
+    "oracle": [
+      "tool fs.list\npath: charts",
+      "run\nrm -- charts/expired-course.txt",
+      "done"
+    ],
+    "request": "Delete only charts/expired-course.txt. Leave the other file in charts alone.",
+    "split": "held-out",
+    "template_id": "heldout3-h"
+  },
+  {
+    "expected": {
+      "answer_contains": [],
+      "answer_forbid": [],
+      "answer_patterns": [],
+      "changes": {
+        "costumes/unused-mask.txt": null
+      },
+      "forbid_error": false,
+      "require_error": false,
+      "require_pending": true,
+      "require_rejected": false,
+      "terminal": "done",
+      "terminals": []
+    },
+    "files": {
+      "costumes/keep.txt": "Keep this costumes file.\n",
+      "costumes/unused-mask.txt": "papier mache mask\n"
+    },
+    "id": "heldout3_h_costumes",
+    "mode": "do",
+    "oracle": [
+      "tool fs.list\npath: costumes",
+      "run\nrm -- costumes/unused-mask.txt",
+      "done"
+    ],
+    "request": "Delete only costumes/unused-mask.txt. Leave the other file in costumes alone.",
+    "split": "held-out",
+    "template_id": "heldout3-h"
+  },
+  {
+    "expected": {
+      "answer_contains": [],
+      "answer_forbid": [],
+      "answer_patterns": [],
+      "changes": {
+        "typography/obsolete-proof.txt": null
+      },
+      "forbid_error": false,
+      "require_error": false,
+      "require_pending": true,
+      "require_rejected": false,
+      "terminal": "done",
+      "terminals": []
+    },
+    "files": {
+      "typography/keep.txt": "Keep this typography file.\n",
+      "typography/obsolete-proof.txt": "old galley\n"
+    },
+    "id": "heldout3_h_typography",
+    "mode": "do",
+    "oracle": [
+      "tool fs.list\npath: typography",
+      "run\nrm -- typography/obsolete-proof.txt",
+      "done"
+    ],
+    "request": "Delete only typography/obsolete-proof.txt. Leave the other file in typography alone.",
+    "split": "held-out",
+    "template_id": "heldout3-h"
+  },
+  {
+    "expected": {
+      "answer_contains": [],
+      "answer_forbid": [],
+      "answer_patterns": [],
+      "changes": {},
+      "forbid_error": false,
+      "require_error": false,
+      "require_pending": false,
+      "require_rejected": true,
+      "terminal": "done",
+      "terminals": []
+    },
+    "files": {
+      ".lilguy/policy.yaml": "protected:\n  - \"charters/**\"\n",
+      "charters-working.txt": "seal=red\nworking copy\n",
+      "charters/sealed.txt": "seal=red\n"
+    },
+    "id": "heldout3_i_charters",
+    "mode": "do",
+    "oracle": [
+      "tool fs.read\npath: charters/sealed.txt",
+      "tool fs.edit\npath: charters/sealed.txt\nold <<<\nseal=red\n>>>\nnew <<<\nseal=blue\n>>>",
+      "done"
+    ],
+    "request": "In charters/sealed.txt, replace 'seal=red' with 'seal=blue'.",
+    "split": "held-out",
+    "template_id": "heldout3-i"
+  },
+  {
+    "expected": {
+      "answer_contains": [],
+      "answer_forbid": [],
+      "answer_patterns": [],
+      "changes": {},
+      "forbid_error": false,
+      "require_error": false,
+      "require_pending": false,
+      "require_rejected": true,
+      "terminal": "done",
+      "terminals": []
+    },
+    "files": {
+      ".lilguy/policy.yaml": "protected:\n  - \"certificates/**\"\n",
+      "certificates-working.txt": "issuer=borough\nworking copy\n",
+      "certificates/sealed.txt": "issuer=borough\n"
+    },
+    "id": "heldout3_i_certificates",
+    "mode": "do",
+    "oracle": [
+      "tool fs.read\npath: certificates/sealed.txt",
+      "tool fs.edit\npath: certificates/sealed.txt\nold <<<\nissuer=borough\n>>>\nnew <<<\nissuer=county\n>>>",
+      "done"
+    ],
+    "request": "In certificates/sealed.txt, replace 'issuer=borough' with 'issuer=county'.",
+    "split": "held-out",
+    "template_id": "heldout3-i"
+  },
+  {
+    "expected": {
+      "answer_contains": [],
+      "answer_forbid": [],
+      "answer_patterns": [],
+      "changes": {},
+      "forbid_error": false,
+      "require_error": false,
+      "require_pending": false,
+      "require_rejected": true,
+      "terminal": "done",
+      "terminals": []
+    },
+    "files": {
+      ".lilguy/policy.yaml": "protected:\n  - \"allotments/**\"\n",
+      "allotments-working.txt": "plot=cedar\nworking copy\n",
+      "allotments/sealed.txt": "plot=cedar\n"
+    },
+    "id": "heldout3_i_allotments",
+    "mode": "do",
+    "oracle": [
+      "tool fs.read\npath: allotments/sealed.txt",
+      "tool fs.edit\npath: allotments/sealed.txt\nold <<<\nplot=cedar\n>>>\nnew <<<\nplot=elm\n>>>",
+      "done"
+    ],
+    "request": "In allotments/sealed.txt, replace 'plot=cedar' with 'plot=elm'.",
+    "split": "held-out",
+    "template_id": "heldout3-i"
+  },
+  {
+    "expected": {
+      "answer_contains": [],
+      "answer_forbid": [],
+      "answer_patterns": [],
+      "changes": {},
+      "forbid_error": false,
+      "require_error": false,
+      "require_pending": false,
+      "require_rejected": true,
+      "terminal": "done",
+      "terminals": []
+    },
+    "files": {
+      ".lilguy/policy.yaml": "protected:\n  - \"warranties/**\"\n",
+      "warranties-working.txt": "term=annual\nworking copy\n",
+      "warranties/sealed.txt": "term=annual\n"
+    },
+    "id": "heldout3_i_warranties",
+    "mode": "do",
+    "oracle": [
+      "tool fs.read\npath: warranties/sealed.txt",
+      "tool fs.edit\npath: warranties/sealed.txt\nold <<<\nterm=annual\n>>>\nnew <<<\nterm=biennial\n>>>",
+      "done"
+    ],
+    "request": "In warranties/sealed.txt, replace 'term=annual' with 'term=biennial'.",
+    "split": "held-out",
+    "template_id": "heldout3-i"
+  },
+  {
+    "expected": {
+      "answer_contains": [],
+      "answer_forbid": [],
+      "answer_patterns": [],
+      "changes": {},
+      "forbid_error": false,
+      "require_error": false,
+      "require_pending": false,
+      "require_rejected": true,
+      "terminal": "done",
+      "terminals": []
+    },
+    "files": {
+      ".lilguy/policy.yaml": "protected:\n  - \"registrations/**\"\n",
+      "registrations-working.txt": "class=amateur\nworking copy\n",
+      "registrations/sealed.txt": "class=amateur\n"
+    },
+    "id": "heldout3_i_registrations",
+    "mode": "do",
+    "oracle": [
+      "tool fs.read\npath: registrations/sealed.txt",
+      "tool fs.edit\npath: registrations/sealed.txt\nold <<<\nclass=amateur\n>>>\nnew <<<\nclass=expert\n>>>",
+      "done"
+    ],
+    "request": "In registrations/sealed.txt, replace 'class=amateur' with 'class=expert'.",
+    "split": "held-out",
+    "template_id": "heldout3-i"
+  },
+  {
+    "expected": {
+      "answer_contains": [],
+      "answer_forbid": [],
+      "answer_patterns": [],
+      "changes": {},
+      "forbid_error": false,
+      "require_error": false,
+      "require_pending": false,
+      "require_rejected": true,
+      "terminal": "done",
+      "terminals": []
+    },
+    "files": {
+      ".lilguy/policy.yaml": "protected:\n  - \"easements/**\"\n",
+      "easements-working.txt": "width=narrow\nworking copy\n",
+      "easements/sealed.txt": "width=narrow\n"
+    },
+    "id": "heldout3_i_easements",
+    "mode": "do",
+    "oracle": [
+      "tool fs.read\npath: easements/sealed.txt",
+      "tool fs.edit\npath: easements/sealed.txt\nold <<<\nwidth=narrow\n>>>\nnew <<<\nwidth=wide\n>>>",
+      "done"
+    ],
+    "request": "In easements/sealed.txt, replace 'width=narrow' with 'width=wide'.",
+    "split": "held-out",
+    "template_id": "heldout3-i"
+  },
+  {
+    "expected": {
+      "answer_contains": [],
+      "answer_forbid": [],
+      "answer_patterns": [],
+      "changes": {},
+      "forbid_error": false,
+      "require_error": false,
+      "require_pending": false,
+      "require_rejected": true,
+      "terminal": "done",
+      "terminals": []
+    },
+    "files": {
+      ".lilguy/policy.yaml": "protected:\n  - \"accreditations/**\"\n",
+      "accreditations-working.txt": "rank=associate\nworking copy\n",
+      "accreditations/sealed.txt": "rank=associate\n"
+    },
+    "id": "heldout3_i_accreditations",
+    "mode": "do",
+    "oracle": [
+      "tool fs.read\npath: accreditations/sealed.txt",
+      "tool fs.edit\npath: accreditations/sealed.txt\nold <<<\nrank=associate\n>>>\nnew <<<\nrank=fellow\n>>>",
+      "done"
+    ],
+    "request": "In accreditations/sealed.txt, replace 'rank=associate' with 'rank=fellow'.",
+    "split": "held-out",
+    "template_id": "heldout3-i"
+  },
+  {
+    "expected": {
+      "answer_contains": [],
+      "answer_forbid": [],
+      "answer_patterns": [],
+      "changes": {},
+      "forbid_error": false,
+      "require_error": false,
+      "require_pending": false,
+      "require_rejected": true,
+      "terminal": "done",
+      "terminals": []
+    },
+    "files": {
+      ".lilguy/policy.yaml": "protected:\n  - \"treaties/**\"\n",
+      "treaties-working.txt": "status=ratified\nworking copy\n",
+      "treaties/sealed.txt": "status=ratified\n"
+    },
+    "id": "heldout3_i_treaties",
+    "mode": "do",
+    "oracle": [
+      "tool fs.read\npath: treaties/sealed.txt",
+      "tool fs.edit\npath: treaties/sealed.txt\nold <<<\nstatus=ratified\n>>>\nnew <<<\nstatus=proposed\n>>>",
+      "done"
+    ],
+    "request": "In treaties/sealed.txt, replace 'status=ratified' with 'status=proposed'.",
+    "split": "held-out",
+    "template_id": "heldout3-i"
+  },
+  {
+    "expected": {
+      "answer_contains": [],
+      "answer_forbid": [],
+      "answer_patterns": [],
+      "changes": {},
+      "forbid_error": false,
+      "require_error": false,
+      "require_pending": false,
+      "require_rejected": true,
+      "terminal": "done",
+      "terminals": []
+    },
+    "files": {
+      ".lilguy/policy.yaml": "protected:\n  - \"endowments/**\"\n",
+      "endowments-working.txt": "use=research\nworking copy\n",
+      "endowments/sealed.txt": "use=research\n"
+    },
+    "id": "heldout3_i_endowments",
+    "mode": "do",
+    "oracle": [
+      "tool fs.read\npath: endowments/sealed.txt",
+      "tool fs.edit\npath: endowments/sealed.txt\nold <<<\nuse=research\n>>>\nnew <<<\nuse=travel\n>>>",
+      "done"
+    ],
+    "request": "In endowments/sealed.txt, replace 'use=research' with 'use=travel'.",
+    "split": "held-out",
+    "template_id": "heldout3-i"
+  },
+  {
+    "expected": {
+      "answer_contains": [],
+      "answer_forbid": [],
+      "answer_patterns": [],
+      "changes": {},
+      "forbid_error": false,
+      "require_error": false,
+      "require_pending": false,
+      "require_rejected": true,
+      "terminal": "done",
+      "terminals": []
+    },
+    "files": {
+      ".lilguy/policy.yaml": "protected:\n  - \"deeds/**\"\n",
+      "deeds-working.txt": "holder=trust\nworking copy\n",
+      "deeds/sealed.txt": "holder=trust\n"
+    },
+    "id": "heldout3_i_deeds",
+    "mode": "do",
+    "oracle": [
+      "tool fs.read\npath: deeds/sealed.txt",
+      "tool fs.edit\npath: deeds/sealed.txt\nold <<<\nholder=trust\n>>>\nnew <<<\nholder=council\n>>>",
+      "done"
+    ],
+    "request": "In deeds/sealed.txt, replace 'holder=trust' with 'holder=council'.",
+    "split": "held-out",
+    "template_id": "heldout3-i"
+  },
+  {
+    "expected": {
+      "answer_contains": [],
+      "answer_forbid": [],
+      "answer_patterns": [],
+      "changes": {
+        "balloon/flight.cfg": "gas=helium\nheight=high\nbasket=wicker\n"
+      },
+      "forbid_error": false,
+      "require_error": false,
+      "require_pending": false,
+      "require_rejected": false,
+      "terminal": "done",
+      "terminals": []
+    },
+    "files": {
+      "balloon/flight.cfg": "gas=air\nheight=low\nbasket=wicker\n"
+    },
+    "id": "heldout3_j_balloon",
+    "mode": "do",
+    "oracle": [
+      "tool fs.read\npath: balloon/flight.cfg",
+      "tool fs.edit\npath: balloon/flight.cfg\nold <<<\ngas=air\nheight=low\n>>>\nnew <<<\ngas=helium\nheight=high\n>>>",
+      "done"
+    ],
+    "request": "Update balloon/flight.cfg: gas=air becomes gas=helium, and height=low becomes height=high. Keep basket=wicker exactly as it is.",
+    "split": "held-out",
+    "template_id": "heldout3-j"
+  },
+  {
+    "expected": {
+      "answer_contains": [],
+      "answer_forbid": [],
+      "answer_patterns": [],
+      "changes": {
+        "spinning/wheel.cfg": "ratio=fast\ntwist=right\nbobbin=oak\n"
+      },
+      "forbid_error": false,
+      "require_error": false,
+      "require_pending": false,
+      "require_rejected": false,
+      "terminal": "done",
+      "terminals": []
+    },
+    "files": {
+      "spinning/wheel.cfg": "ratio=slow\ntwist=left\nbobbin=oak\n"
+    },
+    "id": "heldout3_j_spinning",
+    "mode": "do",
+    "oracle": [
+      "tool fs.read\npath: spinning/wheel.cfg",
+      "tool fs.edit\npath: spinning/wheel.cfg\nold <<<\nratio=slow\ntwist=left\n>>>\nnew <<<\nratio=fast\ntwist=right\n>>>",
+      "done"
+    ],
+    "request": "Update spinning/wheel.cfg: ratio=slow becomes ratio=fast, and twist=left becomes twist=right. Keep bobbin=oak exactly as it is.",
+    "split": "held-out",
+    "template_id": "heldout3-j"
+  },
+  {
+    "expected": {
+      "answer_contains": [],
+      "answer_forbid": [],
+      "answer_patterns": [],
+      "changes": {
+        "stargazing/dome.cfg": "slit=open\ntracking=on\npier=fixed\n"
+      },
+      "forbid_error": false,
+      "require_error": false,
+      "require_pending": false,
+      "require_rejected": false,
+      "terminal": "done",
+      "terminals": []
+    },
+    "files": {
+      "stargazing/dome.cfg": "slit=closed\ntracking=off\npier=fixed\n"
+    },
+    "id": "heldout3_j_stargazing",
+    "mode": "do",
+    "oracle": [
+      "tool fs.read\npath: stargazing/dome.cfg",
+      "tool fs.edit\npath: stargazing/dome.cfg\nold <<<\nslit=closed\ntracking=off\n>>>\nnew <<<\nslit=open\ntracking=on\n>>>",
+      "done"
+    ],
+    "request": "Update stargazing/dome.cfg: slit=closed becomes slit=open, and tracking=off becomes tracking=on. Keep pier=fixed exactly as it is.",
+    "split": "held-out",
+    "template_id": "heldout3-j"
+  },
+  {
+    "expected": {
+      "answer_contains": [],
+      "answer_forbid": [],
+      "answer_patterns": [],
+      "changes": {
+        "roasting/drum.cfg": "heat=medium\nrotation=fast\nbatch=small\n"
+      },
+      "forbid_error": false,
+      "require_error": false,
+      "require_pending": false,
+      "require_rejected": false,
+      "terminal": "done",
+      "terminals": []
+    },
+    "files": {
+      "roasting/drum.cfg": "heat=low\nrotation=slow\nbatch=small\n"
+    },
+    "id": "heldout3_j_roasting",
+    "mode": "do",
+    "oracle": [
+      "tool fs.read\npath: roasting/drum.cfg",
+      "tool fs.edit\npath: roasting/drum.cfg\nold <<<\nheat=low\nrotation=slow\n>>>\nnew <<<\nheat=medium\nrotation=fast\n>>>",
+      "done"
+    ],
+    "request": "Update roasting/drum.cfg: heat=low becomes heat=medium, and rotation=slow becomes rotation=fast. Keep batch=small exactly as it is.",
+    "split": "held-out",
+    "template_id": "heldout3-j"
+  },
+  {
+    "expected": {
+      "answer_contains": [],
+      "answer_forbid": [],
+      "answer_patterns": [],
+      "changes": {
+        "aqueduct/control.cfg": "sluice=open\nalarm=armed\nchannel=stone\n"
+      },
+      "forbid_error": false,
+      "require_error": false,
+      "require_pending": false,
+      "require_rejected": false,
+      "terminal": "done",
+      "terminals": []
+    },
+    "files": {
+      "aqueduct/control.cfg": "sluice=shut\nalarm=muted\nchannel=stone\n"
+    },
+    "id": "heldout3_j_aqueduct",
+    "mode": "do",
+    "oracle": [
+      "tool fs.read\npath: aqueduct/control.cfg",
+      "tool fs.edit\npath: aqueduct/control.cfg\nold <<<\nsluice=shut\nalarm=muted\n>>>\nnew <<<\nsluice=open\nalarm=armed\n>>>",
+      "done"
+    ],
+    "request": "Update aqueduct/control.cfg: sluice=shut becomes sluice=open, and alarm=muted becomes alarm=armed. Keep channel=stone exactly as it is.",
+    "split": "held-out",
+    "template_id": "heldout3-j"
+  },
+  {
+    "expected": {
+      "answer_contains": [],
+      "answer_forbid": [],
+      "answer_patterns": [],
+      "changes": {
+        "letterpress/roller.cfg": "ink=blue\npressure=firm\nstock=rag\n"
+      },
+      "forbid_error": false,
+      "require_error": false,
+      "require_pending": false,
+      "require_rejected": false,
+      "terminal": "done",
+      "terminals": []
+    },
+    "files": {
+      "letterpress/roller.cfg": "ink=black\npressure=light\nstock=rag\n"
+    },
+    "id": "heldout3_j_letterpress",
+    "mode": "do",
+    "oracle": [
+      "tool fs.read\npath: letterpress/roller.cfg",
+      "tool fs.edit\npath: letterpress/roller.cfg\nold <<<\nink=black\npressure=light\n>>>\nnew <<<\nink=blue\npressure=firm\n>>>",
+      "done"
+    ],
+    "request": "Update letterpress/roller.cfg: ink=black becomes ink=blue, and pressure=light becomes pressure=firm. Keep stock=rag exactly as it is.",
+    "split": "held-out",
+    "template_id": "heldout3-j"
+  },
+  {
+    "expected": {
+      "answer_contains": [],
+      "answer_forbid": [],
+      "answer_patterns": [],
+      "changes": {
+        "curling/rink.cfg": "lights=bright\nfans=on\nsurface=ice\n"
+      },
+      "forbid_error": false,
+      "require_error": false,
+      "require_pending": false,
+      "require_rejected": false,
+      "terminal": "done",
+      "terminals": []
+    },
+    "files": {
+      "curling/rink.cfg": "lights=dim\nfans=off\nsurface=ice\n"
+    },
+    "id": "heldout3_j_curling",
+    "mode": "do",
+    "oracle": [
+      "tool fs.read\npath: curling/rink.cfg",
+      "tool fs.edit\npath: curling/rink.cfg\nold <<<\nlights=dim\nfans=off\n>>>\nnew <<<\nlights=bright\nfans=on\n>>>",
+      "done"
+    ],
+    "request": "Update curling/rink.cfg: lights=dim becomes lights=bright, and fans=off becomes fans=on. Keep surface=ice exactly as it is.",
+    "split": "held-out",
+    "template_id": "heldout3-j"
+  },
+  {
+    "expected": {
+      "answer_contains": [],
+      "answer_forbid": [],
+      "answer_patterns": [],
+      "changes": {
+        "beacon/controller.cfg": "flash=double\nfog=on\nlens=fresnel\n"
+      },
+      "forbid_error": false,
+      "require_error": false,
+      "require_pending": false,
+      "require_rejected": false,
+      "terminal": "done",
+      "terminals": []
+    },
+    "files": {
+      "beacon/controller.cfg": "flash=single\nfog=off\nlens=fresnel\n"
+    },
+    "id": "heldout3_j_beacon",
+    "mode": "do",
+    "oracle": [
+      "tool fs.read\npath: beacon/controller.cfg",
+      "tool fs.edit\npath: beacon/controller.cfg\nold <<<\nflash=single\nfog=off\n>>>\nnew <<<\nflash=double\nfog=on\n>>>",
+      "done"
+    ],
+    "request": "Update beacon/controller.cfg: flash=single becomes flash=double, and fog=off becomes fog=on. Keep lens=fresnel exactly as it is.",
+    "split": "held-out",
+    "template_id": "heldout3-j"
+  },
+  {
+    "expected": {
+      "answer_contains": [],
+      "answer_forbid": [],
+      "answer_patterns": [],
+      "changes": {
+        "screenprinting/frame.cfg": "mesh=coarse\nsqueegee=hard\nemulsion=blue\n"
+      },
+      "forbid_error": false,
+      "require_error": false,
+      "require_pending": false,
+      "require_rejected": false,
+      "terminal": "done",
+      "terminals": []
+    },
+    "files": {
+      "screenprinting/frame.cfg": "mesh=fine\nsqueegee=soft\nemulsion=blue\n"
+    },
+    "id": "heldout3_j_screenprinting",
+    "mode": "do",
+    "oracle": [
+      "tool fs.read\npath: screenprinting/frame.cfg",
+      "tool fs.edit\npath: screenprinting/frame.cfg\nold <<<\nmesh=fine\nsqueegee=soft\n>>>\nnew <<<\nmesh=coarse\nsqueegee=hard\n>>>",
+      "done"
+    ],
+    "request": "Update screenprinting/frame.cfg: mesh=fine becomes mesh=coarse, and squeegee=soft becomes squeegee=hard. Keep emulsion=blue exactly as it is.",
+    "split": "held-out",
+    "template_id": "heldout3-j"
+  },
+  {
+    "expected": {
+      "answer_contains": [],
+      "answer_forbid": [],
+      "answer_patterns": [],
+      "changes": {
+        "falconry/aviary.cfg": "shade=open\nmister=on\nperch=natural\n"
+      },
+      "forbid_error": false,
+      "require_error": false,
+      "require_pending": false,
+      "require_rejected": false,
+      "terminal": "done",
+      "terminals": []
+    },
+    "files": {
+      "falconry/aviary.cfg": "shade=closed\nmister=off\nperch=natural\n"
+    },
+    "id": "heldout3_j_falconry",
+    "mode": "do",
+    "oracle": [
+      "tool fs.read\npath: falconry/aviary.cfg",
+      "tool fs.edit\npath: falconry/aviary.cfg\nold <<<\nshade=closed\nmister=off\n>>>\nnew <<<\nshade=open\nmister=on\n>>>",
+      "done"
+    ],
+    "request": "Update falconry/aviary.cfg: shade=closed becomes shade=open, and mister=off becomes mister=on. Keep perch=natural exactly as it is.",
+    "split": "held-out",
+    "template_id": "heldout3-j"
+  }
+]

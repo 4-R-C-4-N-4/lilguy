@@ -17,6 +17,14 @@ Updated 2026-11-22. This is the one place for current state; the plan and its ga
 - **Held-out v2** (frozen at `d687603` with pin `cb96c819…`, run once per model): 2.0 scored 83/100 (`reports/factory/held-out-1zp8qiwo`) and 1.0 scored 76/100 (`held-out-x2dz8iro`). Neither made a change outside review. Named-block edits went from 0/10 to 9/10; quote and count questions went from 20/20 to 16/20. The paired difference has an exact McNemar p ≈ 0.14.
 - **The app runs each model on its own interface:** v4 for 2.0, v3 for 1.x (config `interface`).
 
+## Held-out v3 frozen (2026-11-23)
+
+- **`dev/holdout_suite_v3.py`:** 100 new tasks in 10 families. This is the third held-out suite, not interface v3, and it is calibrated for interface 4. It is frozen with pin `d1b3f1b9…` (`dev/holdout_suite_v3_manifest.{json,sha256,meta.json}`).
+- **Controls:** live sandbox controls, no model. The scripted solution passed 100/100 and the immediate "done" passed 0/100, with no infrastructure failures.
+- **Overlap audit:** run against 20,977 rows (the 80-task roster, the v4 focus fixtures, held-out v1 and v2, and corpus revisions 1–10). It found no rows that overlap a v3 task. The audit is structural, not a paraphrase detector.
+- **Guards:** the runner refuses to start if the tasks, modes, oracles, expected effects or grading sources differ from the freeze. It also runs the development split gate against v3, and each model can run it only once.
+- **No model has run on it.** It is reserved for the next candidate, scored next to 2.0 at each model's own interface.
+
 ## Interface v4 + corpus r10 (2026-11-23)
 
 - **Interface v4** (development only; 1.x ships v3): output is framed by `<<< >>>` and unindented, and `fs.edit` refusals now say "not found" or "occurs N times (lines …)". See [plan/INTERFACE-V4.md](plan/INTERFACE-V4.md) and the [diagnosis](data/FOCUS-V4-DIAGNOSIS.md).

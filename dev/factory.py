@@ -162,7 +162,7 @@ def main():
     parser.add_argument('--stock', type=Path)
     parser.add_argument('--candidate', type=Path)
     parser.add_argument('--held-out', type=Path)
-    parser.add_argument('--suite', choices=('v1', 'v2'), default='v1', help='held-out: which frozen suite')
+    parser.add_argument('--suite', choices=('v1', 'v2', 'v3'), default='v1', help='held-out: which frozen suite')
     parser.add_argument('--interface', type=int, default=None,
                         help="held-out: interface the model was trained on (default: the suite's)")
     parser.add_argument('--manifest', type=Path)
@@ -240,6 +240,10 @@ def main():
         if not gate['ok']:
             parser.exit(1, f"Evaluation gate failed: {gate['reason']}\n")
         if args.job == 'held-out':
+            from dev.holdout_runner import suite_gate
+            selected_gate = suite_gate(args.suite)
+            if not selected_gate['ok']:
+                parser.exit(1, f"Selected held-out gate failed: {selected_gate['reason']}\n")
             with args.gguf.open('rb') as stream:
                 digest = hashlib.file_digest(stream, 'sha256').hexdigest()
             earlier = previous_held_out(digest, suite=args.suite)

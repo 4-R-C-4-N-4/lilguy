@@ -1,0 +1,32 @@
+{
+  "ask_mode": 20,
+  "audit_limits": "Exact requests/fixtures and shallow normalized pairs; not semantic paraphrase detection.",
+  "audited_against": 20977,
+  "calibration": {
+    "false_done_passed": 0,
+    "infra_failures": 0,
+    "oracle_passed": 100
+  },
+  "calibration_sha256": "21d55ae3bcf2b0a29702da6f40e6609bdc70cf712d42938d626887e75e31822e",
+  "families": {
+    "heldout3-a": 10,
+    "heldout3-b": 10,
+    "heldout3-c": 10,
+    "heldout3-d": 10,
+    "heldout3-e": 10,
+    "heldout3-f": 10,
+    "heldout3-g": 10,
+    "heldout3-h": 10,
+    "heldout3-i": 10,
+    "heldout3-j": 10
+  },
+  "held_out_count": 100,
+  "interface": 4,
+  "manifest_sha256": "d1b3f1b9c2c3bfaa1ff5f06cbcd5e14d02cf0a7f5f10cbf52a3ee55bdd01cfeb",
+  "note": "Frozen before any model run; run once per model bytes and suite; no tuning on results.",
+  "source_sha256": {
+    "dev/holdout_corpus.py": "811a72de8cb4ea8a07d71d45ad39e53ee07dde995bdba1ab3d7ebf5f0da6a652",
+    "dev/holdout_suite_v3.py": "4df08f0d1ad0edde3a87da2c93af8228bf0be9c12819cc41126570dbd397e309",
+    "tests/sandbox/test_holdout_suite_v3_controls_live.py": "41ea0194cae5db778acbbcca2b7a7b8a66eac58cbdae9ed4e5beb62af3d15160"
+  }
+}
