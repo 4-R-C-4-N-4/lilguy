@@ -15,11 +15,19 @@ def _approve(session, monkeypatch, capsys):
     assert code == 0, err
 
 
-def test_commit_refuses_while_a_decision_is_pending(pending, monkeypatch, capsys):  # noqa: F811
+def test_commit_of_a_pending_decision_shows_why_and_one_no_changes_nothing(pending, monkeypatch, capsys):  # noqa: F811
+    ws, session, *_ = pending
+    code, out, err = run_cli(monkeypatch, capsys, ["commit", str(session.directory)], typed="n\n")
+    assert code == 1 and "Needs approval because" in out and "Approve and write" in out
+    assert not (ws / "notes.txt").exists()
+    assert not (session.directory / "approval.json").exists()
+
+
+def test_commit_of_a_pending_decision_approves_and_writes_on_one_yes(pending, monkeypatch, capsys):  # noqa: F811
     ws, session, *_ = pending
     code, out, err = run_cli(monkeypatch, capsys, ["commit", str(session.directory)], typed="y\n")
-    assert code == 1 and "lilguy approve" in err
-    assert not (ws / "notes.txt").exists()
+    assert code == 0, err
+    assert (ws / "notes.txt").read_text() == "x"
 
 
 def test_commit_after_approval_then_undo(pending, monkeypatch, capsys):  # noqa: F811

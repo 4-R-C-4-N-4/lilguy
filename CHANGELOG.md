@@ -1,7 +1,11 @@
 # Changelog
 
-## Unreleased
+## 1.1.0
 
+- **One question instead of a commit workflow.** `lilguy do` shows the diff and then asks `Apply …? [y/N]`. For a change that crossed an approval threshold it asks `Approve and apply …? [y/N]`: one yes approves exactly the shown change and writes it, bound to its diff hash. Anything else leaves it staged. Use `--stage-only`, or run without a terminal, to never be asked.
+- `lilguy diff`, `commit`, `approve` and `deny` with no session argument act on the latest session with staged changes for the current folder. Printed hints drop the session path when you are in that folder.
+- `lilguy commit` of a change waiting for approval shows why it needed approval, then asks once and approves and writes on yes; `lilguy approve` first is no longer required.
+- Fixed: the guarded server's stderr went to whatever `sys.stderr` was when the MCP client was imported.
 - Held-out result for the 1.0.0 model: 74/100 on the frozen suite (run once). It is now in the README and model card. Added the `factory held-out` job and the v3 held-out recalibration.
 
 ## 1.0.0 — first release

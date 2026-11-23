@@ -16,7 +16,9 @@ STEP_LIMIT = 50
 
 def _parser(prog, help_text):
     parser = argparse.ArgumentParser(prog=f"lilguy {prog}", description=help_text)
-    parser.add_argument("session", help="session id or absolute session path")
+    parser.add_argument("session", nargs="?",
+                        help="session id or absolute session path (default: the latest session "
+                             "with staged changes for the current folder)")
     parser.add_argument("--state-dir", type=Path, help="session state root (default: XDG state dir)")
     parser.add_argument("--all", action="store_true", help="list every changed path")
     return parser
@@ -25,8 +27,41 @@ def _parser(prog, help_text):
 def _open(args):
     from ..sandbox import persist
     from . import approval
-    directory = persist.find_session(args.session, args.state_dir.resolve() if args.state_dir else None)
+    root = args.state_dir.resolve() if args.state_dir else None
+    if args.session:
+        directory = persist.find_session(args.session, root)
+    else:
+        directory = latest_session(root or persist.default_state_root(), Path.cwd())
     return approval.decision_session(directory)
+
+
+def latest_session(state_root: Path, workspace: Path) -> Path:
+    """The newest kept session for `workspace` that has staged changes or an open decision.
+
+    Sessions are named `<unix time>-<random>`, so newest first is a numeric sort. Read-only
+    (`ask`) sessions and ones with nothing staged are skipped; a session another process is
+    using is skipped too, never waited on."""
+    import json
+
+    from ..sandbox import diff as sandbox_diff
+    from ..sandbox import persist
+    from . import approval
+    workspace = Path(workspace).resolve()
+    state_root = Path(state_root)
+    names = [d.name for d in state_root.iterdir() if persist._ID.match(d.name)] if state_root.is_dir() else []
+    for name in sorted(names, key=lambda n: (int(n.split("-", 1)[0]), n), reverse=True):
+        directory = state_root / name
+        try:
+            meta = json.loads((directory / "meta.json").read_text())
+            if Path(meta.get("workspace", "")).resolve() != workspace:
+                continue
+            with approval.decision_session(directory) as session:
+                if (directory / approval.REQUEST).exists() or sandbox_diff.session_diff(session):
+                    return directory
+        except (OSError, ValueError, persist.SessionStateError, persist.SessionBusy):
+            continue
+    raise persist.SessionStateError(f"no session with staged changes for {workspace}; "
+                                    "pass a session id, or see `lilguy sessions`")
 
 
 def _fail(message) -> int:
@@ -154,67 +189,129 @@ def _confirm(question: str, diff_hash_arg, expected: str) -> str | None:
     return "abort:"
 
 
+def _prepare_commit(session):
+    """Recover interrupted commits, then the session's current changes and their hash."""
+    import dataclasses
+
+    from ..sandbox import diff as sandbox_diff
+    from ..sandbox import layers
+    from . import commit as commitmod
+    state_dir = Path(session.cfg.state_dir or session.directory.parent)
+    session.cfg = dataclasses.replace(session.cfg, state_dir=state_dir)
+    recovered = commitmod.recover(session.workspace, state_dir)
+    if recovered:
+        print(f"Recovered {len(recovered)} interrupted commit(s) first: the workspace was restored "
+              f"to how it was before them ({', '.join(recovered)}).")
+    commitmod.prune_commits(state_dir)
+    entries = sandbox_diff.session_diff(session)
+    expected = commitmod.diff_hash(entries, session, layers.resolve) if entries else None
+    return state_dir, entries, expected
+
+
+def _write_commit(session, state_dir, entries, expected):
+    """Write exactly the reviewed changes. Returns (commit_id, None) or (None, error)."""
+    import shutil
+
+    from ..sandbox import layers
+    from . import commit as commitmod
+    from .session import append_audit
+    try:
+        commit_id = commitmod.commit(session, approved_hash=expected)
+    except commitmod.ConflictError as exc:
+        return None, f"{exc}\nYou changed these files since the session started; nothing was written."
+    except commitmod.PolicyRejected as exc:
+        return None, f"refused by policy ({exc.args[0].rule if exc.args else 'reject'}); nothing was written"
+    except commitmod.ApprovalRequired as exc:
+        return None, f"conflict with your workspace: {exc}; nothing was written"
+    append_audit(session.directory, {"decision": "committed", "commit_id": commit_id,
+                                     "diff_hash": expected, "paths": [e.path for e in entries]})
+    audit_dir = state_dir / "audit"
+    audit_dir.mkdir(mode=0o700, exist_ok=True)
+    shutil.copyfile(session.directory / "audit.jsonl", audit_dir / f"{session.directory.name}.jsonl")
+    layers.discard(session)
+    return commit_id, None
+
+
 def commit_main(argv=None) -> int:
     parser = _parser("commit", "Write a kept session's changes into the real workspace (journaled, undoable).")
     parser.add_argument("--diff-hash", help="commit only if the changes still match this reviewed hash")
     args = parser.parse_args(argv)
     import dataclasses
-    import shutil
 
-    from ..sandbox import diff as sandbox_diff
-    from ..sandbox import layers
     from . import approval
-    from . import commit as commitmod
-    from .session import append_audit
     try:
         with _open(args) as session:
             # approve() only writes approval.json for the exact current diff, and any later step
-            # deletes both files, so a request without an approval is an open decision.
-            if (session.directory / approval.REQUEST).exists() and not (session.directory / approval.APPROVAL).exists():
-                return _fail(f"a decision is pending; run `lilguy approve {session.directory.name}` "
-                             f"or `lilguy deny {session.directory.name}` first")
-            state_dir = Path(session.cfg.state_dir or session.directory.parent)
-            session.cfg = dataclasses.replace(session.cfg, state_dir=state_dir)
-            recovered = commitmod.recover(session.workspace, state_dir)
-            if recovered:
-                print(f"Recovered {len(recovered)} interrupted commit(s) first: the workspace was restored "
-                      f"to how it was before them ({', '.join(recovered)}).")
-            commitmod.prune_commits(state_dir)
-            entries = sandbox_diff.session_diff(session)
+            # deletes both files, so a request without an approval is an open decision. Committing
+            # it is that decision: the reason is shown and the one confirmation covers both.
+            pending = (session.directory / approval.REQUEST).exists() and \
+                not (session.directory / approval.APPROVAL).exists()
+            if pending and _network_only(session):
+                return _fail("a network request is pending; answer it with `lilguy approve` or `lilguy deny`")
+            state_dir, entries, expected = _prepare_commit(session)
             if not entries:
                 print("Nothing to commit.")
                 return 0
-            expected = commitmod.diff_hash(entries, session, layers.resolve)
             _print_steps(session, args)
             print(f"Changes to write into {session.workspace}:")
             print(approval.render_changes([dataclasses.asdict(e) for e in entries],
                                           limit=10**9 if args.all else LIMIT))
             print()
             _print_contents(session, entries, args)
+            if pending:
+                print()
+                print(approval.summarize(session, limit=10**9 if args.all else LIMIT))
             print(f"\nDiff hash {expected}")
-            problem = _confirm(f"Write these {len(entries)} change(s) into {session.workspace}?",
+            verb = "Approve and write" if pending else "Write"
+            problem = _confirm(f"{verb} these {len(entries)} change(s) into {session.workspace}?",
                                args.diff_hash, expected)
             if problem == "abort:":
                 print("Not committed. The session is kept.")
                 return 1
             if problem:
                 return _fail(problem)
-            try:
-                commit_id = commitmod.commit(session, approved_hash=expected)
-            except commitmod.ConflictError as exc:
-                return _fail(f"{exc}\nYou changed these files since the session started; nothing was written.")
-            except commitmod.PolicyRejected as exc:
-                return _fail(f"refused by policy ({exc.args[0].rule if exc.args else 'reject'}); nothing was written")
-            except commitmod.ApprovalRequired as exc:
-                return _fail(f"conflict with your workspace: {exc}; nothing was written")
-            append_audit(session.directory, {"decision": "committed", "commit_id": commit_id,
-                                             "diff_hash": expected, "paths": [e.path for e in entries]})
-            audit_dir = state_dir / "audit"
-            audit_dir.mkdir(mode=0o700, exist_ok=True)
-            shutil.copyfile(session.directory / "audit.jsonl", audit_dir / f"{session.directory.name}.jsonl")
-            layers.discard(session)
+            if pending:
+                approval.approve(session, approval.load_request(session)["diff_hash"])
+            commit_id, error = _write_commit(session, state_dir, entries, expected)
+            if error:
+                return _fail(error)
         print(f"Committed {len(entries)} change(s) as {commit_id}")
         print(f"Undo with: lilguy undo {commit_id}" + (f" --state-dir {state_dir}" if args.state_dir else ""))
+        return 0
+    except _errors() as exc:
+        return _fail(exc)
+
+
+def apply_now(session_dir: Path) -> int:
+    """`lilguy do`'s single question, asked right after it showed the plan and the diff.
+
+    Only ever called with a terminal on both ends. "y" is the human decision: for a change
+    that crossed an approval threshold it approves exactly the shown request and then commits
+    it, bound to the same diff hash; anything else leaves the session staged. Network
+    requests are never answered here (they need `lilguy approve`)."""
+    from . import approval
+    try:
+        with approval.decision_session(Path(session_dir)) as session:
+            if _network_only(session):
+                return 0
+            pending = (session.directory / approval.REQUEST).exists() and \
+                not (session.directory / approval.APPROVAL).exists()
+            state_dir, entries, expected = _prepare_commit(session)
+            if not entries:
+                return 0
+            what = "Approve and apply" if pending else "Apply"
+            print(f"\n{what} {'this change' if len(entries) == 1 else f'these {len(entries)} changes'} "
+                  f"to {session.workspace}? [y/N] ", end="", flush=True)
+            if sys.stdin.readline().strip().lower() not in ("y", "yes"):
+                print("Not applied; the changes stay staged. Later, from this folder: "
+                      "lilguy commit (or lilguy deny).")
+                return 1
+            if pending:
+                approval.approve(session, approval.load_request(session)["diff_hash"])
+            commit_id, error = _write_commit(session, state_dir, entries, expected)
+            if error:
+                return _fail(error)
+        print(f"Applied {len(entries)} change(s). Undo with: lilguy undo {commit_id}")
         return 0
     except _errors() as exc:
         return _fail(exc)

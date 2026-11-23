@@ -27,19 +27,18 @@ STEPS = [
         'lilguy ask "How many lines in access.log contain 404?"',
         'lilguy ask "Which reports are in the reports folder?"',
     ]),
-    ("Make a change (staged in the sandbox; your files stay untouched)", [
+    ("Make a change (done in the sandbox; you see the diff, then answer Apply? [y/N])", [
         'lilguy do "Change timeout from 30 to 45 in staging.conf. Leave retry unchanged."',
         'lilguy do "Add \'Budget review\' as the last item of the agenda in notes/agenda.md."',
     ]),
-    ("Review and keep it (copy the session path lilguy printed)", [
-        "lilguy diff SESSION      # look again",
-        "lilguy commit SESSION    # write it into the folder (asks you to confirm)",
-        "lilguy undo              # list commits you can reverse",
-    ]),
-    ("Something that needs your approval (a move deletes the original)", [
+    ("Something that needs your approval (a move deletes the original; the prompt says why)", [
         'lilguy do "Move reports/2024-q1.csv into a new folder reports/archive."',
-        "lilguy approve SESSION   # or: lilguy deny SESSION",
-        "lilguy commit SESSION",
+    ]),
+    ("Said no, or changed your mind? From this folder", [
+        "lilguy diff              # the latest staged change here",
+        "lilguy commit            # apply it after all (one confirmation)",
+        "lilguy deny              # throw it away",
+        "lilguy undo              # list applied changes; lilguy undo ID reverses one",
     ]),
 ]
 

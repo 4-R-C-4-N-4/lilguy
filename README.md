@@ -1,6 +1,6 @@
 # lilguy
 
-A small local model that does everyday file tasks for you — read a setting, count matching lines, edit a config, append to a list, tidy files into a folder — inside a Linux sandbox. **Nothing it does reaches your files until you review the diff and commit it.**
+A small local model that does everyday file tasks for you — read a setting, count matching lines, edit a config, append to a list, tidy files into a folder — inside a Linux sandbox. **Nothing it does reaches your files until you've seen the diff and said yes.**
 
 ```text
 $ lilguy do "Change timeout from 30 to 45 in staging.conf. Leave retry unchanged."
@@ -18,8 +18,11 @@ Changes are staged (no approval threshold was crossed); nothing has reached your
    +timeout=45
     retry=2
 
-Review: lilguy diff ~/.local/state/lilguy/runs/.../1795366905-ce32a654dbbf55a9
-Commit: lilguy commit ~/.local/state/lilguy/runs/.../1795366905-ce32a654dbbf55a9
+Review: lilguy diff
+Commit: lilguy commit
+
+Apply this change to /home/you/project? [y/N] y
+Applied 1 change(s). Undo with: lilguy undo 1795399978803-24d821c70069
 ```
 
 lilguy is two halves that only make sense together:
@@ -38,7 +41,7 @@ lilguy is two halves that only make sense together:
 ## Install
 
 ```bash
-uv tool install git+https://github.com/4-R-C-4-N-4/lilguy@v1.0.0
+uv tool install git+https://github.com/4-R-C-4-N-4/lilguy@v1.1.0
 lilguy probe          # checks the sandbox prerequisites; every "required" row must pass
 ```
 
@@ -74,28 +77,37 @@ lilguy ask "How many lines in access.log contain 404?"
 lilguy ask "Which reports are in the reports folder?"
 ```
 
-**Do** — changes are made in the sandbox and shown as a diff. Your folder is untouched.
+**Do** — the change is made in the sandbox and shown as a diff, then lilguy asks once:
 
-```bash
-lilguy do "Change timeout from 30 to 45 in staging.conf. Leave retry unchanged."
-lilguy do "Add 'Budget review' as the last item of the agenda in notes/agenda.md."
+```text
+$ lilguy do "Change timeout from 30 to 45 in staging.conf. Leave retry unchanged."
+...
+   -timeout=30
+   +timeout=45
+    retry=2
+
+Apply this change to /home/you/lilguy-demo? [y/N] y
+Applied 1 change(s). Undo with: lilguy undo 1795399978803-24d821c70069
 ```
 
-**Keep it** — use the session path lilguy printed:
+Anything but `y` leaves your folder untouched and the change staged.
 
-```bash
-lilguy diff SESSION       # look again
-lilguy commit SESSION     # write it into your folder (confirms first)
-lilguy undo               # list commits; `lilguy undo ID` reverses one
-```
-
-**Approval** — deleting or moving files, `chmod`, and protected paths (`.git/`, `.env`, …) stop and wait for you:
+**Approval** — deleting or moving files, `chmod`, and protected paths (`.git/`, `.env`, …) cross an approval threshold. The output says why, and the same single prompt becomes `Approve and apply …? [y/N]`:
 
 ```bash
 lilguy do "Move reports/2024-q1.csv into a new folder reports/archive."
-lilguy approve SESSION    # or: lilguy deny SESSION
-lilguy commit SESSION
 ```
+
+**Later** — said no, or want another look? Run these from the same folder. They act on the latest staged change there, so you don't need a session path:
+
+```bash
+lilguy diff               # look again
+lilguy commit             # apply it after all (one confirmation; approves it too if needed)
+lilguy deny               # throw it away
+lilguy undo               # list applied changes; `lilguy undo ID` reverses one
+```
+
+`lilguy do --stage-only` never prompts. Without a terminal (scripts, pipes) lilguy never prompts either, and `lilguy commit --diff-hash HASH` applies a change only if it still matches the hash you reviewed.
 
 When you're done: `lilguy stop` frees the GPU or CPU.
 

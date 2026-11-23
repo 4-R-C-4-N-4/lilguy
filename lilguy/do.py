@@ -241,6 +241,16 @@ def find_new_session(state_dir: Path, before: set[str] | None = None) -> Path | 
     return candidates[0] if candidates else None
 
 
+def _session_ref(session_dir: Path, workspace: Path) -> str:
+    """How to name the session in a printed command: nothing when run from its own folder
+    (the review commands default to the latest session there), else its full path."""
+    try:
+        here = Path.cwd().resolve() == Path(workspace).resolve()
+    except OSError:
+        here = False
+    return "" if here else f" {session_dir}"
+
+
 def describe_handoff(session_dir: Path | None) -> str:
     """Re-derive the pending/staged state from the session's own private files -- the same
     ground truth `lilguy diff`/`approve` read -- never from the model's observation text.
@@ -252,6 +262,7 @@ def describe_handoff(session_dir: Path | None) -> str:
     try:
         with persist.session_lock(session_dir, wait=False):
             session = persist.load_session(session_dir)
+            ref = _session_ref(session_dir, session.workspace)
             steps = approval.render_steps(session_dir) + "\n\n"
             if (session_dir / approval.REQUEST).exists():
                 body = approval.summarize(session)
@@ -259,9 +270,9 @@ def describe_handoff(session_dir: Path | None) -> str:
                 return (
                     steps + "A change is staged and WAITING FOR YOUR DECISION; nothing has reached "
                     f"your workspace.\n\n{body}\n\n{contents}\n\n"
-                    f"Review:  lilguy diff {session_dir}\n"
-                    f"Approve: lilguy approve {session_dir}\n"
-                    f"Deny:    lilguy deny {session_dir}"
+                    f"Review: lilguy diff{ref}\n"
+                    f"Apply:  lilguy commit{ref}   (approves and writes, after one confirmation)\n"
+                    f"Deny:   lilguy deny{ref}"
                 )
             entries = sandbox_diff.session_diff(session)
             if not entries:
@@ -271,8 +282,8 @@ def describe_handoff(session_dir: Path | None) -> str:
             return (
                 steps + "Changes are staged (no approval threshold was crossed); nothing has reached "
                 f"your workspace.\n\n{body}\n\n{contents}\n\n"
-                f"Review: lilguy diff {session_dir}\n"
-                f"Commit: lilguy commit {session_dir}"
+                f"Review: lilguy diff{ref}\n"
+                f"Commit: lilguy commit{ref}"
             )
     except (persist.SessionStateError, persist.SessionBusy, OSError) as exc:
         raise DoSafetyError(
@@ -288,6 +299,16 @@ def server_args(workspace: Path, state_dir: Path, mode: str) -> list[str]:
     return args + ["--read-only"] if mode == "ask" else args
 
 
+def _errlog():
+    """Where the guarded server's stderr goes: the current sys.stderr if it is a real file
+    (the MCP client's own default is bound once, at import), else the process's stderr."""
+    try:
+        sys.stderr.fileno()
+        return sys.stderr
+    except (AttributeError, OSError, ValueError):
+        return sys.__stderr__
+
+
 async def _run(request: str, workspace: Path, state_dir: Path, url: str, model: str | None,
                 max_turns: int, use_grammar: bool, timeout: float, mode: str = "do") -> "loop.Record":
     import anyio
@@ -299,7 +320,7 @@ async def _run(request: str, workspace: Path, state_dir: Path, url: str, model: 
     params = StdioServerParameters(command=sys.executable, cwd=str(ROOT), env=env,
                                    args=server_args(workspace, state_dir, mode))
     with anyio.fail_after(timeout):
-        async with stdio_client(params) as (read, write):
+        async with stdio_client(params, errlog=_errlog()) as (read, write):
             async with ClientSession(read, write) as client:
                 await client.initialize()
                 served = {tool.name for tool in (await client.list_tools()).tools}
@@ -350,6 +371,9 @@ def _parser(mode="do"):
     parser.add_argument("--no-grammar", action="store_true")
     parser.add_argument("--max-turns", type=int, default=15)
     parser.add_argument("--timeout", type=float, default=300.0, help="overall wall budget, seconds")
+    if mode == "do":
+        parser.add_argument("--stage-only", action="store_true",
+                            help="don't ask to apply; leave the changes staged for `lilguy commit`")
     return parser
 
 
@@ -399,6 +423,10 @@ def main(argv: list[str] | None = None, mode: str = "do") -> int:
     except (OSError, DoSafetyError) as exc:
         print(f"lilguy {mode}: {exc}", file=sys.stderr)
         return 2
+    if (mode == "do" and session_dir is not None and not args.stage_only
+            and sys.stdin.isatty() and sys.stdout.isatty()):
+        from .policy import cli as decision_cli
+        decision_cli.apply_now(session_dir)
     return 0 if record.terminal in ("done", "ask") else 1
 
 

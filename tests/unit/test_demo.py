@@ -10,7 +10,7 @@ def test_demo_creates_the_files_and_prints_commands(tmp_path, capsys):
     out = capsys.readouterr().out
     assert f"cd {target}" in out
     assert 'lilguy ask "What is the timeout in staging.conf?"' in out
-    assert "lilguy commit SESSION" in out and "lilguy approve SESSION" in out
+    assert "lilguy commit " in out and "lilguy deny " in out and "Apply? [y/N]" in out
 
 
 def test_demo_refuses_a_non_empty_folder(tmp_path, capsys):

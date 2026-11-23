@@ -124,7 +124,7 @@ def test_do_pending_policy_surfaces_the_real_approval_handoff(tmp_path, monkeypa
 
     handoff = do.describe_handoff(session_dir)
     assert "WAITING FOR YOUR DECISION" in handoff
-    assert "lilguy approve" in handoff and "lilguy deny" in handoff
+    assert "lilguy commit" in handoff and "approves and writes" in handoff and "lilguy deny" in handoff
     assert "notes.txt" in handoff
 
     # and the handoff is ground truth, verifiable independently via the existing CLI:

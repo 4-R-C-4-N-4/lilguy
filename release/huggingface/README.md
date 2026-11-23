@@ -27,7 +27,7 @@ This is a LoRA fine-tune of [openbmb/MiniCPM5-2B](https://huggingface.co/openbmb
 ## Use
 
 ```bash
-uv tool install git+https://github.com/4-R-C-4-N-4/lilguy@v1.0.0
+uv tool install git+https://github.com/4-R-C-4-N-4/lilguy@v1.1.0
 lilguy probe                 # sandbox prerequisites (Linux, bubblewrap ≥ 0.11, Landlock)
 lilguy setup                 # downloads this file, checks its SHA-256, finds llama-server
 lilguy demo ~/lilguy-demo    # practice folder + commands to try
