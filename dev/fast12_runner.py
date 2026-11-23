@@ -65,17 +65,19 @@ def write_fixture(root: Path, files: dict) -> Path:
     return ws
 
 
-def _server_params(ws: Path, state: Path, mode: str = "do") -> StdioServerParameters:
+def _server_params(ws: Path, state: Path, mode: str = "do",
+                   interface: int = p.INTERFACE_VERSION) -> StdioServerParameters:
     env = {k: os.environ[k] for k in ("XDG_RUNTIME_DIR", "DBUS_SESSION_BUS_ADDRESS") if k in os.environ}
     return StdioServerParameters(command=sys.executable, env=env, args=[
         "-m", "lilguy.mcp_server", "--workspace", str(ws), "--state-dir", str(state),
-        "--toolset", str(p.TOOLSET), "--interface-v1",
+        "--toolset", str(p.TOOLSET), "--interface-v1", "--interface", str(interface),
     ] + (["--read-only"] if mode == "ask" else []))
 
 
 # --- the shared turn loop ---------------------------------------------------------------------
 
-async def _drive(ws: Path, state: Path, tools, next_action, max_turns: int = MAX_TURNS, mode: str = "do"):
+async def _drive(ws: Path, state: Path, tools, next_action, max_turns: int = MAX_TURNS, mode: str = "do",
+                 interface: int = p.INTERFACE_VERSION):
     """Run turns against one guarded MCP session until a terminal action or the budget runs out.
 
     Thin adapter over the shared `lilguy.loop.run_loop` core: opens the one guarded MCP session,
@@ -83,7 +85,8 @@ async def _drive(ws: Path, state: Path, tools, next_action, max_turns: int = MAX
     this module's own (terminal, answer, events) contract so no caller here has to change.
     """
     pending_infra_error = None
-    async with stdio_client(_server_params(ws, state, mode)) as (r, w), ClientSession(r, w) as client:
+    async with stdio_client(_server_params(ws, state, mode, interface)) as (r, w), \
+            ClientSession(r, w) as client:
         await client.initialize()
 
         async def call_tool(action):
@@ -159,12 +162,13 @@ def collect_changes(state: Path) -> dict:
     return changes
 
 
-def run_episode(root: Path, task, next_action, tools, grade, mode: str = "do"):
+def run_episode(root: Path, task, next_action, tools, grade, mode: str = "do", interface: int = ORACLE_SYNTAX):
     """One fixture + one session + one drive + one read-only scoring pass."""
     ws = write_fixture(root, task.files)
     state = root / "state"
     try:
-        terminal, answer, events = asyncio.run(_drive(ws, state, tools, next_action, mode=mode))
+        terminal, answer, events = asyncio.run(_drive(ws, state, tools, next_action, mode=mode,
+                                                      interface=interface))
     except InfraError as exc:
         return {"terminal": "infra-error", "answer": None, "original_unchanged": None,
                 "changes": {}, "failures": None, "infra_error": str(exc), "events": []}
@@ -223,11 +227,11 @@ def _false_done(version=ORACLE_SYNTAX):
 
 
 def run_oracle(root: Path, task, tools, grade, version=ORACLE_SYNTAX, mode="do"):
-    return run_episode(root, task, _scripted(task.oracle, tools, version), tools, grade, mode)
+    return run_episode(root, task, _scripted(task.oracle, tools, version), tools, grade, mode, version)
 
 
 def run_false_done(root: Path, task, tools, grade, version=ORACLE_SYNTAX, mode="do"):
-    return run_episode(root, task, _false_done(version), tools, grade, mode)
+    return run_episode(root, task, _false_done(version), tools, grade, mode, version)
 
 
 def run_model(root: Path, task, tools, port, opener, grade, version=p.INTERFACE_VERSION, mode="do"):
@@ -244,7 +248,8 @@ def run_model(root: Path, task, tools, port, opener, grade, version=p.INTERFACE_
         shared conversation history and feeds its reply through the same fail-closed core
         `_drive` uses, so the scripted and model paths share one definition of what "done",
         "ask", "budget" and "invalid" mean."""
-        async with stdio_client(_server_params(ws, state, mode)) as (r, w), ClientSession(r, w) as client:
+        async with stdio_client(_server_params(ws, state, mode, version)) as (r, w), \
+                ClientSession(r, w) as client:
             await client.initialize()
 
             async def call_tool(action):

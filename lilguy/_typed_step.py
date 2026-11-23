@@ -177,6 +177,20 @@ def read(path, offset, limit):
             sys.stdout.buffer.write(line)
 
 
+def _edit_refusal(path, text, old):
+    """Interface v4: say why an edit matched zero or several times, and how to pick one."""
+    starts, at = [], text.find(old)
+    while at != -1:
+        starts.append(text.count("\n", 0, at) + 1)
+        at = text.find(old, at + 1)
+    if not starts:
+        hint = " (check spaces and line breaks against the file)" if old.strip() in text else ""
+        return f"old text not found in {path}{hint}"
+    lines = ", ".join(map(str, starts[:10])) + (", ..." if len(starts) > 10 else "")
+    return (f"old text occurs {len(starts)} times in {path} (lines {lines}); "
+            "put old in <<< >>> with a neighbouring line so it occurs once")
+
+
 def edit(path, old, new):
     _, target = checked_path(path)
     if not target.is_file():
@@ -188,6 +202,8 @@ def edit(path, old, new):
         raise ValueError("File exceeds the 1 MiB literal edit limit")
     text = original.decode("utf8")
     if "\0" in text or not old or text.count(old) != 1:
+        if INTERFACE >= 4 and "\0" not in text and old:
+            raise ValueError(_edit_refusal(path, text, old))
         raise ValueError("Expected UTF-8 text and exactly one literal match")
     updated = text.replace(old, new, 1).encode("utf8")
     if updated == original:
@@ -205,8 +221,13 @@ def edit(path, old, new):
             staged.unlink(missing_ok=True)
 
 
+INTERFACE = 3  # the interface version the step reports to; set from the server's argv
+
+
 def main():
-    name, _, arguments = sys.argv[1:]
+    global INTERFACE
+    name, _, arguments, *rest = sys.argv[1:]
+    INTERFACE = int(rest[0]) if rest else 3
     try:
         {"fs.find": find, "fs.read": read, "fs.edit": edit,
          "fs.list": list_, "fs.grep": grep}[name](**json.loads(arguments))

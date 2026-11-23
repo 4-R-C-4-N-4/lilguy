@@ -41,7 +41,10 @@ import yaml
 from .digest import digest
 
 INTERFACE_VERSION = 3
-SUPPORTED_VERSIONS = (1, 2, 3)
+SUPPORTED_VERSIONS = (1, 2, 3, 4)
+# The development interface (newest). INTERFACE_VERSION stays the one the shipped model was
+# trained on until a model trained on a newer version is released.
+LATEST_VERSION = 4
 MODES = ("do", "ask")
 TOOLSET = Path(__file__).resolve().parent / "data" / "toolset.yaml"
 # Typed tools served in v1. The text tools in toolset.yaml are thin wrappers that `run` already
@@ -275,11 +278,14 @@ def render_action(action, tools=None, version=INTERFACE_VERSION):
 
 # --- observations -------------------------------------------------------------------------------
 
-def render_observation(*, exit_code, stdout="", stderr="", tags=(), changes=(), policy="ok", reason=""):
-    """What the model sees after a step: digested output, the step's file changes, the policy outcome."""
+def render_observation(*, exit_code, stdout="", stderr="", tags=(), changes=(), policy="ok", reason="",
+                       version=INTERFACE_VERSION):
+    """What the model sees after a step: digested output, the step's file changes, the policy outcome.
+    From v4 output lines are framed by <<< and >>> and shown unindented."""
+    _check_version(version)
     if policy not in POLICIES:
         raise ProtocolError(f"policy must be one of {', '.join(POLICIES)}")
-    parts = [digest(exit_code, stdout, stderr, list(tags)).text]
+    parts = [digest(exit_code, stdout, stderr, list(tags), framed=version >= 4).text]
     changes = list(changes)
     if changes:
         shown = "; ".join(f"{op} {path}" for op, path in changes[:MAX_CHANGES_SHOWN])
@@ -320,6 +326,13 @@ def observation_stdout(text):
     """The stdout body of a rendered observation, as the model saw it (digested)."""
     lines = text.split("\n")
     for index, line in enumerate(lines):
+        if re.fullmatch(r"stdout \(\d+ lines?\) <<<", line):  # v4: framed, unindented
+            body = []
+            for item in lines[index + 1:]:
+                if item == BLOCK_CLOSE:
+                    break
+                body.append(item)
+            return "\n".join(body)
         if re.fullmatch(r"stdout \(\d+ lines?\):", line):
             body = []
             for item in lines[index + 1:]:
@@ -474,6 +487,20 @@ Habits:
 Tools:"""
 
 _HEADERS[3] = _HEADER_V3
+
+# v4: output is framed exactly as printed, and multi-line values are the way to pick one of
+# several identical lines. Everything else is v3 unchanged.
+_HEADERS[4] = _HEADER_V3.replace(
+    "For a value of several lines, write the argument name and <<<, then the lines, then a line with >>>.\n",
+    "For a value of several lines, write the argument name and <<<, then the lines, then a line with >>>. "
+    "If the text you want to change occurs more than once, put old in <<< >>> with a neighbouring line "
+    "so it occurs once.\n",
+)
+_HEADERS[4] = _HEADERS[4].replace(
+    "and the policy result (ok; pending: waiting for the user's approval; rejected: not allowed).\n",
+    "and the policy result (ok; pending: waiting for the user's approval; rejected: not allowed). "
+    "Output is shown between <<< and >>> exactly as printed: copy it without adding or removing spaces.\n",
+)
 
 
 def _describe(arg):

@@ -58,6 +58,12 @@ def _clip(lines: list[str]) -> list[str]:
     return lines[:STDOUT_HEAD] + [f"... ({hidden} lines hidden) ..."] + lines[-STDOUT_TAIL:]
 
 
+def _section(name: str, count: int, lines: list[str], framed: bool) -> list[str]:
+    if not framed:
+        return [f"{name} ({count} lines):", *("  " + ln for ln in lines)]
+    return [f"{name} ({count} lines) <<<", *lines, ">>>"]
+
+
 def tag_errors(stderr: str, stdout: str = "") -> list[str]:
     blob = stderr + "\n" + stdout
     tags: list[str] = []
@@ -71,7 +77,10 @@ def tag_errors(stderr: str, stdout: str = "") -> list[str]:
     return tags
 
 
-def digest(exit_code: int, stdout: str, stderr: str, extra_tags: list[str] | None = None) -> Digest:
+def digest(exit_code: int, stdout: str, stderr: str, extra_tags: list[str] | None = None,
+           *, framed: bool = False) -> Digest:
+    """`framed` (interface v4) shows output lines exactly as printed, between `<<<` and `>>>`,
+    instead of indenting each by two spaces: copied text must match the file byte for byte."""
     out_lines, err_lines = _clean(stdout), _clean(stderr)
     tags = list(extra_tags or [])
     if exit_code != 0 or err_lines:
@@ -88,11 +97,9 @@ def digest(exit_code: int, stdout: str, stderr: str, extra_tags: list[str] | Non
     parts = [head]
     if err_lines:
         shown = err_lines[-STDERR_TAIL:]
-        parts.append(f"stderr ({len(err_lines)} lines):")
-        parts += ["  " + ln for ln in shown]
+        parts += _section("stderr", len(err_lines), shown, framed)
     if out_lines:
-        parts.append(f"stdout ({len(out_lines)} lines):")
-        parts += ["  " + ln for ln in _clip(out_lines)]
+        parts += _section("stdout", len(out_lines), _clip(out_lines), framed)
     if not out_lines and not err_lines:
         parts.append("(no output)")
 

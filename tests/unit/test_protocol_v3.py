@@ -12,10 +12,10 @@ V3_GOLDEN = Path(__file__).with_name("interface_v3_system_prompt.txt")
 
 
 def test_current_version_is_3_and_earlier_versions_stay_supported():
-    assert p.INTERFACE_VERSION == 3
-    assert p.SUPPORTED_VERSIONS == (1, 2, 3)
+    assert p.INTERFACE_VERSION == 3  # the shipped model's; v4 is in development
+    assert p.SUPPORTED_VERSIONS == (1, 2, 3, 4)
     with pytest.raises(p.ProtocolError):
-        p.system_prompt(TOOLS, version=4)
+        p.system_prompt(TOOLS, version=5)
 
 
 def test_v2_prompt_is_unchanged_and_v3_is_frozen():

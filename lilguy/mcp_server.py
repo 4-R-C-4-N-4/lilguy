@@ -179,10 +179,11 @@ class InterfaceV1:
     approve` separately, exactly as for the tracer.
     """
 
-    def __init__(self, tools, open_guarded):
+    def __init__(self, tools, open_guarded, interface=protocol.INTERFACE_VERSION):
         self.tools = tools
         self.open_guarded = open_guarded
         self.guarded = None
+        self.interface = interface
         self.program = Path(__file__).with_name("_typed_step.py").read_text(encoding="utf8")
 
     def _run_spec(self, name, arguments) -> RunSpec | None:
@@ -202,7 +203,8 @@ class InterfaceV1:
         if any(type(values[key]) is not int for key, spec in self.tools[name].inputSchema["properties"].items()
                if spec["type"] == "integer" and key in values):
             return None
-        return RunSpec(argv=["/usr/bin/python3", "-I", "-c", self.program, name, "--", json.dumps(values)])
+        return RunSpec(argv=["/usr/bin/python3", "-I", "-c", self.program, name, "--", json.dumps(values),
+                             str(self.interface)])
 
     def call(self, name, arguments) -> types.CallToolResult:
         tool = self.tools.get(name)
@@ -230,6 +232,7 @@ class InterfaceV1:
         text = protocol.render_observation(
             exit_code=result.exit_code, stdout=result.stdout, stderr=result.stderr,
             tags=result.tags, changes=changes, policy=policy, reason=outcome.decision.detail,
+            version=self.interface,
         )
         return _reply(text, error=(policy != "ok") or result.exit_code != 0)
 
@@ -256,6 +259,9 @@ def _parse_args(argv=None):
     parser.add_argument("--toolset", required=True, type=Path, help="Trusted toolset.yaml outside the workspace")
     parser.add_argument("--interface-v1", action="store_true",
                          help="Serve interface v1 (run + typed tools) instead of the pilot tracer's three tools")
+    parser.add_argument("--interface", type=int, default=protocol.INTERFACE_VERSION,
+                        choices=protocol.SUPPORTED_VERSIONS,
+                        help="interface version of the observations (default: the shipped model's)")
     parser.add_argument("--read-only", action="store_true",
                         help="Question mode (interface v3 `ask`): the policy rejects and rolls back any change")
     args = parser.parse_args(argv)
@@ -286,7 +292,7 @@ def main(argv=None) -> None:
         return GuardedSession(backend, session, trusted_policies(read_only=args.read_only))
 
     if args.interface_v1:
-        asyncio.run(serve_v1(InterfaceV1(build_v1_tools(), open_guarded)))
+        asyncio.run(serve_v1(InterfaceV1(build_v1_tools(), open_guarded, args.interface)))
     else:
         asyncio.run(serve(Tracer(load_tools(source), open_guarded)))
 
