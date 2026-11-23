@@ -1591,7 +1591,7 @@ BOOST_R6 = {'read_value': 2, 'count': 2, 'largest': 2, 'grep_find': 2, 'awk_sum'
 # Asking is kept only where the request cannot be done with the workspace (a named input is
 # absent); asks that judged ambiguity are dropped.
 BLOCKED_ASK_FAMILIES = ('recover_absent',)
-_INTERFACE = {1: 1, 2: 1, 3: 1, 4: 1, 5: 2, 6: 2, 7: 3, 8: 3, 9: 3}
+_INTERFACE = {1: 1, 2: 1, 3: 1, 4: 1, 5: 2, 6: 2, 7: 3, 8: 3, 9: 3, 10: 4}
 
 
 def interface_for(revision):
@@ -1770,10 +1770,14 @@ def generate(seed=DEFAULT_SEED, scale=1.0, families=None, revision=1):
     out = []
     table = {**FAMILIES, **(FAMILIES_R2 if revision >= 2 else {}), **(FAMILIES_R4 if revision >= 4 else {}),
              **(FAMILIES_R6 if revision >= 6 else {})}
-    if revision >= 9:
+    if revision == 9:  # r9's families did not replicate a gain; revision 10 builds on revision 8
         import sys
         from dev import corpus_r9
         table.update(corpus_r9.families(sys.modules[__name__]))
+    if revision >= 10:
+        import sys
+        from dev import corpus_r10
+        table.update(corpus_r10.families(sys.modules[__name__]))
     for name, (fn, count) in table.items():
         if families and name not in families:
             continue
@@ -1787,6 +1791,8 @@ def generate(seed=DEFAULT_SEED, scale=1.0, families=None, revision=1):
             out.append(Example(**spec))
     if interface_for(revision) >= 3:
         out = [ex for ex in map(_to_interface_v3, out) if ex is not None]
+        if interface_for(revision) > 3:  # v4 changes observations only: same episodes, newer interface
+            out = [replace(ex, interface=interface_for(revision)) for ex in out]
     elif interface_for(revision) >= 2:
         out = [ex for ex in map(_to_interface_v2, out) if ex is not None]
     return out
@@ -1885,7 +1891,7 @@ def verify_one(task):
             return 'gold', {'id': task.id, 'reason': 'recorded actions do not round-trip to the oracle'}
         replay = fast12_runner.run_episode(root / 'replay', task,
                                            fast12_runner._scripted(lines, tools, max(task.interface, 2)),
-                                           tools, grade, task.mode)
+                                           tools, grade, task.mode, max(task.interface, 2))
     if replay != reference:
         return 'replay', {'id': task.id, 'reason': 'replay record differs from reference'}
     return 'ok', {'id': task.id, 'record': saved, 'staged': reference['changes']}
@@ -1895,9 +1901,20 @@ def _norm_key(entry):
     return (split_audit._normalize_text(entry['request']), split_audit._normalize_files(entry['files']))
 
 
+def _dev_rows():
+    """Development rows the corpus must not duplicate. From revision 10 this includes the v4
+    focus fixtures, which measure exactly what revision 10 trains (earlier revisions unchanged)."""
+    rows = development_rows()
+    if _REV >= 10:
+        from dev import dev_focus
+        rows += [dict(id=t.id, split='dev', template_id=t.id, request=t.request, files=t.files)
+                 for t in dev_focus.TASKS]
+    return rows
+
+
 def dedup(examples):
     """Drop exact and near duplicates inside the corpus and against development tasks."""
-    dev = development_rows()
+    dev = _dev_rows()
     seen_req = {row['request'] for row in dev}
     seen_files = {tuple(sorted(row['files'].items())) for row in dev}
     seen_norm = {_norm_key(row) for row in dev}
@@ -1916,7 +1933,7 @@ def dedup(examples):
 
 
 def gate(examples):
-    rows = development_rows() + [ex.manifest() for ex in examples]
+    rows = _dev_rows() + [ex.manifest() for ex in examples]
     with tempfile.TemporaryDirectory() as tmp:
         path = Path(tmp) / 'candidate.json'
         path.write_text(json.dumps(rows), encoding='utf8')
