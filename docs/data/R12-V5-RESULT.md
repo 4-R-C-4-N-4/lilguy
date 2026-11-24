@@ -32,9 +32,10 @@ Three of r11's five shared losses now pass at seed 42. In each, the model now in
 
 First consequential error, seed 43:
 
-1. **`aggregate_signed_amounts`: skipped a header the file does not have.**
-   - The model summed with `awk 'NR>1 …'` over a headerless list and got `-7` instead of `11`.
-   - This is revision 11's "rows without the header" count (`tail -n +2`) generalising to every file.
+1. **`aggregate_signed_amounts`: two different failures, and not a leaked habit.**
+   - At seed 43 the model summed with `awk 'NR>1 …'` over a headerless list and got `-7` instead of `11`. At seed 42 it skipped the read and repeated a broken `awk -F'[:+]='` pipeline.
+   - *Correction (interpretability lesson 1, [plan](../plan/INTERPRETABILITY.md)):* this was first blamed on revision 11's header-skipping counts. That is wrong. Both r11 seeds **pass** this task.
+   - The probe shows that the **unmodified base already prefers `NR>1`** here (+0.71 nats). Every tuned model prefers the correct sum, and r12 seed 43 only barely (−0.43): a near coin-flip that the Q8_0 server tipped the wrong way.
 2. **`copy_review_folder_structure`: the folder was nested again.**
    - It ran `mkdir -p package/review && cp -r review package/review/`.
    - Revision 12 taught copying a folder's *contents* (`src/.`). This task wants the folder itself copied into a parent, a variant the family does not include.
@@ -48,7 +49,7 @@ Four tasks gained at both seeds: `export_codes_with_print_separator`, `preserve_
 
 - **Every targeted family fixes its focus task and leaves a habit behind.**
   - r11's end-of-file appends turned into appending where an insert was asked for.
-  - Its header-skipping counts turned into header-skipping on headerless files.
+  - (The header-skipping on headerless files first listed here was not caused by r11; lesson 1 traced it to the base model's own prior.)
   - r12's fixes for those then exposed the next variant (folder versus folder contents).
 - **The roster is no longer a clean judge.** It has been read across rounds 7–12, and two more rounds of patching its misses would be tuning to it. Held-out v3 is the unbiased measure, and it should be spent only on a candidate that clears the roster first.
 - **The weak spots are real and trainable.** All four tuned runs scored 23–24/25 on focus-r11, against 15–16 for 2.0. The cost lies in the balance of the corpus, not in the interface. v5 by itself costs nothing (2.0: 54 on v5).

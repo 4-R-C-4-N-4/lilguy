@@ -1,6 +1,29 @@
 # Status
 
-Updated 2026-11-22. This is the one place for current state; the plan and its gates are in [plan/ROADMAP.md](plan/ROADMAP.md). Run evidence lives under `reports/` (gitignored, local).
+Updated 2026-11-23. This is the one place for current state; the plan and its gates are in [plan/ROADMAP.md](plan/ROADMAP.md). Run evidence lives under `reports/` (gitignored, local).
+
+## Where we stand (2026-11-23)
+
+**Shipped:** lilguy **2.0.0**, the MiniCPM5-2B r10 model on interface v4.
+- Held-out v2: 83/100, against 76/100 for 1.0 on the same suite. Zero changes reached a folder without review.
+- Roster: 53/80 on v4 and 54/80 on v5.
+- The app runs each model on the interface it was trained on (2.0 on v4, 1.x on v3).
+
+**In development:**
+
+| Item | State | Evidence |
+|---|---|---|
+| Interface v5 | Built and calibrated; costs nothing on 2.0 (+1 roster) | [plan](plan/INTERFACE-V5.md) |
+| r11, r12 (v5) | Fix 2.0's weak spots (focus-r11 15→23–24/25) but lose roster tasks (48–51 vs 54); **not promoted** | [r11](data/R11-V5-RESULT.md), [r12](data/R12-V5-RESULT.md) |
+| Held-out v3 | Frozen (pin `d1b3f1b9…`), controls pass on v4 and v5; **unused** | `dev/holdout_suite_v3*` |
+
+**Open problem:** every targeted training family leaves a habit on neighbouring tasks.
+- r11: appending where an insert was asked for.
+- r12: copying a folder into itself.
+
+More data rounds would tune to the 80-task roster. **Next:** find out *why* the model makes these mistakes before writing more data. See [plan/INTERPRETABILITY.md](plan/INTERPRETABILITY.md).
+
+**Disk:** ~85 GB free after pruning superseded weights. Every report, adapter and checksum was kept.
 
 ## Release v1.0.0 (2026-11-22)
 
@@ -20,7 +43,7 @@ Updated 2026-11-22. This is the one place for current state; the plan and its ga
 ## Corpus r12 (2026-11-23): not promoted
 
 - **Revision 12** = revision 11 plus contrasts: insert under a heading, recover after a failed or empty step, copy a folder's contents. The focus gains held (24/25 at both seeds), but the roster scored 50 and 51 against 54, short of the gate.
-- **Every targeted family left a habit behind:** header-skipping on headerless files, and a nested folder copy. See [the round report](data/R12-V5-RESULT.md).
+- **Every targeted family left a habit behind:** a nested folder copy, and an append where an insert was asked for. The header-skip on a headerless sum was *not* one of these: interpretability lesson 1 traced it to the base model's own prior. See [the round report](data/R12-V5-RESULT.md).
 - **2.0 stays the release.** Held-out v3 is still unused.
 
 ## Interface v5 + corpus r11 (2026-11-23): not promoted
@@ -57,7 +80,7 @@ Updated 2026-11-22. This is the one place for current state; the plan and its ga
 | 5. Baselines and family choice | MiniCPM5-2B is the main experimental base, Qwen3.5-0.8B the same-corpus control; no shipping selection | `reports/factory/pilot-w74u7u0b/comparison.json` |
 | 6. Verified training data | v2 revision 6: 2,164 episodes / 6,264 rows, replay/split gates passed; 100-episode agent audit, human audit open | [Answer/cosine result](data/ANSWER-COSINE-RESULT.md), [earlier data card](data/CORPUS-V2.md) |
 | 7. Train, iterate on development failures | Revision 6 + cosine: MiniCPM 50/80, Qwen 34/80 (constant 20 and 28; revision 5 43 and 36); confirmed wrong answers remain; no promotion | [Answer/cosine result](data/ANSWER-COSINE-RESULT.md), [v2 result](data/INTERFACE-V2-RESULT.md) |
-| 8. Ship: quantize, held-out once, latency, model card | Not started | |
+| 8. Ship: quantize, held-out once, latency, model card | Done twice: 1.0 (held-out v1 74/100) and 2.0 (held-out v2 83/100); latency target still unmeasured | [Releases](#release-v200-2026-11-23) |
 
 Step numbers follow the roadmap. The recurring work list numbers them 1–5: tool server = 2, shared loop = 3, evaluation = 4, base choice = 5–6, one-job iteration = 7–8.
 
