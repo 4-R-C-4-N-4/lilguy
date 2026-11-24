@@ -28,7 +28,12 @@ More data rounds would tune to the 80-task roster.
 - Real habits are mostly specific to one seed; the only one both seeds share is `chmod g+s`.
 - The append-for-insert habit is an output default formed at the answer slot in layers 20–30. A steering direction flips it, so the model knows the difference and the training mix is what is off.
 
-**Next:** a margin gate in the factory, then a mix-only revision 13.
+**Done since then:**
+- The margin gate is in the factory: `dev.factory margins --pilot …`.
+- Lesson 7: the `chmod g+s` habit is a mistake in reading the request, a case for a typed permission tool.
+- **Revision 13 (mix only)** removed the append-for-insert habit at both seeds, but scored 53 and 48 on the roster against 54. Not promoted. See [round report](data/R13-V5-RESULT.md).
+
+**Open decision:** seed spread (48–53) now hides any difference from 2.0. The options are more seeds, a larger development suite, or spending held-out v3 on the best candidate together with 2.0.
 
 **Disk:** ~85 GB free after pruning superseded weights. Every report, adapter and checksum was kept.
 

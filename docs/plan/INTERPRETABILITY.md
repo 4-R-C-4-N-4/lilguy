@@ -239,5 +239,5 @@ Some first divergences are harmless (reading a file before acting, listing `.` i
 
 | # | Lesson | Question |
 |---|---|---|
-| 6 | **Mix experiment (running)** | Revision 13 = revision 12 with inserts raised from 84 to 252 and nothing else. Does the append-for-insert gap close in the trained model? Are any roster losses actionable under lesson 5? |
+| 6 | **Mix experiment: done** ([R13](../data/R13-V5-RESULT.md)) | The append-for-insert habit is gone at both seeds. The only actionable loss left is an ambiguous, unquoted request. Roster 53 and 48 against 54: seed spread now dominates. |
 | 8 | **A typed permission tool** | Plan it as an interface change; measure 2.0 and r12 on it before any training. |
