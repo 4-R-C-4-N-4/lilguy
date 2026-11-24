@@ -11,7 +11,7 @@ from dev import holdout_suite_v3_freeze as freeze
 def test_v3_selected_gate_covers_the_full_development_roster():
     result = holdout_runner.suite_gate('v3')
     assert result['ok'], result
-    assert result['held_out_count'] == 100 and result['candidate_count'] == 80
+    assert result['held_out_count'] == 100 and result['candidate_count'] == 106
 
 
 def test_missing_or_duplicate_roster_fails_even_if_re_pinned():

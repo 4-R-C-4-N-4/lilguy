@@ -18,7 +18,8 @@ def test_broad_identity_hashes_extra_sources_without_changing_fast12(tmp_path):
 
 
 def test_broad_roster_has_every_non_fast12_development_task_once():
-    from dev import dev_decisions, dev_text_workflows, dev_verification, dev_workspace
+    from dev import (dev_archives, dev_decisions, dev_organise, dev_recovery, dev_text_workflows, dev_verification,
+                     dev_workspace)
     selected = list(broad_runner.task_graders())
     expected = {t.id: broad_dev.grade for t in broad_dev.TASKS}
     expected.update({t.id: dev_shell.grade for t in dev_shell.TASKS})
@@ -26,7 +27,9 @@ def test_broad_roster_has_every_non_fast12_development_task_once():
     expected.update({t.id: dev_verification.grade for t in dev_verification.TASKS})
     expected.update({t.id: dev_workspace.grade for t in dev_workspace.TASKS})
     expected.update({t.id: dev_text_workflows.grade for t in dev_text_workflows.TASKS})
-    assert len(selected) == len(expected) == 68
+    for suite in (dev_archives, dev_organise, dev_recovery):
+        expected.update({t.id: suite.grade for t in suite.TASKS})
+    assert len(selected) == len(expected) == 94
     assert {task.id: grade for task, grade in selected} == expected
     assert expected.keys().isdisjoint(t.id for t in fast12.TASKS)
 

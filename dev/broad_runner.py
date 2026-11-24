@@ -4,10 +4,12 @@ import json
 from pathlib import Path
 import tempfile
 
-from dev import broad_dev, dev_decisions, dev_shell, dev_text_workflows, dev_verification, dev_workspace, fast12, fast12_runner
+from dev import (broad_dev, dev_archives, dev_decisions, dev_organise, dev_recovery, dev_shell, dev_text_workflows,
+                 dev_verification, dev_workspace, fast12, fast12_runner)
 from lilguy import protocol
 
-SUITES = (broad_dev, dev_shell, dev_decisions, dev_verification, dev_workspace, dev_text_workflows)
+SUITES = (broad_dev, dev_shell, dev_decisions, dev_verification, dev_workspace, dev_text_workflows,
+          dev_archives, dev_organise, dev_recovery)
 SOURCES = ('dev/broad_runner.py', *(f'{suite.__name__.replace(".", "/")}.py' for suite in SUITES))
 
 

@@ -124,6 +124,38 @@ def original_unchanged(ws: Path, files: dict) -> bool:
     return _tree(ws) == expected
 
 
+def describe_archive(data: bytes) -> str | None:
+    """A timestamp-free description of a tar, tar.gz or gzip file, or None for anything else.
+
+    Archive bytes carry mtimes, owners and gzip headers that differ run to run, so graders
+    compare what is inside instead: `<tar.gz: a.txt=<sha8>, d/b.txt=<sha8>>` (regular files
+    only, sorted, a leading './' dropped) or `<gzip: <sha8 of the decompressed bytes>>`.
+    """
+    import gzip
+    import hashlib
+    import io
+    import tarfile
+
+    raw, compressed = data, data[:2] == b"\x1f\x8b"
+    if compressed:
+        try:
+            raw = gzip.decompress(data)
+        except (OSError, EOFError):
+            return None
+    if raw[257:262] == b"ustar":
+        try:
+            with tarfile.open(fileobj=io.BytesIO(raw)) as tar:
+                members = sorted(
+                    f"{m.name.removeprefix('./')}={hashlib.sha256((tar.extractfile(m) or io.BytesIO()).read()).hexdigest()[:8]}"
+                    for m in tar.getmembers() if m.isfile())
+        except tarfile.TarError:
+            return None
+        return f"<{'tar.gz' if compressed else 'tar'}: {', '.join(members)}>"
+    if compressed:
+        return f"<gzip: {hashlib.sha256(raw).hexdigest()[:8]}>"
+    return None
+
+
 def collect_changes(state: Path) -> dict:
     """The net session diff, read-only: path -> staged text, None for a deletion, or a
     `<...>` marker for an effect that is not plain text content (a mode change, a directory,
@@ -155,6 +187,10 @@ def collect_changes(state: Path) -> dict:
         if target is None or target.is_symlink() or not target.is_file():
             raise InfraError(f"unexpected staged state for {entry.path}")
         data = target.read_bytes()
+        archive = describe_archive(data)
+        if archive is not None:
+            changes[entry.path] = archive
+            continue
         try:
             changes[entry.path] = data.decode("utf8")
         except UnicodeDecodeError:

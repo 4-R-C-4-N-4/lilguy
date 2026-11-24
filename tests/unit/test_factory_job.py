@@ -53,7 +53,7 @@ def test_check_cannot_silently_deselect_the_missing_dependency_case(tmp_path, mo
 def test_evaluation_gate_uses_real_suites_and_stops_on_bad_pin(tmp_path):
     result = factory.evaluation_gate()
     assert result['ok']
-    assert result['candidate_count'] == 80
+    assert result['candidate_count'] == 106
     assert result['held_out_count'] == 100
     pin = tmp_path / 'pin'
     pin.write_text('0' * 64 + '\n')

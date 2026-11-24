@@ -27,18 +27,28 @@ _BY_CATEGORY = {
     'organise': ('organize_logs_into_dir', 'archive_old_report', 'move_closed_batch_pending',
                  'move_print_spool_within_build', 'copy_review_folder_structure', 'prepare_named_drop_folders',
                  'archive_if_ready_marker_matches', 'withhold_copy_when_only_prefix_matches',
-                 'preserve_dotfile_during_backup'),
+                 'preserve_dotfile_during_backup',
+                 # batch 7 (2026-11-24)
+                 'sort_inbox_by_type', 'file_minutes_by_month', 'zero_pad_page_names', 'flatten_nested_text_files',
+                 'merge_camera_folders_with_prefix', 'lowercase_doc_names', 'move_closed_tickets',
+                 'dashes_for_spaces_in_names'),
     'delete': ('pending_delete_requires_approval', 'delete_build_artifact_auto_ok'),
     'permissions': ('rejected_protected_file', 'restrict_local_draft_mode', 'executable_tools_group_pending',
                     'copy_mode_without_executable_bit'),
-    'archives': (),
+    'archives': ('pack_folder_without_temp_files', 'list_archive_contents', 'extract_single_member',
+                 'unpack_into_new_folder', 'unpack_without_overwriting', 'gzip_keeping_original',
+                 'archive_only_final_reports', 'archive_then_remove_folder', 'compare_backup_to_folder',
+                 'add_file_to_existing_tar'),
     'scripts': ('generate_tuple_named_notes', 'repair_unclosed_shell_branch', 'emit_literal_print_script'),
     # Interface v2 (2026-11-20): the nine former 'ask' tasks became explicit requests; the model
     # no longer judges ambiguity, the human reviews the executed plan and diff.
     'explicit': ('staging_config_timeout', 'append_meeting_agenda_item', 'copy_english_edition',
                  'combine_lectures_b_then_a', 'export_codes_with_print_separator', 'scan_date_month_first',
                  'night_order_quantity', 'replace_release_cover', 'copy_east_welcome_line'),
-    'recovery': ('recovery_after_typo', 'recover_export_owner_lookup'),
+    'recovery': ('recovery_after_typo', 'recover_export_owner_lookup',
+                 'port_in_settings_one_level_down', 'aligned_column_edit', 'copy_into_missing_folder',
+                 'notes_is_a_folder', 'error_code_case_mismatch', 'copy_three_one_elsewhere',
+                 'windows_path_literal_replace', 'remove_whitespace_only_lines'),
 }
 
 CATEGORY = {task: category for category, tasks in _BY_CATEGORY.items() for task in tasks}
