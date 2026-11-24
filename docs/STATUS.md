@@ -33,7 +33,16 @@ More data rounds would tune to the 80-task roster.
 - Lesson 7: the `chmod g+s` habit is a mistake in reading the request, a case for a typed permission tool.
 - **Revision 13 (mix only)** removed the append-for-insert habit at both seeds, but scored 53 and 48 on the roster against 54. Not promoted. See [round report](data/R13-V5-RESULT.md).
 
-**Open decision:** seed spread (48–53) now hides any difference from 2.0. The options are more seeds, a larger development suite, or spending held-out v3 on the best candidate together with 2.0.
+**Roster grown to 106** (batch 7: archives, organise, recovery; [report](data/ROSTER-106-BATCH7.md)):
+
+| | 2.0 | r13 s42 | r13 s43 |
+|---|---|---|---|
+| Score /106 | 64 | **68** | 59 |
+
+- r13 s42 is the first candidate to beat 2.0 on the development roster. The seeds are still 9 tasks apart, so the both-seeds gate is not met.
+- Archives are weak for every model (4–5/10), a candidate for a typed archive tool.
+
+**Open decision:** more seeds, or held-out v3 on r13 s42 together with 2.0.
 
 **Disk:** ~85 GB free after pruning superseded weights. Every report, adapter and checksum was kept.
 
@@ -88,7 +97,7 @@ More data rounds would tune to the 80-task roster.
 | 1. Interface | v2 current (bare `done`, `ask` only when blocked); v1 kept reproducible | `0091f2e`; `lilguy/protocol.py`, golden prompts `tests/unit/interface_v{1,2}_system_prompt.txt` |
 | 2. Guarded tool server | Accepted: full `factory check` passed 2026-11-22 at `ea4e654`, all 18 safety cases including #17 (rsync) | `reports/factory/check-24wjv4jd/result.json`, `v1-bypass-corpus.xml` |
 | 3. Shared loop and recorder | Done | `292a28b`; `lilguy/loop.py`, `lilguy/do.py`, `tests/sandbox/test_loop_live.py` |
-| 4. Protected evaluation | Re-frozen for v2 (pin `e10789bc…`), oracle 100/100, null 0/100; development suite at 80 of 150 | [Roadmap re-freeze note](plan/ROADMAP.md); no model has run on held-out |
+| 4. Protected evaluation | Re-frozen for v2 (pin `e10789bc…`), oracle 100/100, null 0/100; development suite at 106 of 150 | [Roadmap re-freeze note](plan/ROADMAP.md); no model has run on held-out |
 | 5. Baselines and family choice | MiniCPM5-2B is the main experimental base, Qwen3.5-0.8B the same-corpus control; no shipping selection | `reports/factory/pilot-w74u7u0b/comparison.json` |
 | 6. Verified training data | v2 revision 6: 2,164 episodes / 6,264 rows, replay/split gates passed; 100-episode agent audit, human audit open | [Answer/cosine result](data/ANSWER-COSINE-RESULT.md), [earlier data card](data/CORPUS-V2.md) |
 | 7. Train, iterate on development failures | Revision 6 + cosine: MiniCPM 50/80, Qwen 34/80 (constant 20 and 28; revision 5 43 and 36); confirmed wrong answers remain; no promotion | [Answer/cosine result](data/ANSWER-COSINE-RESULT.md), [v2 result](data/INTERFACE-V2-RESULT.md) |
@@ -332,7 +341,7 @@ Full table with terminals, policy stops and per-task passes: `reports/factory/ba
 ## Gaps and known limits
 
 - **Safety acceptance covers the guarded tool server, not model quality.** The full gate passed on 2026-11-22 (`reports/factory/check-24wjv4jd`, clean tree `ea4e654`): protocol, split protection, guarded tools, `/usr/bin/rsync` prerequisite, all 18 bypass cases including #17, trainer smoke. It does not make v3 shipped: no held-out evaluation has run.
-- **The development suite** has 80 sandbox-calibrated tasks: Fast12 plus six batches registered in `dev/broad_runner.py`. The new text-workflow batch covers script syntax, literal quoting, byte-level comparison, and packaging manifests. Its scripted controls passed and immediate false completions failed on separate guarded fixtures. Fast12 itself is unchanged. The target is 150.
+- **The development suite** has 106 sandbox-calibrated tasks: Fast12 plus nine batches registered in `dev/broad_runner.py` (batch 7, 2026-11-24, added archives, organise and recovery). The new text-workflow batch covers script syntax, literal quoting, byte-level comparison, and packaging manifests. Its scripted controls passed and immediate false completions failed on separate guarded fixtures. Fast12 itself is unchanged. The target is 150.
 - **The held-out suite** has 100 tasks from 10 template families. It was re-frozen once on 2026-11-19, before any model ran on it, to fix three grader defects found on development evidence (see roadmap). It has been checked by unit tests only; its first live run is the shipping evaluation.
 - **No release evaluation has run.** Corpus v2 training and matched deployed-artifact development evaluation have run, but no adapter has qualified for promotion. Earlier adapters under `reports/archive/pilots/` predate interface v1.
 
