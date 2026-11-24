@@ -35,6 +35,12 @@ VERSION = 5
 TOOLS = p.load_tools()
 
 
+def register(label, pilot):
+    """Add a trained pilot (its adapter and its v5 roster runs) under `label`."""
+    ADAPTERS[label] = pilot
+    RUNS[label] = [f'{pilot}/minicpm/tuned/fast12', f'{pilot}/minicpm/tuned/broad']
+
+
 def verdict(label, task_id):
     for d in RUNS[label]:
         hits = glob.glob(str(FACTORY / d / f'task_{task_id}.json'))
@@ -92,14 +98,14 @@ def divergence(task_id, failing, passing='r10_2_0'):
 class Lab:
     """Base MiniCPM5-2B with every adapter loaded; switch with `use(label)` ('stock' = no adapter)."""
 
-    def __init__(self):
+    def __init__(self, labels=None):
         import peft
         import torch
         import transformers
         self.torch = torch
         self.tok = transformers.AutoTokenizer.from_pretrained(BASE, local_files_only=True)
         base = transformers.AutoModelForCausalLM.from_pretrained(BASE, local_files_only=True, dtype=torch.bfloat16)
-        labels = list(ADAPTERS)
+        labels = list(labels or ADAPTERS)
         model = peft.PeftModel.from_pretrained(base, FACTORY / ADAPTERS[labels[0]] / 'minicpm/training/adapter',
                                                adapter_name=labels[0])
         for label in labels[1:]:

@@ -25,3 +25,10 @@ def test_contrasts_never_append_and_recoveries_skip_the_slip():
                for e in recover)
     copies = [e for e in r12 if e.family == 'copy_folder_contents']
     assert all('/. ' in e.oracle[1] and e.oracle[2].startswith('tool fs.list') for e in copies)
+
+
+def test_revision_13_changes_only_the_insert_count():
+    r12, r13 = v2.generate(revision=12), v2.generate(revision=13)
+    old, new = {e.id: e for e in r12}, {e.id: e for e in r13}
+    assert v2.interface_for(13) == 5 and all(new[i] == e for i, e in old.items())
+    assert Counter(new[i].family for i in set(new) - set(old)) == {'insert_under_heading': 252 - 84}

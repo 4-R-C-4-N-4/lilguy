@@ -157,8 +157,10 @@ def run_development(directory, suite, gguf, server, device, interface=INTERFACE_
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('job', choices=['check', 'trial', 'fast12', 'broad', 'screen', 'pilot', 'audit-splits',
-                                        'compare', 'assess', 'held-out'])
+                                        'compare', 'assess', 'held-out', 'margins'])
     parser.add_argument('--run-dir', type=Path, help='assess: completed matched pilot directory')
+    parser.add_argument('--candidate', action='append', default=[], metavar='PILOT',
+                        help='margins: a completed pilot directory under reports/factory (repeat per seed)')
     parser.add_argument('--stock', type=Path)
     parser.add_argument('--candidate', type=Path)
     parser.add_argument('--held-out', type=Path)
@@ -214,6 +216,18 @@ def main():
         except (ValueError, OSError, KeyError, TypeError) as exc:
             parser.exit(1, f'Cannot compare Fast12 reports: {exc}\n')
         return 0
+    if args.job == 'margins':
+        # Decision margins at every roster task the round lost (docs/plan/INTERPRETABILITY.md, lesson 5).
+        # Needs torch/peft: runs under the training Python, on whatever GPU the caller made visible.
+        if not args.candidate:
+            parser.error('margins needs at least one --candidate PILOT')
+        train_python = os.environ.get('LILGUY_TRAIN_PYTHON', '/home/ivy/Work/chrysopoeia/.venv/bin/python')
+        out = Path(tempfile.mkdtemp(prefix='margins-', dir=ROOT / 'reports' / 'factory'))
+        print(out, flush=True)
+        argv = [train_python, '-m', 'dev.interp.margins', str(out)]
+        for pilot in args.candidate:
+            argv += ['--candidate', Path(pilot).name]
+        return subprocess.run(argv, cwd=ROOT).returncode
     if args.job == 'audit-splits':
         from dev.eval_gate import verify
         if not (args.held_out and args.held_out_sha256 and args.manifest):

@@ -1591,7 +1591,7 @@ BOOST_R6 = {'read_value': 2, 'count': 2, 'largest': 2, 'grep_find': 2, 'awk_sum'
 # Asking is kept only where the request cannot be done with the workspace (a named input is
 # absent); asks that judged ambiguity are dropped.
 BLOCKED_ASK_FAMILIES = ('recover_absent', 'named_file_missing')  # the latter: revision 11 only
-_INTERFACE = {1: 1, 2: 1, 3: 1, 4: 1, 5: 2, 6: 2, 7: 3, 8: 3, 9: 3, 10: 4, 11: 5, 12: 5}
+_INTERFACE = {1: 1, 2: 1, 3: 1, 4: 1, 5: 2, 6: 2, 7: 3, 8: 3, 9: 3, 10: 4, 11: 5, 12: 5, 13: 5}
 
 
 def interface_for(revision):
@@ -1784,6 +1784,13 @@ def generate(seed=DEFAULT_SEED, scale=1.0, families=None, revision=1):
     if revision >= 12:
         from dev import corpus_r12
         table.update(corpus_r12.families(sys.modules[__name__]))
+    if revision >= 13:
+        # Revision 13 changes only the mix (docs/plan/INTERPRETABILITY.md, lessons 3-4: the
+        # append-for-insert habit is an output default the model can be steered out of). Same
+        # families and generators as revision 12; inserts under a heading go from 84 to 252, about
+        # as many as the 272 end-of-file appends. The first 84 are revision 12's own episodes.
+        fn, _ = table['insert_under_heading']
+        table['insert_under_heading'] = (fn, 252)
     for name, (fn, count) in table.items():
         if families and name not in families:
             continue
