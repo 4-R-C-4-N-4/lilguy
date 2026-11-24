@@ -21,7 +21,14 @@ Updated 2026-11-23. This is the one place for current state; the plan and its ga
 - r11: appending where an insert was asked for.
 - r12: copying a folder into itself.
 
-More data rounds would tune to the 80-task roster. **Next:** find out *why* the model makes these mistakes before writing more data. See [plan/INTERPRETABILITY.md](plan/INTERPRETABILITY.md).
+More data rounds would tune to the 80-task roster.
+
+**Interpretability lessons 1–4** ([plan/INTERPRETABILITY.md](plan/INTERPRETABILITY.md)):
+- About half of r12's losses are coin flips or artefacts of the 8-bit server.
+- Real habits are mostly specific to one seed; the only one both seeds share is `chmod g+s`.
+- The append-for-insert habit is an output default formed at the answer slot in layers 20–30. A steering direction flips it, so the model knows the difference and the training mix is what is off.
+
+**Next:** a margin gate in the factory, then a mix-only revision 13.
 
 **Disk:** ~85 GB free after pruning superseded weights. Every report, adapter and checksum was kept.
 
