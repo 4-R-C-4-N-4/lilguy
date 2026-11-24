@@ -80,3 +80,12 @@ def test_failed_stage_stops_job(tmp_path):
     manifest = json.loads((tmp_path / 'result.json').read_text())
     assert manifest['status'] == 'failed'
     assert [s['name'] for s in manifest['stages']] == ['bad']
+
+
+def test_cli_parser_builds_and_margins_needs_a_pilot():
+    import subprocess
+    import sys
+    ok = subprocess.run([sys.executable, '-m', 'dev.factory', '--help'], capture_output=True, text=True)
+    assert ok.returncode == 0 and 'margins' in ok.stdout
+    bad = subprocess.run([sys.executable, '-m', 'dev.factory', 'margins'], capture_output=True, text=True)
+    assert bad.returncode != 0 and '--pilot' in bad.stderr
