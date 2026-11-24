@@ -17,9 +17,28 @@ ASK = frozenset({
     'detect_absent_final_line_feed', 'find_todo_comments', 'hidden_theme_lookup', 'latest_iso_timestamp',
     'leave_missing_notice_alone', 'matching_normalized_addresses', 'no_marker_in_schedule',
     'reconcile_manifest_versions', 'recover_export_owner_lookup', 'report_largest_measured_document',
-    'report_tab_stop_from_specific_profile', 'summarize_missing_packet_ids', 'utf8_line_count'})
+    'report_tab_stop_from_specific_profile', 'summarize_missing_packet_ids', 'utf8_line_count',
+    # batch 7 (2026-11-24)
+    'list_archive_contents', 'compare_backup_to_folder', 'notes_is_a_folder', 'error_code_case_mismatch'})
 
 ORACLES = {
+    # batch 7 (2026-11-24)
+    'list_archive_contents': (
+        'run\ntar -tf bundle.tar',
+        'done'),
+    'compare_backup_to_folder': (
+        'run\nfor f in site/index.html site/about.html; do tar -xOf backup.tar "$f" | cmp -s - "$f" '
+        '&& echo "$f matches the backup" || echo "$f differs"; done',
+        'done'),
+    'notes_is_a_folder': (
+        'tool fs.read\npath: notes',
+        'tool fs.list\npath: notes',
+        "run\ngrep '^Next meeting' notes/meeting.txt",
+        'done'),
+    'error_code_case_mismatch': (
+        'run\ngrep -l e42 logs/*.log',
+        'run\ngrep -il e42 logs/*.log',
+        'done'),
     'read_only_question': (
         "run\ngrep '^retry=' cfg/app.ini",
         'done'),

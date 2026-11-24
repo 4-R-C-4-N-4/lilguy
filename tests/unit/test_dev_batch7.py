@@ -38,3 +38,13 @@ def test_roster_is_106_with_batch_7_categories():
     assert len(ids) == len(set(ids)) == 106
     counts = Counter(dev_categories.category(i) for i in ids)
     assert counts['archives'] == 10 and counts['organise'] == 17 and counts['recovery'] == 10
+
+
+def test_archive_grading_accepts_either_top_folder_layout_but_not_a_mixed_one():
+    from dev.dev_archives import _flat
+    with_top = dev_archives.archive('tar.gz', {'logs/a.log': 'a\n', 'logs/b.log': 'b\n'})
+    without = dev_archives.archive('tar.gz', {'a.log': 'a\n', 'b.log': 'b\n'})
+    mixed = dev_archives.archive('tar.gz', {'logs/a.log': 'a\n', 'b.log': 'b\n'})
+    assert _flat(with_top) == _flat(without) == without
+    assert _flat(mixed) == mixed != _flat(with_top)
+    assert _flat('plain text\n') == 'plain text\n'

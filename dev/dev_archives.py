@@ -5,11 +5,14 @@ reduces a staged tar, tar.gz or gzip to its sorted member names and content hash
 below builds the same description for the expected side. Fixtures that ship an archive use a plain
 ustar file, which is ASCII apart from NUL padding and so fits the text-only fixture format.
 """
+import dataclasses
 import hashlib
 import io
+import re
 import tarfile
 
-from dev.dev_workspace import Task, grade  # noqa: F401  (grade is this suite's grader)
+from dev import dev_workspace
+from dev.dev_workspace import Task
 
 
 def _sha8(text):
@@ -19,6 +22,26 @@ def _sha8(text):
 def archive(kind, members):
     """Expected staged value for an archive holding `members` (path -> text)."""
     return f"<{kind}: {', '.join(f'{p}={_sha8(t)}' for p, t in sorted(members.items()))}>"
+
+
+def _flat(value):
+    """`<tar.gz: d/a=h, d/b=h>` and `<tar.gz: a=h, b=h>` are the same archive for grading: "pack the
+    d/ folder" may fairly keep or drop the folder name inside. A single top folder shared by every
+    member is dropped; mixed layouts (some members under it, some not) are left as they are."""
+    m = re.fullmatch(r'<(tar(?:\.gz)?): (.*)>', value) if isinstance(value, str) else None
+    if not m or not m.group(2):
+        return value
+    members = m.group(2).split(', ')
+    tops = {e.split('/', 1)[0] if '/' in e.split('=', 1)[0] else None for e in members}
+    if len(tops) != 1 or None in tops:
+        return value
+    return f"<{m.group(1)}: {', '.join(sorted(e.split('/', 1)[1] for e in members))}>"
+
+
+def grade(task, *, changes, **rest):
+    flat = {path: _flat(v) for path, v in task.changes.items()}
+    return dev_workspace.grade(dataclasses.replace(task, changes=flat),
+                               changes={path: _flat(v) for path, v in changes.items()}, **rest)
 
 
 def gzipped(text):

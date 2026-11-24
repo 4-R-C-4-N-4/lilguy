@@ -93,3 +93,13 @@ def test_v3_mode_is_ask_exactly_for_the_listed_development_questions():
     assert {fr.task_mode(roster[i]) for i in oracles_v3.ASK} == {'ask'}
     assert fr.task_mode(roster['leave_matching_output_style']) == 'do'  # a change request
     assert fr.task_mode(roster['read_only_question'], version=2) == 'do'
+
+
+def test_every_development_question_is_asked_from_v3():
+    """A task that changes nothing and is graded on stated facts is a question: from interface v3 it
+    must be issued with `ask`, ending on a command whose output answers it (batch 7 lesson)."""
+    from dev import broad_runner, oracles_v3
+    do_requests = {'leave_matching_output_style', 'withhold_copy_when_only_prefix_matches'}
+    questions = {t.id for t, _ in broad_runner.task_graders()
+                 if not getattr(t, 'changes', None) and getattr(t, 'facts', ()) and t.id not in do_requests}
+    assert questions <= oracles_v3.ASK
