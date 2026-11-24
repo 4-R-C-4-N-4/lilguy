@@ -162,10 +162,82 @@ Some first divergences are harmless (reading a file before acting, listing `.` i
   - Add near-miss twins, so the same file and heading appear with both requests.
 - **Seed variance is the biggest single factor in these numbers.** Single decisions swing by up to 20 nats between seeds trained on identical data. Promotion needs at least two seeds, and the roster delta must be read against that spread.
 
+## Lesson 5: margins in the factory (2026-11-23)
+
+`dev.factory margins --pilot PILOT [--pilot PILOT]` runs lesson 2 for any round. It uses the training Python, on whichever GPU the caller makes visible, and writes `reports/factory/margins-*/margins.{json,md}`.
+
+**Columns and verdicts:**
+- every roster task the reference (2.0 on v5) passes and a candidate seed fails;
+- the first divergence from the reference trace, scored under stock, 2.0 and each seed;
+- the verdict: habit / lean / coin flip / not reproduced / harmless first look (an extra read or listing at step 0);
+- **actionable**: tasks that are a habit at every seed that lost them, with at least two seeds.
+
+**r12 (run on the RTX 4070):** 13 lost tasks.
+
+| Verdict | Count |
+|---|---|
+| habit | 4 |
+| lean | 3 |
+| coin flip | 3 |
+| not reproduced | 3 |
+| harmless first look | 5 |
+| **actionable** | **none** |
+
+- **No r12 loss is a habit at both seeds.** Under this rule, round 12 gave no evidence for new training data at all.
+- **Margins depend slightly on the hardware.** The 4070 run differs from the 3090 run by up to about 0.6 nats; for example, `copy_east_welcome_line` moved from +2.0 to +1.8. Verdicts near a threshold are therefore soft, which is one more reason to require two seeds.
+
+## Lesson 7: the permission mistake, `chmod g+s` against `g+x` (2026-11-23)
+
+**Setup:**
+- **Script:** `dev/interp/lessons.py patch|steer --case chmod`. **Output:** `reports/interp/lesson-7/`.
+- **Decision point:** the roster task `executable_tools_group_pending`, after listing `helpers/`. The request asks for the scripts to be executable by their group.
+- **Margins:**
+  - r12 s42 prefers `chmod g+s` by **+2.75**;
+  - 2.0 prefers `g+x` by −0.87;
+  - stock −2.9.
+  The 4070 measured +2.8 and −0.9.
+
+### Patching (2.0's states into r12 s42)
+
+**Every prompt position:**
+- **Layers 5–16:** 28–59% of the gap closes (most at layer 14, 0.59).
+- **Layers 17–27:** the effect goes **negative**, down to −0.63 at layer 21. Here 2.0's later states make r12 *more* wrong, so the two models compute the answer differently from this point on.
+
+**The request span alone** closes the whole gap at layer 8 (**1.00**), 0.48 at layer 12 and 0.31 at 16, then −0.62 at layer 24.
+
+**Answer slot and earlier turns:** at most 0.17 at any layer.
+
+**This is the opposite of the insert habit:**
+
+| Habit | Where it is | What kind of error |
+|---|---|---|
+| append-for-insert (lesson 3) | the answer slot, late (layers 20–30) | the request is understood correctly; the action is written from a learned template |
+| **`g+s` for "executable by the group"** | the **request tokens, early to middle (layers 8–16)** | **how the words are read**: "the group can execute" is mapped to the wrong mode letter while the request is being understood |
+
+### Steering
+
+- **The direction:** "let the group execute" minus "let the group write", built from 12 synthetic folder listings. 4 more are held back as controls; a "writable" request must keep preferring `g+w` over `g+x`.
+- **What worked, and how far:**
+  - Only **layer 8** steers cleanly. At α 0.4 the margin goes from +2.75 to **−1.52**, and the control stays at −6.9.
+  - Layer 26 flips the margin too (−1.25), but it breaks the control (+2.96).
+  - Layer 20 makes the mistake *stronger*.
+- **Generated actions:**
+  - **Unsteered:** `chmod g+s helpers/*.sh`.
+  - **Steered:** `chmod +g +x helpers/*.sh`. It now reaches for `x`, but writes an invalid mode.
+  - **Steered control:** `chmod -R u+r,g+r quince-bin`. The control's *margin* still favours `g+w`, but its greedy action drifted to a third, wrong command.
+
+### What it shows
+
+1. **Permissions are a knowledge gap, not a habit.**
+   - The fault sits where the request is read.
+   - Steering pushes the model towards `x` but cannot make it write valid mode syntax.
+   - Even the steered control loses `w`.
+   The model's grasp of symbolic chmod modes is weak in general. That matches the [permission contrast](../data/PERMISSION-CONTRAST.md), where stating the mode explicitly (`600`) rescued the guarded runs.
+2. **This is a case for the interface, not more data.** The factory's premise is that when a capability is shaky, the application should take the burden. A typed permission tool (who: user/group/others; what: read/write/execute; add/remove) would let lilguy own the mapping to mode bits, the way `fs.edit` took over quoting. That would be a candidate interface version after v5.
+
 ## Next lessons
 
 | # | Lesson | Question |
 |---|---|---|
-| 5 | **Margins in the factory** | Add the margin probe to `dev.factory` so each round reports the margin at every lost task (both seeds) alongside pass/fail. |
-| 6 | **Mix experiment** | Revision 13 = revision 12 with the insert:append ratio balanced and twins added, nothing else. Does the lesson-3 answer-slot gap close in the trained model? |
-| 7 | **Permission wording** | Patch and steer on `g+s`/`g+x`: is "group can execute" represented but mis-mapped to a mode letter? |
+| 6 | **Mix experiment (running)** | Revision 13 = revision 12 with inserts raised from 84 to 252 and nothing else. Does the append-for-insert gap close in the trained model? Are any roster losses actionable under lesson 5? |
+| 8 | **A typed permission tool** | Plan it as an interface change; measure 2.0 and r12 on it before any training. |
