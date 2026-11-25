@@ -81,14 +81,17 @@ class Example:
 
 # --- canonical actions ----------------------------------------------------------------------
 
-_TOOLS = None
+_TOOLS = {}
 
 
-def _tools():
-    global _TOOLS
-    if _TOOLS is None:
-        _TOOLS = protocol.load_tools()
-    return _TOOLS
+def _tools(version=None):
+    """The tools served at an interface version (prompts, gold runs). Without a version: every
+    tool of every supported interface, for parsing and canonicalising oracle lines only. v1-v5
+    serve the same five tools, so revisions 1-13 are unchanged; revision 14 adds v6's archive tools."""
+    key = protocol.LATEST_VERSION if version is None else version
+    if key not in _TOOLS:
+        _TOOLS[key] = protocol.load_tools(version=key)
+    return _TOOLS[key]
 
 
 def _canon(line):
@@ -725,6 +728,22 @@ def fam_rejected(g, n):
                    request=req, files=files, oracle=oracle, changes={}, error_turns=turns, policy_end='rejected')
 
 
+def _list_archive(name):
+    """Revision 14 (interface v6) lists with the typed tool; earlier revisions keep `tar -tf`."""
+    return f'tool archive.list\npath: {name}' if _REV >= 14 else run(f'tar -tf {name}')
+
+
+def _unpack(name, shell, into=None, member=None):
+    if _REV < 14:
+        return run(shell)
+    lines = ['tool archive.unpack', f'archive: {name}']
+    if into:
+        lines.append(f'into: {into}')
+    if member:
+        lines.append(f'member: {member}')
+    return '\n'.join(lines)
+
+
 def fam_archives(g, n):
     for i in range(n):
         place, thing = g.pick(PLACES), g.pick(THINGS)
@@ -737,7 +756,7 @@ def fam_archives(g, n):
             req = g.choice(('What files are inside {a}?', 'List the contents of {a} without extracting it.')).format(a=name)
             yield dict(id=f'tar-list-{i}', family='tar_list', category='archives', behaviour='factual-answer',
                        request=req, files=files, source_page='tar',
-                       oracle=(run(f'tar -tf {name}'), done(f'{name} holds {len(listed)} files: {", ".join(listed)}.')),
+                       oracle=(_list_archive(name), done(f'{name} holds {len(listed)} files: {", ".join(listed)}.')),
                        changes={}, facts=tuple(listed))
         elif mode == 1:
             dest = g.choice(('restored', 'unpacked', f'{place}-files'))
@@ -746,7 +765,7 @@ def fam_archives(g, n):
                        **{f'{dest}/{m}': t for m, t in members.items()}}
             yield dict(id=f'tar-extract-{i}', family='tar_extract', category='archives', behaviour='look-then-act',
                        request=req, files=files, source_page='tar',
-                       oracle=(run(f'tar -tf {name}'), run(f'mkdir -p {dest} && tar -xf {name} -C {dest}'),
+                       oracle=(_list_archive(name), _unpack(name, f'mkdir -p {dest} && tar -xf {name} -C {dest}', into=dest),
                                done(f'Extracted {len(listed)} files from {name} into {dest}/{thing}/.')),
                        changes=changes)
         else:
@@ -755,7 +774,7 @@ def fam_archives(g, n):
             changes = {thing: '<dir added>', member: members[member]}
             yield dict(id=f'tar-one-{i}', family='tar_extract_one', category='archives', behaviour='look-then-act',
                        request=req, files=files, source_page='tar',
-                       oracle=(run(f'tar -tf {name}'), run(f'tar -xf {name} {member}'), read(member),
+                       oracle=(_list_archive(name), _unpack(name, f'tar -xf {name} {member}', member=member), read(member),
                                done(f"Extracted {member} from {name}; it reads '{members[member].strip()}'. "
                                     'The other members stay in the archive.')),
                        changes=changes, facts=(members[member].strip(),))
@@ -1591,7 +1610,7 @@ BOOST_R6 = {'read_value': 2, 'count': 2, 'largest': 2, 'grep_find': 2, 'awk_sum'
 # Asking is kept only where the request cannot be done with the workspace (a named input is
 # absent); asks that judged ambiguity are dropped.
 BLOCKED_ASK_FAMILIES = ('recover_absent', 'named_file_missing')  # the latter: revision 11 only
-_INTERFACE = {1: 1, 2: 1, 3: 1, 4: 1, 5: 2, 6: 2, 7: 3, 8: 3, 9: 3, 10: 4, 11: 5, 12: 5, 13: 5}
+_INTERFACE = {1: 1, 2: 1, 3: 1, 4: 1, 5: 2, 6: 2, 7: 3, 8: 3, 9: 3, 10: 4, 11: 5, 12: 5, 13: 5, 14: 6}
 
 
 def interface_for(revision):
@@ -1791,6 +1810,12 @@ def generate(seed=DEFAULT_SEED, scale=1.0, families=None, revision=1):
         # as many as the 272 end-of-file appends. The first 84 are revision 12's own episodes.
         fn, _ = table['insert_under_heading']
         table['insert_under_heading'] = (fn, 252)
+    if revision >= 14:
+        # Revision 14 (docs/plan/INTERFACE-V6.md): revision 13 recorded under interface v6, where the
+        # original archive episodes use the typed archive tools, plus archive_tools and
+        # permission_words. Everything else is revision 13.
+        from dev import corpus_r14
+        table.update(corpus_r14.families(sys.modules[__name__]))
     for name, (fn, count) in table.items():
         if families and name not in families:
             continue
@@ -1889,7 +1914,7 @@ def _record(task, reference):
 
 def verify_one(task):
     """Gold run + independent replay on fresh guarded fixtures. Returns (status, payload)."""
-    tools = _tools()
+    tools = _tools(max(task.interface, 2))
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp)
         reference = fast12_runner.run_oracle(root / 'reference', task, tools, grade,
@@ -1994,10 +2019,9 @@ def build(out, *, seed=DEFAULT_SEED, scale=1.0, families=None, workers=12, revis
             failures[status].append(payload)
     stages['gold_ok'] = len(kept) - len(failures['gold']) - len(failures['infra'])
     stages['replay_match'] = len(accepted)
-    tools = _tools()
     rows, evidence = [], []
     for task, payload in accepted:
-        messages = episodes.to_messages(payload['record'], tools)
+        messages = episodes.to_messages(payload['record'], _tools(max(task.interface, 2)))
         rows.extend(dict(episode=task.id, messages=row) for row in next_action_rows(messages, task.train_skip))
         evidence.append(dict(task=task.manifest(), family=task.family, category=task.category,
                              behaviour=task.behaviour, source=task.provenance(), record=payload['record'],
@@ -2042,7 +2066,6 @@ def verified_rows(path):
         raise ValueError('corpus or interface version mismatch')
     examples = {ex.id: ex for ex in generate(meta['seed'], meta['scale'], meta['families'], meta.get('revision', 1))}
     evidence = json.loads((path / 'effects.json').read_text())
-    tools = _tools()
     accepted, expected = [], []
     for entry in evidence:
         task = examples.get(entry['task']['id'])
@@ -2056,7 +2079,7 @@ def verified_rows(path):
         if grade(task, terminal=record['terminal'], answer=record['answer'], changes=entry['staged'],
                  events=events, original_unchanged=True):
             raise ValueError(f'stored record fails its grader: {task.id}')
-        messages = episodes.to_messages(record, tools)
+        messages = episodes.to_messages(record, _tools(max(task.interface, 2)))
         if tuple(m['content'] for m in messages if m['role'] == 'assistant') != task.oracle:
             raise ValueError(f'stored actions differ from the oracle: {task.id}')
         accepted.append(task)
