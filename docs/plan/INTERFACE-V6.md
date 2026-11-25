@@ -115,3 +115,34 @@ Nothing has been trained on v6, so it is revised in place, and the golden prompt
 This is one change from the redesign table above: instead of a separate add/remove argument, each class takes one value, either a final state or a single change. "Owner only" (`user: read write`, `group: none`, `others: none`) and "let the group execute" (`group: add execute`) are each one call.
 
 The golden prompt was regenerated. Unit and live tests were updated, and a test was added that globs cannot leave the workspace. Step 2 is repeated below under the same rule.
+
+## Step 2, repeated after the redesign (2026-11-24): still a loss at two of three models
+
+The setup is the same as before: code `d64ffd1`, RTX 3090, 106 tasks, untrained on v6. The v5 runs reproduce exactly.
+
+| Model | v5 | v6 (first design) | **v6 (redesign)** | Permissions (/4): v5 → redesign | Archives (/10): v5 → redesign |
+|---|---|---|---|---|---|
+| 2.0 | 64 | 63 | **61** | 3 → 1 | 4 → 5 |
+| r13 s42 | 68 | 64 | **66** | 2 → 1 | 5 → 5 |
+| r13 s43 | 59 | 58 | **60** | 3 → 2 | 4 → 5 |
+
+Runs (v6, redesign):
+- 2.0: `fast12-2cl1a0pw`, `broad-vdr4tv9y`
+- r13 s42: `fast12-et6s886o`, `broad-7rurluat`
+- r13 s43: `fast12-3wd4k6sb`, `broad-jsrjrs1m`
+
+**`fs.chmod` still loses the permission tasks, now in a way the interface cannot fix.** The redesign made "owner only" a single call, and all three models used that form. They filled it with the wrong words:
+- 2.0: `user: add read`, `group: add write`, …
+- s42: `user: read`, `group: none`, `others: read`
+- s43: `remove write` for every class
+
+`restrict_local_draft_mode` is lost by every model under both designs, and passed by two of them on v5 with `chmod 600`. The gap is in mapping "owner-readable and owner-writable only" to permissions: lesson 7's comprehension error. Typed words move that error, they do not remove it.
+
+**The archive tools help a little, and consistently.**
+- Archives are 5/10 for all three models, against 4, 5 and 4 on v5.
+- `archive.add` passed `add_file_to_existing_tar` for 2.0 and s42 (0/3 on v5).
+- `archive.unpack` passed `unpack_without_overwriting` for all three (0/3 on v5).
+
+The other gains and losses are spread over unrelated tasks, at the seed-noise level seen before.
+
+**By the rule, v6 as designed does not go to training.** The decision for Ivy is in STATUS.
