@@ -15,6 +15,7 @@ Updated 2026-11-24. This is the one place for current state; the plan and its ga
 | r11 | new families for 2.0's weak spots | 49 / 48 | — | not promoted |
 | r12 | look before narrowing, varied formats | 50 / 51 | — | not promoted |
 | r13 | mix only: inserts 84 → 252 | 53 / 48 | **68** / 59 | **not promoted** (s43 below the bar) |
+| r14 (v6) | archive tools, permission words | — | 66 / 68 / 58 (2.0 = 66 on v6) | **not promoted** (mean 64.0, s44 below the floor) |
 
 Reports: [r11](data/R11-V5-RESULT.md), [r12](data/R12-V5-RESULT.md), [r13](data/R13-V5-RESULT.md), [roster 106](data/ROSTER-106-BATCH7.md).
 
@@ -50,9 +51,10 @@ Reports: [r11](data/R11-V5-RESULT.md), [r12](data/R12-V5-RESULT.md), [r13](data/
    - Redesigned `fs.chmod` (one call for "owner only", globs) and split `archive.add` out. Remeasured: 2.0 61, r13 s42 66, s43 60. That is still a loss at two of three models.
    - Models use the typed `fs.chmod` with the wrong permission words, so the typed tool does not fix the comprehension gap. The archive tools help a little at every model (archives 5/10 for all three).
    - **Cut to archive tools only** (Ivy). Untrained: 2.0 64→66, r13 s42 68→68, s43 59→58. The total is +1, and s43's −1 comes from plain `tar` errors where it never called an archive tool. Treated as neutral; v6 goes forward.
-   - **Round 14 (running):** corpus `reports/corpus/v6-r14` has 3,221 episodes and 10,416 rows. All gold and replay checks pass.
-     - It is r13 with the archive episodes on the typed tools, plus `archive_tools` 60, `archive_compare` 12 and `permission_words` 48.
-     - Seeds 42–44 train on the 3090 under the three-seed rule; seed 42 is `pilot-jva98lp6`.
+   - **Round 14: not promoted** ([report](data/R14-V6-RESULT.md)). Seeds 42/43/44 scored 66 / 68 / 58 against 2.0's 66 on v6.
+     - The three-seed rule fails on both counts: the mean is 64.0, and the lowest seed (58) is below the floor of 61.
+     - Archives rose at every seed (7/7/6 vs 5), but permissions did not (2/2/4 vs 3).
+     - The seed spread is 10 tasks, which points to the training recipe (seed variance) as the next lever rather than more data.
    - **Disk:** the r12 and r13 pilots were pruned like the r10 and r11 ones: merged fp16 weights and duplicate stock GGUFs removed, with SHA-256 checksums in each `PRUNED.txt`. Adapters, tuned GGUFs and reports are kept. Free space went from 39 to 66 GB.
 2. **Three-seed rule for round 14 on**, recorded in the [roadmap](plan/ROADMAP.md) before any training: the mean of seeds 42–44 must beat 2.0, and no seed may fall more than 5 below it. Seed 42, chosen in advance, goes to held-out.
 
