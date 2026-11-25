@@ -25,8 +25,8 @@ def test_v5_prompt_adds_only_the_two_sentences():
     assert "(no newline" not in v4
 
 
-def test_shipped_default_is_still_v4_and_latest_is_v5():
-    assert p.INTERFACE_VERSION == 4 and p.LATEST_VERSION == 5 and 5 in p.SUPPORTED_VERSIONS
+def test_shipped_default_is_still_v4_and_v5_stays_supported():
+    assert p.INTERFACE_VERSION == 4 and p.LATEST_VERSION >= 5 and 5 in p.SUPPORTED_VERSIONS
 
 
 def test_missing_final_newline_is_announced_outside_the_frame():

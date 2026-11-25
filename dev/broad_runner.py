@@ -50,7 +50,7 @@ def main(argv=None):
     parser.add_argument('--interface', type=int, default=protocol.INTERFACE_VERSION,
                         choices=protocol.SUPPORTED_VERSIONS)
     args = parser.parse_args(argv)
-    tools = protocol.load_tools()
+    tools = protocol.load_tools(version=args.interface)
     verdicts = []
     with fast12_runner.managed_server(args.server, args.gguf, args.out) as (port, opener):
         for task, grade in task_graders():

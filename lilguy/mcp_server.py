@@ -142,14 +142,14 @@ def _v1_tool_schema(spec: "protocol.ToolSpec") -> dict:
     return schema
 
 
-def build_v1_tools() -> dict[str, types.Tool]:
+def build_v1_tools(version: int = protocol.INTERFACE_VERSION) -> dict[str, types.Tool]:
     """`run` plus interface v1's reviewed typed tools (protocol.load_tools), as MCP tools.
 
     Never includes an apply, approve or commit tool: this server has no approval authority.
     """
     tools = {"run": types.Tool(name="run", description="Run one shell command or short script.",
                                 inputSchema=_RUN_SCHEMA)}
-    for name, spec in protocol.load_tools().items():
+    for name, spec in protocol.load_tools(version=version).items():
         tools[name] = types.Tool(name=name, description=spec.description, inputSchema=_v1_tool_schema(spec))
     return tools
 
@@ -157,7 +157,7 @@ def build_v1_tools() -> dict[str, types.Tool]:
 @functools.lru_cache(maxsize=1)
 def _v1_arg_types() -> dict:
     return {name: {arg: spec.type for arg, spec in tool.args.items()}
-            for name, tool in protocol.load_tools().items()}
+            for name, tool in protocol.load_tools(version=protocol.LATEST_VERSION).items()}
 
 
 def audit_args(name: str, arguments: dict) -> list:
@@ -195,8 +195,10 @@ class InterfaceV1:
         values = {key: spec["default"] for key, spec in self.tools[name].inputSchema["properties"].items()
                   if "default" in spec}
         values.update(arguments)
-        path = values.get("path")
-        if path is not None:
+        for key, kind in _v1_arg_types().get(name, {}).items():
+            path = values.get(key) if kind == "path" else None
+            if path is None:
+                continue
             posix = PurePosixPath(path)
             if posix.is_absolute() or ".." in posix.parts or "\0" in path:
                 return None
@@ -292,7 +294,7 @@ def main(argv=None) -> None:
         return GuardedSession(backend, session, trusted_policies(read_only=args.read_only))
 
     if args.interface_v1:
-        asyncio.run(serve_v1(InterfaceV1(build_v1_tools(), open_guarded, args.interface)))
+        asyncio.run(serve_v1(InterfaceV1(build_v1_tools(args.interface), open_guarded, args.interface)))
     else:
         asyncio.run(serve(Tracer(load_tools(source), open_guarded)))
 

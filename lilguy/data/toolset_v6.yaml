@@ -1,0 +1,52 @@
+# Interface v6 typed tools (docs/plan/INTERFACE-V6.md). Served only from interface 6 on; the
+# frozen v1-v5 surface stays in toolset.yaml. Same schema as toolset.yaml's `tools`.
+tools:
+  fs.chmod:
+    description: Add or remove read, write or execute permission for the user (owner), group or others.
+    tier: 1
+    effect: write
+    args:
+      path: {type: path}
+      who: {type: enum, values: [user, group, others, all]}
+      read: {type: enum, values: [keep, add, remove], default: keep}
+      write: {type: enum, values: [keep, add, remove], default: keep}
+      execute: {type: enum, values: [keep, add, remove], default: keep}
+      recursive: {type: bool, default: false}
+    bash:
+      utility: chmod
+      flags: {'-R': recursive}
+  archive.list:
+    description: List the files in a .tar, .tar.gz, .tgz or .gz archive, optionally comparing each with the workspace.
+    tier: 1
+    effect: read
+    args:
+      path: {type: path}
+      compare: {type: bool, default: false}
+    bash:
+      utility: tar
+      flags: {'-t': compare}
+  archive.pack:
+    description: Pack a file or folder into a .tar, .tar.gz or .tgz archive, or gzip one file into .gz (the original is kept).
+    tier: 1
+    effect: write
+    args:
+      archive: {type: path}
+      source: {type: path}
+      exclude: {type: string, optional: true, max_length: 4096}
+      add: {type: bool, default: false}
+      top_folder: {type: bool, default: true}
+    bash:
+      utility: tar
+      flags: {'-c': add, '--exclude': exclude}
+  archive.unpack:
+    description: Unpack a .tar, .tar.gz, .tgz or .gz archive into a folder; existing files are kept unless overwrite is true.
+    tier: 1
+    effect: write
+    args:
+      archive: {type: path}
+      into: {type: path, default: .}
+      member: {type: string, optional: true, max_length: 4096}
+      overwrite: {type: bool, default: false}
+    bash:
+      utility: tar
+      flags: {'-x': overwrite, '-C': into}

@@ -484,6 +484,22 @@ Then the cycle, one round at a time:
 
 The held-out set is run **once** per candidate, at the end.
 
+#### 2026-11-24 — Promotion rule for training rounds from r14 on (decided before r14)
+
+Two seeds of one corpus scored 53 and 48 on the 80-task roster (r13), and 68 and 59 on 106. That
+spread is larger than any candidate's distance to the bar, so "every seed reaches the bar" rejects
+candidates on the draw of a seed. From round 14:
+
+- train **three seeds** (42, 43, 44) on the same corpus and recipe;
+- score each on the full development roster, on the same code and GPU as the reference (2.0 on the
+  round's interface);
+- the round goes to held-out only if **the mean of the three seeds is above the reference** and
+  **no seed is more than 5 tasks below it**;
+- the seed sent to held-out is chosen **before** scoring: seed 42. Picking the best-scoring seed
+  would select on noise.
+
+Rounds 11–13 stay judged by the rule declared for them; r13 is not reopened.
+
 Gate:
 - beats its own untuned baseline in every category, with no new unsafe
   behaviour;

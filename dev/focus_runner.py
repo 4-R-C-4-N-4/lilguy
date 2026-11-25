@@ -48,7 +48,7 @@ def main(argv=None):
     args = parser.parse_args(argv)
     focus = importlib.import_module(SETS[args.set])
     args.out.mkdir(parents=True, exist_ok=True)
-    tools = protocol.load_tools()
+    tools = protocol.load_tools(version=args.interface)
     verdicts = []
     with fast12_runner.managed_server(args.server, args.gguf, args.out) as (port, opener):
         for task in focus.TASKS:

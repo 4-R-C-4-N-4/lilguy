@@ -128,7 +128,7 @@ def main(argv=None):
     if not gate['ok']:
         parser.error(f"held-out split gate failed: {gate['reason']}")
     interface = args.interface or spec['interface']
-    tools = protocol.load_tools()
+    tools = protocol.load_tools(version=interface)
     verdicts = []
     with fast12_runner.managed_server(args.server, args.gguf, args.out) as (port, opener):
         for task in spec['tasks']:

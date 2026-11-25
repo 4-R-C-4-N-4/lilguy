@@ -317,7 +317,7 @@ async def _run(request: str, workspace: Path, state_dir: Path, url: str, model: 
     from mcp import ClientSession, StdioServerParameters
     from mcp.client.stdio import stdio_client
 
-    tools = p.load_tools()
+    tools = p.load_tools(version=version)
     env = {k: os.environ[k] for k in ("XDG_RUNTIME_DIR", "DBUS_SESSION_BUS_ADDRESS") if k in os.environ}
     params = StdioServerParameters(command=sys.executable, cwd=str(ROOT), env=env,
                                    args=server_args(workspace, state_dir, mode, version))

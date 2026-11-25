@@ -505,7 +505,7 @@ def main(argv=None):
     args.out.mkdir(parents=True, exist_ok=True)
 
     tasks, grade = _load_tasks()
-    tools = p.load_tools()
+    tools = p.load_tools(version=args.interface)
     verdicts = []
     with managed_server(args.server, args.gguf, args.out) as (port, opener):
         for task in tasks:

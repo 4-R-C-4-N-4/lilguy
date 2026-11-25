@@ -318,7 +318,7 @@ def setup_main(argv: list[str] | None = None) -> int:
     device.add_argument("--gpu", default=None, help="NVIDIA GPU name to pin, e.g. 4070 (default: any)")
     device.add_argument("--cpu", action="store_true", help="run on the CPU only (slower, no GPU needed)")
     ap.add_argument("--port", type=int, default=DEFAULT_PORT)
-    ap.add_argument("--interface", type=int, default=None, choices=(2, 3, 4, 5),
+    ap.add_argument("--interface", type=int, default=None, choices=(2, 3, 4, 5, 6),
                     help="interface the --model GGUF was trained on (known release files are detected)")
     args = ap.parse_args(argv)
     server = args.llama_server or find_llama_server()

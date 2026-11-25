@@ -41,15 +41,24 @@ import yaml
 from .digest import digest
 
 INTERFACE_VERSION = 4
-SUPPORTED_VERSIONS = (1, 2, 3, 4, 5)
+SUPPORTED_VERSIONS = (1, 2, 3, 4, 5, 6)
 # The development interface (newest). INTERFACE_VERSION stays the one the shipped model was
 # trained on until a model trained on a newer version is released.
-LATEST_VERSION = 5
+LATEST_VERSION = 6
 MODES = ("do", "ask")
 TOOLSET = Path(__file__).resolve().parent / "data" / "toolset.yaml"
 # Typed tools served in v1. The text tools in toolset.yaml are thin wrappers that `run` already
 # covers; whether typed tools earn their place is measured later (plan step 5/7 ablation).
 TOOLS_V1 = ("fs.list", "fs.find", "fs.read", "fs.grep", "fs.edit")
+# Typed tools added in v6 (docs/plan/INTERFACE-V6.md), defined in their own file so the frozen
+# v1-v5 manifest stays byte-identical.
+TOOLSET_V6 = TOOLSET.with_name("toolset_v6.yaml")
+TOOLS_V6 = ("fs.chmod", "archive.list", "archive.pack", "archive.unpack")
+
+
+def tool_names(version):
+    """The typed tools served at an interface version, in interface order."""
+    return TOOLS_V1 + (TOOLS_V6 if version >= 6 else ())
 KINDS = ("run", "tool", "ask", "done")
 POLICIES = ("ok", "pending", "rejected")
 MAX_ACTION_CHARS = 16_384
@@ -107,9 +116,14 @@ class Action:
         return cls("tool", tool=name, args=args)
 
 
-def load_tools(toolset=TOOLSET, names=TOOLS_V1):
-    """The served tools, in interface order, from the trusted toolset.yaml."""
+def load_tools(toolset=TOOLSET, names=None, version=None):
+    """The served tools, in interface order, from the trusted toolset.yaml (and, from interface 6,
+    toolset_v6.yaml). Without `names`, the tools of `version` (default: the shipped interface)."""
+    if names is None:
+        names = tool_names(INTERFACE_VERSION if version is None else version)
     definitions = yaml.safe_load(Path(toolset).read_text(encoding="utf8"))["tools"]
+    if any(name in TOOLS_V6 for name in names):
+        definitions = {**definitions, **yaml.safe_load(TOOLSET_V6.read_text(encoding="utf8"))["tools"]}
     tools = {}
     for name in names:
         definition = definitions[name]
@@ -519,6 +533,15 @@ _HEADERS[5] = _HEADERS[4].replace(
     "name instead.\n",
 )
 assert _HEADERS[5].count("never change a file with a similar name") == 1
+
+# v6 (docs/plan/INTERFACE-V6.md): typed permission and archive tools. The prompt adds them to the
+# tool list and names them in the tool habit. Everything else is v5 unchanged.
+_HEADERS[6] = _HEADERS[5].replace(
+    "- Use a tool below when it fits; otherwise use run.\n",
+    "- Use a tool below when it fits; otherwise use run. For permissions, and for tar or gzip files, "
+    "use fs.chmod and the archive tools rather than chmod or tar.\n",
+)
+assert _HEADERS[6] != _HEADERS[5]
 
 
 def _describe(arg):
