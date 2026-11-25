@@ -50,7 +50,10 @@ Reports: [r11](data/R11-V5-RESULT.md), [r12](data/R12-V5-RESULT.md), [r13](data/
    - Redesigned `fs.chmod` (one call for "owner only", globs) and split `archive.add` out. Remeasured: 2.0 61, r13 s42 66, s43 60. That is still a loss at two of three models.
    - Models use the typed `fs.chmod` with the wrong permission words, so the typed tool does not fix the comprehension gap. The archive tools help a little at every model (archives 5/10 for all three).
    - **Cut to archive tools only** (Ivy). Untrained: 2.0 64→66, r13 s42 68→68, s43 59→58. The total is +1, and s43's −1 comes from plain `tar` errors where it never called an archive tool. Treated as neutral; v6 goes forward.
-   - **Next:** corpus revision 14 on v6: archive episodes with the tools, and permission episodes that give the mode both in words and as a number. Train seeds 42–44 under the three-seed rule.
+   - **Round 14 (running):** corpus `reports/corpus/v6-r14` has 3,221 episodes and 10,416 rows. All gold and replay checks pass.
+     - It is r13 with the archive episodes on the typed tools, plus `archive_tools` 60, `archive_compare` 12 and `permission_words` 48.
+     - Seeds 42–44 train on the 3090 under the three-seed rule; seed 42 is `pilot-jva98lp6`.
+   - **Disk:** the r12 and r13 pilots were pruned like the r10 and r11 ones: merged fp16 weights and duplicate stock GGUFs removed, with SHA-256 checksums in each `PRUNED.txt`. Adapters, tuned GGUFs and reports are kept. Free space went from 39 to 66 GB.
 2. **Three-seed rule for round 14 on**, recorded in the [roadmap](plan/ROADMAP.md) before any training: the mean of seeds 42–44 must beat 2.0, and no seed may fall more than 5 below it. Seed 42, chosen in advance, goes to held-out.
 
 **Disk:** ~85 GB free after pruning superseded weights. Every report, adapter and checksum was kept.
