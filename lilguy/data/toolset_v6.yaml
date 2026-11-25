@@ -2,15 +2,14 @@
 # frozen v1-v5 surface stays in toolset.yaml. Same schema as toolset.yaml's `tools`.
 tools:
   fs.chmod:
-    description: Add or remove read, write or execute permission for the user (owner), group or others.
+    description: Set permissions. For each of user (owner), group and others, give the permissions it should end with, or add or remove one.
     tier: 1
     effect: write
     args:
       path: {type: path}
-      who: {type: enum, values: [user, group, others, all]}
-      read: {type: enum, values: [keep, add, remove], default: keep}
-      write: {type: enum, values: [keep, add, remove], default: keep}
-      execute: {type: enum, values: [keep, add, remove], default: keep}
+      user: {type: enum, values: [keep, none, read, write, execute, read write, read execute, write execute, read write execute, add read, add write, add execute, remove read, remove write, remove execute], default: keep}
+      group: {type: enum, values: [keep, none, read, write, execute, read write, read execute, write execute, read write execute, add read, add write, add execute, remove read, remove write, remove execute], default: keep}
+      others: {type: enum, values: [keep, none, read, write, execute, read write, read execute, write execute, read write execute, add read, add write, add execute, remove read, remove write, remove execute], default: keep}
       recursive: {type: bool, default: false}
     bash:
       utility: chmod
@@ -26,18 +25,27 @@ tools:
       utility: tar
       flags: {'-t': compare}
   archive.pack:
-    description: Pack a file or folder into a .tar, .tar.gz or .tgz archive, or gzip one file into .gz (the original is kept).
+    description: Pack a file or folder into a new .tar, .tar.gz or .tgz archive, or gzip one file into .gz (the original is kept).
     tier: 1
     effect: write
     args:
       archive: {type: path}
       source: {type: path}
       exclude: {type: string, optional: true, max_length: 4096}
-      add: {type: bool, default: false}
       top_folder: {type: bool, default: true}
     bash:
       utility: tar
-      flags: {'-c': add, '--exclude': exclude}
+      flags: {'-c': top_folder, '--exclude': exclude}
+  archive.add:
+    description: Add a file or folder to an existing .tar, .tar.gz or .tgz archive, keeping what is already in it.
+    tier: 1
+    effect: write
+    args:
+      archive: {type: path}
+      source: {type: path}
+    bash:
+      utility: tar
+      flags: {'-r': source}
   archive.unpack:
     description: Unpack a .tar, .tar.gz, .tgz or .gz archive into a folder; existing files are kept unless overwrite is true.
     tier: 1

@@ -40,11 +40,11 @@ _SITE = dev_archives.tar_fixture({'site/index.html': '<h1>Welcome</h1>\n', 'site
 # (task, expected final policy). Scripted with the new tools only; graded like the archive batch.
 TOOL_CASES = [
     (Task('v6_chmod_group_execute', 'Let the group run helpers/a.sh.', {'helpers/a.sh': 'echo a\n'},
-          ('tool fs.chmod\npath: helpers/a.sh\nwho: group\nexecute: add', 'done'),
+          ('tool fs.chmod\npath: helpers/*.sh\ngroup: add execute', 'done'),
           {'helpers/a.sh': '<mode 644->654>'}, policy_end='pending'), 'pending'),
     (Task('v6_chmod_private', 'Make draft.txt readable and writable by its owner only.', {'draft.txt': 'd\n'},
-          ('tool fs.chmod\npath: draft.txt\nwho: group\nread: remove', 'done'),
-          {'draft.txt': '<mode 644->604>'}, policy_end='pending'), 'pending'),
+          ('tool fs.chmod\npath: draft.txt\nuser: read write\ngroup: none\nothers: none', 'done'),
+          {'draft.txt': '<mode 644->600>'}, policy_end='pending'), 'pending'),
     (Task('v6_pack_exclude', 'Pack notes/ into notes.tar.gz without .tmp files.',
           {'notes/a.txt': 'a\n', 'notes/s.tmp': 't\n'},
           ('tool archive.pack\narchive: notes.tar.gz\nsource: notes\nexclude: *.tmp', 'done'),
@@ -62,7 +62,7 @@ TOOL_CASES = [
           {'out': '<dir added>', 'out/colors.ini': 'accent=teal\n'}), 'ok'),
     (Task('v6_add_to_tar', 'Add extra.txt to settings.tar.',
           {'settings.tar': _SETTINGS, 'extra.txt': 'e\n'},
-          ('tool archive.pack\narchive: settings.tar\nsource: extra.txt\nadd: true', 'done'),
+          ('tool archive.add\narchive: settings.tar\nsource: extra.txt', 'done'),
           {'settings.tar': dev_archives.archive('tar', {'config.ini': 'volume=9\n', 'colors.ini': 'accent=teal\n',
                                                         'extra.txt': 'e\n'})}), 'ok'),
 ]

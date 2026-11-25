@@ -35,15 +35,15 @@ def test_tools_are_gated_by_version_and_the_frozen_manifest_is_unchanged():
 
 
 def test_v6_actions_round_trip_and_the_grammar_names_every_tool():
-    action = p.Action.call("fs.chmod", path="helpers/a.sh", who="group", execute="add")
+    action = p.Action.call("fs.chmod", path="draft.txt", user="read write", group="none", others="none")
     text = p.render_action(action, V6, version=6)
-    assert text == "tool fs.chmod\npath: helpers/a.sh\nwho: group\nexecute: add"
+    assert text == "tool fs.chmod\npath: draft.txt\nuser: read write\ngroup: none\nothers: none"
     parsed = p.parse_action(text, V6, version=6)
     assert (parsed.kind, parsed.tool, parsed.args) == ("tool", "fs.chmod", action.args)
     grammar = p.grammar(V6, version=6)
     for name in p.TOOLS_V6:
         assert name in grammar
-    assert '"user" | "group" | "others" | "all"' in grammar
+    assert '"read write execute"' in grammar and '"add execute"' in grammar
 
 
 def test_every_path_argument_is_checked_before_the_sandbox():
@@ -64,30 +64,39 @@ def _mode(path):
     return stat.S_IMODE(os.lstat(path).st_mode)
 
 
-def test_chmod_adds_and_removes_bits_and_reports_them(ws, capsys):
-    (ws / "a.sh").write_text("x\n")
-    os.chmod(ws / "a.sh", 0o644)
-    step.chmod("a.sh", "group", execute="add")
-    assert _mode(ws / "a.sh") == 0o654
-    assert capsys.readouterr().out == "a.sh: rw-r--r-- -> rw-r-xr--\n"
-    step.chmod("a.sh", "all", read="remove", write="remove")
-    assert _mode(ws / "a.sh") == 0o010
+def test_chmod_owner_only_is_one_call_and_add_is_relative(ws, capsys):
+    (ws / "draft.txt").write_text("d\n")
+    os.chmod(ws / "draft.txt", 0o644)
+    step.chmod("draft.txt", user="read write", group="none", others="none")
+    assert _mode(ws / "draft.txt") == 0o600
+    assert capsys.readouterr().out == "draft.txt: rw-r--r-- -> rw-------\n"
+    step.chmod("draft.txt", group="add execute")
+    assert _mode(ws / "draft.txt") == 0o610
+    step.chmod("draft.txt", user="remove write", others="read")
+    assert _mode(ws / "draft.txt") == 0o414
     with pytest.raises(ValueError, match="Nothing to change"):
-        step.chmod("a.sh", "user")
+        step.chmod("draft.txt")
     with pytest.raises(ValueError, match="No such file or directory"):
-        step.chmod("missing.sh", "user", execute="add")
+        step.chmod("missing.sh", user="add execute")
 
 
-def test_chmod_recursive_and_never_through_symlinks(ws):
+def test_chmod_globs_recurses_and_never_follows_symlinks(ws, capsys):
+    (ws / "helpers").mkdir()
+    for name in ("a.sh", "b.sh", "README"):
+        (ws / "helpers" / name).write_text("x\n")
+        os.chmod(ws / "helpers" / name, 0o644)
+    step.chmod("helpers/*.sh", group="add execute")
+    assert [_mode(ws / "helpers" / n) for n in ("a.sh", "b.sh", "README")] == [0o654, 0o654, 0o644]
+    with pytest.raises(ValueError, match="No such file or directory"):
+        step.chmod("helpers/*.py", user="add execute")
     (ws / "bin").mkdir()
     (ws / "bin" / "x").write_text("x\n")
     (ws / "bin" / "link").symlink_to("x")
     os.chmod(ws / "bin" / "x", 0o644)
-    step.chmod("bin", "others", execute="add", recursive=True)
+    step.chmod("bin", others="add execute", recursive=True)
     assert _mode(ws / "bin" / "x") == 0o645
-    assert _mode(ws / "bin") & stat.S_IXOTH
     with pytest.raises(ValueError, match="symbolic link"):
-        step.chmod("bin/link", "user", execute="add")
+        step.chmod("bin/link", user="add execute")
 
 
 def _members(path):
@@ -105,8 +114,12 @@ def test_pack_with_exclude_top_folder_and_add(ws, capsys):
     step.archive_pack("flat.tar", "notes", top_folder=False)
     assert set(_members(ws / "flat.tar")) == {"a.txt", "s.tmp", "later/b.txt"}
     (ws / "extra.txt").write_text("e\n")
-    step.archive_pack("notes.tar.gz", "extra.txt", add=True)
+    step.archive_add("notes.tar.gz", "extra.txt")
     assert _members(ws / "notes.tar.gz") == {"notes/a.txt": "a\n", "notes/later/b.txt": "b\n", "extra.txt": "e\n"}
+    (ws / "kit").mkdir()
+    (ws / "kit" / "easel.txt").write_text("k\n")
+    step.archive_add("notes.tar.gz", "kit/easel.txt")  # a file keeps its workspace path, as with tar
+    assert "kit/easel.txt" in _members(ws / "notes.tar.gz")
     with pytest.raises(ValueError, match="must not be inside"):
         step.archive_pack("notes/self.tar", "notes")
 
@@ -173,5 +186,14 @@ def test_repacking_an_existing_archive_keeps_its_mode(ws):
     step.archive_pack("kit.tar", "a.txt")
     os.chmod(ws / "kit.tar", 0o640)
     (ws / "b.txt").write_text("b\n")
-    step.archive_pack("kit.tar", "b.txt", add=True)
+    step.archive_add("kit.tar", "b.txt")
     assert _mode(ws / "kit.tar") == 0o640
+
+
+def test_chmod_glob_cannot_leave_the_workspace(ws, tmp_path_factory):
+    outside = tmp_path_factory.mktemp("outside")
+    (outside / "x.sh").write_text("x\n")
+    with pytest.raises(ValueError, match="workspace-relative"):
+        step.chmod(f"../{outside.name}/*.sh", user="add execute")
+    with pytest.raises(ValueError, match="workspace-relative"):
+        step.chmod(f"{outside}/*.sh", user="add execute")

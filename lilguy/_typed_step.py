@@ -237,7 +237,6 @@ def edit(path, old, new):
 
 # --- interface v6: typed permission and archive tools (docs/plan/INTERFACE-V6.md) ---------------
 
-_WHO = {"user": "u", "group": "g", "others": "o", "all": "ugo"}
 _BITS = {"u": {"read": stat.S_IRUSR, "write": stat.S_IWUSR, "execute": stat.S_IXUSR},
          "g": {"read": stat.S_IRGRP, "write": stat.S_IWGRP, "execute": stat.S_IXGRP},
          "o": {"read": stat.S_IROTH, "write": stat.S_IWOTH, "execute": stat.S_IXOTH}}
@@ -249,29 +248,56 @@ def _symbolic(mode):
                       stat.S_IXGRP, stat.S_IROTH, stat.S_IWOTH, stat.S_IXOTH)))
 
 
-def chmod(path, who, read="keep", write="keep", execute="keep", recursive=False):
-    start, target = checked_path(path)
-    if start.is_symlink() or not target.exists():
-        raise ValueError(_absent(path) if not target.exists() else f"{path} is a symbolic link")
-    changes = {"read": read, "write": write, "execute": execute}
-    if all(v == "keep" for v in changes.values()):
-        raise ValueError("Nothing to change: set read, write or execute to add or remove")
-    add = remove = 0
-    for scope in _WHO[who]:
-        for permission, action in changes.items():
-            if action == "add":
-                add |= _BITS[scope][permission]
-            elif action == "remove":
-                remove |= _BITS[scope][permission]
-    for entry in candidates(start, None if recursive else 0):
-        if entry.is_symlink():
-            continue
-        before = stat.S_IMODE(entry.lstat().st_mode)
-        after = (before | add) & ~remove
-        if after != before:
-            os.chmod(entry, after)
+def _chmod_targets(path):
+    """A path or a glob (helpers/*.sh), workspace-relative, sorted; symlinks are never followed."""
+    if not any(c in path for c in "*?["):
+        start, target = checked_path(path)
+        if not target.exists() and not start.is_symlink():
+            raise ValueError(_absent(path))
+        return [start]
+    import glob
+    hits = []
+    for name in sorted(glob.glob(path)):
+        start, _ = checked_path(name)
+        hits.append(start)
+    if not hits:
+        raise ValueError(_absent(path))
+    return hits
+
+
+def _class_mode(scope, value, before):
+    """New bits of one class (u, g or o) from a v6 value: keep, a final state, or add/remove one."""
+    bits = _BITS[scope]
+    mask = bits["read"] | bits["write"] | bits["execute"]
+    if value == "keep":
+        return before & mask
+    if value.startswith(("add ", "remove ")):
+        action, permission = value.split(" ")
+        return (before | bits[permission]) & mask if action == "add" else before & mask & ~bits[permission]
+    words = () if value == "none" else value.split(" ")
+    return sum(bits[w] for w in words)
+
+
+def chmod(path, user="keep", group="keep", others="keep", recursive=False):
+    values = {"u": user, "g": group, "o": others}
+    if all(v == "keep" for v in values.values()):
+        raise ValueError("Nothing to change: give user, group or others a value other than keep")
+    for start in _chmod_targets(path):
+        if start.is_symlink():
+            raise ValueError(f"{start.relative_to(Path.cwd()).as_posix()} is a symbolic link")
+        for entry in candidates(start, None if recursive else 0):
+            if entry.is_symlink():
+                continue
+            before = stat.S_IMODE(entry.lstat().st_mode)
+            after = before & ~0o777
+            for scope, value in values.items():
+                after |= _class_mode(scope, value, before)
             name = entry.relative_to(Path.cwd()).as_posix()
-            print(f"{name}: {_symbolic(before)} -> {_symbolic(after)}")
+            if after != before:
+                os.chmod(entry, after)
+                print(f"{name}: {_symbolic(before)} -> {_symbolic(after)}")
+            else:
+                print(f"{name}: {_symbolic(before)} (unchanged)")
 
 
 def _kind(path):
@@ -335,7 +361,15 @@ def archive_list(path, compare=False):
                 print(f"{name} {'same' if same else 'differs'}")
 
 
-def archive_pack(archive, source, exclude=None, add=False, top_folder=True):
+def archive_pack(archive, source, exclude=None, top_folder=True):
+    _pack(archive, source, exclude=exclude, add=False, top_folder=top_folder)
+
+
+def archive_add(archive, source):
+    _pack(archive, source, exclude=None, add=True, top_folder=True)
+
+
+def _pack(archive, source, exclude=None, add=False, top_folder=True):
     import gzip
     import io
     import tarfile
@@ -350,7 +384,7 @@ def archive_pack(archive, source, exclude=None, add=False, top_folder=True):
         if not src_resolved.is_file():
             raise ValueError(f"{source}: .gz holds one file; use .tar.gz for a folder")
         if add:
-            raise ValueError(".gz holds one file; add needs a .tar or .tar.gz archive")
+            raise ValueError(".gz holds one file; archive.add needs a .tar or .tar.gz archive")
         out.write_bytes(gzip.compress(src_resolved.read_bytes()))
         print(f"{archive}: {source}")
         return
@@ -367,7 +401,9 @@ def archive_pack(archive, source, exclude=None, add=False, top_folder=True):
             for member in old.getmembers():
                 if member.isfile():
                     keep.append((member.name, old.extractfile(member).read(), member.mode))
-    base = src.parent if (top_folder or src_resolved.is_file()) else src
+    # A file keeps its workspace path inside the archive, as tar does (kit/easel.txt); a folder keeps
+    # its own name (top_folder) or contributes only its contents.
+    base = root if src_resolved.is_file() else src.parent if top_folder else src
     files = []
     for entry in candidates(src, None):
         if entry.is_symlink() or not entry.is_file():
@@ -375,8 +411,7 @@ def archive_pack(archive, source, exclude=None, add=False, top_folder=True):
         if exclude and fnmatch.fnmatchcase(entry.name, exclude):
             continue
         files.append(entry)
-    names = [entry.relative_to(base).as_posix() if base != root else entry.relative_to(root).as_posix()
-             for entry in files]
+    names = [entry.relative_to(base).as_posix() for entry in files]
     added = set(names)
     mode = "w:gz" if kind == "tar.gz" else "w"
     if out_resolved.is_file():
@@ -480,7 +515,7 @@ def main():
     try:
         {"fs.find": find, "fs.read": read, "fs.edit": edit,
          "fs.list": list_, "fs.grep": grep, "fs.chmod": chmod, "archive.list": archive_list,
-         "archive.pack": archive_pack, "archive.unpack": archive_unpack}[name](**json.loads(arguments))
+         "archive.pack": archive_pack, "archive.add": archive_add, "archive.unpack": archive_unpack}[name](**json.loads(arguments))
     except (UnicodeError, OSError, OverflowError, RuntimeError):
         print("Unable to access workspace text", file=sys.stderr)
         return 1

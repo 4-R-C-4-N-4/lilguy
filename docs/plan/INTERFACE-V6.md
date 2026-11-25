@@ -102,3 +102,16 @@ Runs:
 | 4 | The prompt names the one-file case: "to take one file out, use archive.unpack with member" | No model found `member` |
 
 Nothing has been trained on v6, so it is revised in place, and the golden prompt is regenerated. Step 2 is then repeated under the same rule.
+
+## Redesign (2026-11-24, in place: nothing has been trained on v6)
+
+| Change | Now |
+|---|---|
+| `fs.chmod` | `path` (a path or a glob such as `helpers/*.sh`); `user`, `group`, `others`, each one of: `keep`; a final state (`none`, `read`, `write`, `execute`, `read write`, `read execute`, `write execute`, `read write execute`); or one change (`add read|write|execute`, `remove read|write|execute`); `recursive`. Output: one line per path, `before -> after` or `(unchanged)`. |
+| `archive.pack` | New archives only (no `add`). A file source keeps its workspace path inside the archive, as tar does. |
+| `archive.add` | New tool: add a file or folder to an existing .tar, .tar.gz or .tgz, keeping its members. |
+| Prompt | The tool habit adds: "To take one file out of an archive, use archive.unpack with member." |
+
+This is one change from the redesign table above: instead of a separate add/remove argument, each class takes one value, either a final state or a single change. "Owner only" (`user: read write`, `group: none`, `others: none`) and "let the group execute" (`group: add execute`) are each one call.
+
+The golden prompt was regenerated. Unit and live tests were updated, and a test was added that globs cannot leave the workspace. Step 2 is repeated below under the same rule.
