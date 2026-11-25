@@ -20,7 +20,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 FACTORY = ROOT / 'reports' / 'factory'
-# As dev.LLAMA (not imported: it pulls in the evaluation runner, absent from the training venv).
+# As dev.factory_pilot.LLAMA (not imported: it pulls in the evaluation runner, absent from the training venv).
 LLAMA = Path(os.environ.get('LILGUY_LLAMA_CPP', Path.home() / 'programs/llama.cpp'))
 
 
@@ -64,25 +64,25 @@ def main(argv=None):
 
     model = transformers.LlamaForCausalLM.from_pretrained(base['snapshot'], dtype=torch.float32, local_files_only=True)
     state = model.state_dict()
-    deltas, scales = {}, []
+    scales, modules = [], set()
     for pilot in args.pilots:
         adapter = FACTORY / pilot / 'minicpm' / 'training' / 'adapter'
         config = json.loads((adapter / 'adapter_config.json').read_text())
         scale = config['lora_alpha'] / config['r']
         scales.append(scale)
-        with safe_open(adapter / 'adapter_model.safetensors', 'pt') as f:
+        with safe_open(adapter / 'adapter_model.safetensors', 'pt') as f, torch.no_grad():
             for weight, (a_key, b_key) in lora_delta_keys(f.keys()).items():
                 if weight not in state:
                     raise SystemExit(f'adapter module {weight} not in the base model')
-                delta = (f.get_tensor(b_key).float() @ f.get_tensor(a_key).float()) * scale
-                deltas[weight] = deltas.get(weight, 0) + delta / len(args.pilots)
-    with torch.no_grad():
-        for weight, delta in deltas.items():
-            state[weight].add_(delta.to(state[weight].dtype))
-    model.load_state_dict(state)
+                # Added in place, one module at a time: the mean of the deltas without holding them.
+                state[weight].add_((f.get_tensor(b_key).float() @ f.get_tensor(a_key).float()) * (scale / len(args.pilots)))
+                modules.add(weight)
     merged = out / 'merged'
     model.to(torch.bfloat16).save_pretrained(merged)
     transformers.AutoTokenizer.from_pretrained(base['snapshot'], local_files_only=True).save_pretrained(merged)
+    del model, state
+    import gc
+    gc.collect()
 
     gguf = out / 'tuned-q8_0.gguf'
     env = {**os.environ, 'PYTHONPATH': str(LLAMA / 'gguf-py')}
@@ -90,7 +90,7 @@ def main(argv=None):
                     '--outtype', 'q8_0', '--outfile', gguf], check=True, env=env,
                    stdout=(out / 'export.log').open('w'), stderr=subprocess.STDOUT)
     shutil.rmtree(merged)
-    plan = {'job': 'soup', 'base': 'minicpm', 'ingredients': args.pilots, 'modules': len(deltas),
+    plan = {'job': 'soup', 'base': 'minicpm', 'ingredients': args.pilots, 'modules': len(modules),
             'scales': scales, 'data': plans[0]['data'], 'interface': plans[0]['interface'],
             'lr_schedule': plans[0]['lr_schedule'], 'tuned_q8_0_sha256': sha256(gguf),
             'method': 'base + mean over ingredients of B@A*alpha/r, fp32, saved bf16, Q8_0'}
