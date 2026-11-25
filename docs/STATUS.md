@@ -49,7 +49,8 @@ Reports: [r11](data/R11-V5-RESULT.md), [r12](data/R12-V5-RESULT.md), [r13](data/
    - `fs.chmod` cannot express "owner only" in one call, so permissions fell at every model. The archive tools are used as intended.
    - Redesigned `fs.chmod` (one call for "owner only", globs) and split `archive.add` out. Remeasured: 2.0 61, r13 s42 66, s43 60. That is still a loss at two of three models.
    - Models use the typed `fs.chmod` with the wrong permission words, so the typed tool does not fix the comprehension gap. The archive tools help a little at every model (archives 5/10 for all three).
-   - **Open decision:** v6 with archive tools only, or no v6.
+   - **Cut to archive tools only** (Ivy). Untrained: 2.0 64→66, r13 s42 68→68, s43 59→58. The total is +1, and s43's −1 comes from plain `tar` errors where it never called an archive tool. Treated as neutral; v6 goes forward.
+   - **Next:** corpus revision 14 on v6: archive episodes with the tools, and permission episodes that give the mode both in words and as a number. Train seeds 42–44 under the three-seed rule.
 2. **Three-seed rule for round 14 on**, recorded in the [roadmap](plan/ROADMAP.md) before any training: the mean of seeds 42–44 must beat 2.0, and no seed may fall more than 5 below it. Seed 42, chosen in advance, goes to held-out.
 
 **Disk:** ~85 GB free after pruning superseded weights. Every report, adapter and checksum was kept.

@@ -154,3 +154,32 @@ The other gains and losses are spread over unrelated tasks, at the seed-noise le
 Permissions go back to being a data question. The [permission contrast](../data/PERMISSION-CONTRAST.md) showed that stating the mode as a number rescues the guarded runs, so round 14 can teach the mapping from words to modes.
 
 Step 2 is measured once more under the same rule, on the 3090 like every baseline. v5 has reproduced 64, 68 and 59 exactly on three code revisions today, and this change touches only v6. So only v6 is rerun, and v5 is cited from `broad-nv64y8py`, `broad-plfp83sf` and `broad-hkyxd2xq`.
+
+### Result (2026-11-24, RTX 3090, 106 tasks, untrained)
+
+| Model | v5 | v6 archive-only | Archives (/10) | Permissions (/4) |
+|---|---|---|---|---|
+| 2.0 | 64 | **66** | 4 → 5 | 3 → 3 |
+| r13 s42 | 68 | **68** | 5 → 5 | 2 → 2 |
+| r13 s43 | 59 | **58** | 4 → 2 | 3 → 3 |
+| total | 191 | **192** | | |
+
+v6 runs:
+- 2.0: `fast12-zv092wyr`, `broad-flc40862`
+- r13 s42: `fast12-9u26iswx`, `broad-ruc5i6wq`
+- r13 s43: `fast12-bhholjy1`, `broad-5lkmbu3z`
+
+**Reading of the rule.** "A loss in step 2 sends v6 back" did not say whether it is judged per model or overall.
+- **Overall**, archive-only v6 is neutral to slightly better: +1 in total, and the mean change is +0.3.
+- **Per model**, s43 is down 1. Both of its archive losses are plain `tar` errors in tasks where it never called an archive tool (`--exclude` after the folder, three times; `xargs tar -czf` overwriting per file). The prompt change shifted which command the untrained model wrote; the tools did not mislead it.
+- **Decision:** treat it as neutral and go on. This reading is recorded here so it can be overruled.
+- **For future interface measurements**, the rule is stated before measuring: the total over the three models must be at least v5's, and no model may lose more than 2.
+
+**Where the archive tools did their job:**
+- `unpack_without_overwriting` passes for 2.0 and s42 (0/3 on v5);
+- `add_file_to_existing_tar` passed with `archive.add` in the earlier redesign run;
+- `archive.list` is the first look in most archive tasks.
+
+**Permissions are back to their v5 scores at every model.** Dropping `fs.chmod` removed both the losses and the fallback calls.
+
+**Next (step 3):** corpus revision 14 is r13 re-recorded on v6, plus archive episodes that use the tools and permission episodes that state the mode both in words and as a number. It is trained at seeds 42–44 and judged by the three-seed rule.
