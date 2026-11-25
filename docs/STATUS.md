@@ -1,48 +1,51 @@
 # Status
 
-Updated 2026-11-23. This is the one place for current state; the plan and its gates are in [plan/ROADMAP.md](plan/ROADMAP.md). Run evidence lives under `reports/` (gitignored, local).
+Updated 2026-11-24. This is the one place for current state; the plan and its gates are in [plan/ROADMAP.md](plan/ROADMAP.md). Run evidence lives under `reports/` (gitignored, local).
 
-## Where we stand (2026-11-23)
+## Where we stand (2026-11-24)
 
 **Shipped:** lilguy **2.0.0**, the MiniCPM5-2B r10 model on interface v4.
-- Held-out v2: 83/100, against 76/100 for 1.0 on the same suite. Zero changes reached a folder without review.
-- Roster: 53/80 on v4 and 54/80 on v5.
-- The app runs each model on the interface it was trained on (2.0 on v4, 1.x on v3).
+- **Held-out v2:** 83/100, against 76/100 for 1.0 on the same suite. Zero changes reached a folder without review.
+- **The app** runs each model on the interface it was trained on (2.0 on v4, 1.x on v3).
 
-**In development:**
+**Next candidate: none.** Rounds 11–13 trained on interface v5. Each fixed what it targeted, and none beat 2.0 at both seeds.
 
-| Item | State | Evidence |
-|---|---|---|
-| Interface v5 | Built and calibrated; costs nothing on 2.0 (+1 roster) | [plan](plan/INTERFACE-V5.md) |
-| r11, r12 (v5) | Fix 2.0's weak spots (focus-r11 15→23–24/25) but lose roster tasks (48–51 vs 54); **not promoted** | [r11](data/R11-V5-RESULT.md), [r12](data/R12-V5-RESULT.md) |
-| Held-out v3 | Frozen (pin `d1b3f1b9…`), controls pass on v4 and v5; **unused** | `dev/holdout_suite_v3*` |
+| Round | What it changed | Roster 80 (s42 / s43; 2.0 = 54) | Roster 106 (2.0 = 64) | Result |
+|---|---|---|---|---|
+| r11 | new families for 2.0's weak spots | 49 / 48 | — | not promoted |
+| r12 | look before narrowing, varied formats | 50 / 51 | — | not promoted |
+| r13 | mix only: inserts 84 → 252 | 53 / 48 | **68** / 59 | **not promoted** (s43 below the bar) |
 
-**Open problem:** every targeted training family leaves a habit on neighbouring tasks.
-- r11: appending where an insert was asked for.
-- r12: copying a folder into itself.
+Reports: [r11](data/R11-V5-RESULT.md), [r12](data/R12-V5-RESULT.md), [r13](data/R13-V5-RESULT.md), [roster 106](data/ROSTER-106-BATCH7.md).
 
-More data rounds would tune to the 80-task roster.
+**What the rounds taught:**
+1. **Targeted data works on its target.** Focus-r11 went from 16 to 19–24/25, and r13 removed the append-for-insert habit at both seeds.
+2. **What is left is seed variance, not habits.** Margins on all 20 r13 losses on the 106-task roster (`reports/factory/margins-7e6jbd1t`):
 
-**Interpretability lessons 1–4** ([plan/INTERPRETABILITY.md](plan/INTERPRETABILITY.md)):
-- About half of r12's losses are coin flips or artefacts of the 8-bit server.
-- Real habits are mostly specific to one seed; the only one both seeds share is `chmod g+s`.
-- The append-for-insert habit is an output default formed at the answer slot in layers 20–30. A steering direction flips it, so the model knows the difference and the training mix is what is off.
+   | Verdict | Count |
+   |---|---|
+   | habit | 8 |
+   | lean | 1 |
+   | coin flip | 3 |
+   | not reproduced | 2 |
+   | harmless first look | 6 |
 
-**Done since then:**
-- The margin gate is in the factory: `dev.factory margins --pilot …`.
-- Lesson 7: the `chmod g+s` habit is a mistake in reading the request, a case for a typed permission tool.
-- **Revision 13 (mix only)** removed the append-for-insert habit at both seeds, but scored 53 and 48 on the roster against 54. Not promoted. See [round report](data/R13-V5-RESULT.md).
+   The only habit shared by both seeds is an unquoted roster request that the stock model reads the same way. Two seeds of one corpus are 9 tasks apart.
+3. **Some gaps are interface work, not data.** Lessons in [plan/INTERPRETABILITY.md](plan/INTERPRETABILITY.md):
+   - `chmod g+s` for "group can execute" is a comprehension error in the request tokens: steering only half-fixes it. A typed permission tool is the candidate.
+   - Archives are weak for every model (4–5/10), mostly wrong tar idioms: a typed archive tool is a candidate.
 
-**Roster grown to 106** (batch 7: archives, organise, recovery; [report](data/ROSTER-106-BATCH7.md)):
+**Evaluation state:**
 
-| | 2.0 | r13 s42 | r13 s43 |
-|---|---|---|---|
-| Score /106 | 64 | **68** | 59 |
+| | State |
+|---|---|
+| Development roster | **106** sandbox-calibrated tasks (target 150). Batch 7 added archives 10, organise 8 and recovery 8. |
+| Held-out v3 | Frozen (pin `d1b3f1b9…`), controls pass on v4 and v5. **Unused.** |
+| Margins | Run per round: `dev.factory margins --pilot P [--pilot P] [--reference-runs F,B --runs P=F,B]` |
 
-- r13 s42 is the first candidate to beat 2.0 on the development roster. The seeds are still 9 tasks apart, so the both-seeds gate is not met.
-- Archives are weak for every model (4–5/10), a candidate for a typed archive tool.
-
-**Open decision:** more seeds, or held-out v3 on r13 s42 together with 2.0.
+**Next steps (proposed, not started):**
+1. **Interface v6:** typed permission and archive tools. Measure 2.0 and r13 on v6 before any training, as v5 was.
+2. **A three-seed gate for the next round.** Two seeds can disagree by more than the gap to the bar, so the rule should be declared before training. Proposed rule: promote to held-out if the mean of three seeds beats 2.0 and no seed falls more than 5 below it.
 
 **Disk:** ~85 GB free after pruning superseded weights. Every report, adapter and checksum was kept.
 

@@ -48,12 +48,21 @@ def main(argv=None):
     ap.add_argument('out', type=Path)
     ap.add_argument('--candidate', action='append', required=True, metavar='PILOT',
                     help='pilot directory name under reports/factory (repeat per seed)')
+    ap.add_argument('--reference-runs', metavar='FAST12,BROAD',
+                    help="2.0's roster runs (default: the 80-task v5 runs); use after the roster grows")
+    ap.add_argument('--runs', action='append', default=[], metavar='PILOT=FAST12,BROAD',
+                    help="a candidate's roster runs when they are not the ones inside its pilot")
     args = ap.parse_args(argv)
     args.out.mkdir(parents=True, exist_ok=True)
+    if args.reference_runs:
+        c.RUNS[REFERENCE] = args.reference_runs.split(',')
+    override = dict(item.split('=', 1) for item in args.runs)
     candidates = []
     for pilot in args.candidate:
         label = label_of(pilot)
         c.register(label, pilot)
+        if pilot in override:
+            c.RUNS[label] = override[pilot].split(',')
         candidates.append(label)
     lab = c.Lab([REFERENCE, *candidates])
     rows = []

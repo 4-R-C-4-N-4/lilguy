@@ -161,6 +161,10 @@ def main():
     parser.add_argument('--run-dir', type=Path, help='assess: completed matched pilot directory')
     parser.add_argument('--pilot', action='append', default=[], metavar='PILOT',
                         help='margins: a completed pilot directory under reports/factory (repeat per seed)')
+    parser.add_argument('--reference-runs', metavar='FAST12,BROAD',
+                        help="margins: 2.0's roster runs, when the roster has grown since the default ones")
+    parser.add_argument('--runs', action='append', default=[], metavar='PILOT=FAST12,BROAD',
+                        help="margins: a candidate's roster runs, when not the ones inside its pilot")
     parser.add_argument('--stock', type=Path)
     parser.add_argument('--candidate', type=Path)
     parser.add_argument('--held-out', type=Path)
@@ -227,6 +231,10 @@ def main():
         argv = [train_python, '-m', 'dev.interp.margins', str(out)]
         for pilot in args.pilot:
             argv += ['--candidate', Path(pilot).name]
+        if args.reference_runs:
+            argv += ['--reference-runs', args.reference_runs]
+        for item in args.runs:
+            argv += ['--runs', item]
         return subprocess.run(argv, cwd=ROOT).returncode
     if args.job == 'audit-splits':
         from dev.eval_gate import verify

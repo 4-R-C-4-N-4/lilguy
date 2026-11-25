@@ -55,3 +55,25 @@ The other habits belong to a single seed: an extra written line and a cover repl
    - three or more seeds per candidate, or a larger development suite (the plan already lists 150 tasks);
    - or spending held-out v3 on the best candidate *and* 2.0, accepting that one seed is a draw from that spread.
    Neither should be decided by more data rounds.
+
+## Addendum: on the 106-task roster (2026-11-24)
+
+| | Score /106 |
+|---|---|
+| 2.0 | 64 |
+| r13 s42 | **68** |
+| r13 s43 | 59 |
+
+- **Round 13 is closed as not promoted** under the gate declared before training: every seed must reach the bar.
+- **No third seed was trained.** It could not change that verdict, and choosing the one seed that passed would be selection on noise.
+- **Margins on 106** (`reports/factory/margins-7e6jbd1t`):
+
+  | Verdict | Count |
+  |---|---|
+  | habit | 8 |
+  | lean | 1 |
+  | coin flip | 3 |
+  | not reproduced | 2 |
+  | harmless first look | 6 |
+
+  Actionable losses: still only the unquoted insert request.
