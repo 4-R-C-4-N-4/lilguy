@@ -193,6 +193,7 @@ def main():
                         help='pilot: also score an earlier artifact under its own interface (reference only)')
     parser.add_argument('--lr-schedule', choices=('constant', 'cosine'),
                         help='pilot: learning-rate schedule (default constant; cosine needs --max-epochs)')
+    parser.add_argument('--lr', type=float, help='pilot: peak learning rate (default: the trainer default, 2e-4)')
     parser.add_argument('--stock-from', type=Path,
                         help='pilot: reuse stock scores from a previous pilot job when artifact and evaluation match')
     parser.add_argument('--server', type=Path, default=Path(os.environ.get('LLAMA_SERVER', Path.home() / 'programs/llama.cpp/build/bin/llama-server')))
@@ -324,7 +325,7 @@ def main():
                 factory_pilot.run(directory, bases=args.base, data=args.data, server=args.server, device=device,
                                   gate=gate, stock_from=args.stock_from, max_minutes=minutes,
                                   max_epochs=args.max_epochs, lr_schedule=args.lr_schedule,
-                                  train_seed=args.train_seed,
+                                  train_seed=args.train_seed, lr=args.lr,
                                   resume=bool(args.resume), evaluate=evaluate, previous=previous)
             except (RuntimeError, ValueError, OSError, KeyError) as exc:
                 parser.exit(1, f'Pilot stopped: {exc}; see {directory}\n')

@@ -365,6 +365,7 @@ def main(argv=None):
     parser.add_argument('--max-rows', type=int, help='random subset of rows (throughput smoke only)')
     parser.add_argument('--no-gradient-checkpointing', action='store_true')
     parser.add_argument('--lr-schedule', choices=SCHEDULES, default=PARAMS['lr_schedule'])
+    parser.add_argument('--lr', type=float, default=PARAMS['lr'], help='peak learning rate')
     parser.add_argument('--merge-only-from-log', type=Path, help='finish an interrupted run from its saved adapter')
     args = parser.parse_args(argv)
     if args.merge_only_from_log:
@@ -373,7 +374,8 @@ def main(argv=None):
     train(args.base_key, args.base_dir, args.data, args.out, verifier=args.verifier,
           params={'max_minutes': args.max_minutes, 'max_epochs': args.max_epochs,
                   'decision_weight': args.decision_weight, 'seed': args.seed, 'max_rows': args.max_rows,
-                  'gradient_checkpointing': not args.no_gradient_checkpointing, 'lr_schedule': args.lr_schedule})
+                  'gradient_checkpointing': not args.no_gradient_checkpointing, 'lr_schedule': args.lr_schedule,
+                  'lr': args.lr})
     return 0
 
 

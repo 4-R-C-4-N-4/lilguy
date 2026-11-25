@@ -96,3 +96,10 @@ def test_cross_interface_reference_is_reported_but_never_a_gate(monkeypatch):
     assert ref['cross_interface'] and not ref['same_evaluation']
     assert ref['improved'] == ['b'] and ref['regressed'] == [] and 'gate' not in ref
     assert ref['per_category'] == {'edit': {'previous': 1, 'tuned': 2, 'total': 3}}
+
+
+def test_train_argv_passes_a_learning_rate_only_when_given():
+    from pathlib import Path
+    plain = factory_pilot.train_argv('t.sh', 'minicpm', Path('/snap'), Path('/data'), Path('/out'), 35.0, 2)
+    tuned = factory_pilot.train_argv('t.sh', 'minicpm', Path('/snap'), Path('/data'), Path('/out'), 35.0, 2, lr=1e-4)
+    assert '--lr' not in plain and tuned[tuned.index('--lr') + 1] == 1e-4
