@@ -37,7 +37,7 @@ _BY_CATEGORY = {
                     'copy_mode_without_executable_bit'),
     'archives': ('pack_folder_without_temp_files', 'list_archive_contents', 'extract_single_member',
                  'unpack_into_new_folder', 'unpack_without_overwriting', 'gzip_keeping_original',
-                 'archive_only_final_reports', 'archive_then_remove_folder', 'compare_backup_to_folder',
+                 'pack_two_named_reports', 'archive_then_remove_folder', 'compare_backup_to_folder',
                  'add_file_to_existing_tar'),
     'scripts': ('generate_tuple_named_notes', 'repair_unclosed_shell_branch', 'emit_literal_print_script'),
     # Interface v2 (2026-11-20): the nine former 'ask' tasks became explicit requests; the model

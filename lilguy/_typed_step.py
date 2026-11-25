@@ -306,18 +306,35 @@ def archive_add(archive, source):
     _pack(archive, source, exclude=None, add=True, top_folder=True)
 
 
+def _sources(source):
+    """One path, or several separated by spaces (what models write: `reports/a.txt reports/b.txt`).
+    A single path that exists is taken whole, so a name containing spaces still works."""
+    whole, whole_resolved = checked_path(source)
+    parts = [source] if whole_resolved.exists() or whole.is_symlink() else source.split()
+    out = []
+    for part in parts:
+        src, src_resolved = checked_path(part)
+        if not src_resolved.exists():
+            raise ValueError(_absent(part))
+        if src.is_symlink():
+            raise ValueError(f"{part} is a symbolic link")
+        out.append((src, src_resolved))
+    if not out:
+        raise ValueError("Expected a source path")
+    return out
+
+
 def _pack(archive, source, exclude=None, add=False, top_folder=True):
     import gzip
     import io
     import tarfile
     out, out_resolved = checked_path(archive)
-    src, src_resolved = checked_path(source)
-    if not src_resolved.exists():
-        raise ValueError(_absent(source))
-    if src.is_symlink():
-        raise ValueError(f"{source} is a symbolic link")
+    sources = _sources(source)
     kind = _kind(archive)
     if kind == "gz":
+        if len(sources) != 1:
+            raise ValueError(".gz holds one file; use .tar.gz for several")
+        (src, src_resolved), = sources
         if not src_resolved.is_file():
             raise ValueError(f"{source}: .gz holds one file; use .tar.gz for a folder")
         if add:
@@ -327,8 +344,9 @@ def _pack(archive, source, exclude=None, add=False, top_folder=True):
         return
     if out_resolved.is_dir():
         raise ValueError(f"{archive} is a directory, not a file")
-    if src_resolved == out_resolved or (src_resolved.is_dir() and out_resolved.is_relative_to(src_resolved)):
-        raise ValueError(f"{archive} must not be inside {source}")
+    for src, src_resolved in sources:
+        if src_resolved == out_resolved or (src_resolved.is_dir() and out_resolved.is_relative_to(src_resolved)):
+            raise ValueError(f"{archive} must not be inside {src.relative_to(Path.cwd()).as_posix()}")
     root = Path.cwd()
     keep = []  # (name, bytes, mode) already in the archive, kept when adding
     if add:
@@ -340,15 +358,18 @@ def _pack(archive, source, exclude=None, add=False, top_folder=True):
                     keep.append((member.name, old.extractfile(member).read(), member.mode))
     # A file keeps its workspace path inside the archive, as tar does (kit/easel.txt); a folder keeps
     # its own name (top_folder) or contributes only its contents.
-    base = root if src_resolved.is_file() else src.parent if top_folder else src
-    files = []
-    for entry in candidates(src, None):
-        if entry.is_symlink() or not entry.is_file():
-            continue
-        if exclude and fnmatch.fnmatchcase(entry.name, exclude):
-            continue
-        files.append(entry)
-    names = [entry.relative_to(base).as_posix() for entry in files]
+    files, names = [], []
+    for src, src_resolved in sources:
+        base = root if src_resolved.is_file() else src.parent if top_folder else src
+        for entry in candidates(src, None):
+            if entry.is_symlink() or not entry.is_file():
+                continue
+            if exclude and fnmatch.fnmatchcase(entry.name, exclude):
+                continue
+            name = entry.relative_to(base).as_posix()
+            if name not in names:
+                files.append(entry)
+                names.append(name)
     added = set(names)
     mode = "w:gz" if kind == "tar.gz" else "w"
     if out_resolved.is_file():

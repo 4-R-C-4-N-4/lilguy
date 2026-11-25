@@ -91,11 +91,13 @@ TASKS = (
     ),
     Task(
         'extract_single_member',
-        'From manuals.tar, take only docs/guide.txt and save it here as guide.txt. Do not unpack anything else.',
+        # 2026-11-25: was "...save it here as guide.txt", a rename hidden inside an extract (Ivy: not a
+        # request anyone makes). Now the plain request: one member out, at its own path.
+        'Take docs/guide.txt out of manuals.tar. Do not unpack anything else.',
         {'manuals.tar': tar_fixture(_MANUALS), 'README': 'Manual bundles.\n'},
-        ('run\ntar -tf manuals.tar', 'run\ntar -xOf manuals.tar docs/guide.txt > guide.txt',
-         'tool fs.read\npath: guide.txt', 'done\nSaved docs/guide.txt from the archive as guide.txt.'),
-        {'guide.txt': 'Start with the blue cable.\n'},
+        ('run\ntar -tf manuals.tar', 'run\ntar -xf manuals.tar docs/guide.txt',
+         'tool fs.read\npath: docs/guide.txt', 'done\nTook docs/guide.txt out of manuals.tar.'),
+        {'docs': '<dir added>', 'docs/guide.txt': 'Start with the blue cable.\n'},
     ),
     Task(
         'unpack_into_new_folder',
@@ -123,15 +125,15 @@ TASKS = (
         {'server.log.gz': gzipped('09:00 start\n09:05 ready\n09:40 stop\n')},
     ),
     Task(
-        'archive_only_final_reports',
-        'Put every report in reports/ whose first line is "STATUS: final" into final-reports.tar.gz. '
-        'Leave the other reports out, and keep all of them in reports/.',
+        'pack_two_named_reports',
+        # 2026-11-25: replaces archive_only_final_reports, which made the model judge every report
+        # before packing (filter-then-act: a reasoning test, not an archive one). The files are named.
+        'Pack reports/north.txt and reports/east.txt into final-reports.tar.gz. Keep both files where they are.',
         {'reports/north.txt': 'STATUS: final\nVisitors: 410\n', 'reports/south.txt': 'STATUS: draft\nVisitors: 95\n',
          'reports/east.txt': 'STATUS: final\nVisitors: 228\n'},
-        ('run\nhead -n 1 reports/*.txt',
-         'run\ntar -czf final-reports.tar.gz reports/north.txt reports/east.txt',
+        ('run\ntar -czf final-reports.tar.gz reports/north.txt reports/east.txt',
          'run\ntar -tzf final-reports.tar.gz',
-         'done\nfinal-reports.tar.gz holds north.txt and east.txt; south.txt is a draft and was left out.'),
+         'done\nfinal-reports.tar.gz holds north.txt and east.txt.'),
         {'final-reports.tar.gz': archive('tar.gz', {'reports/north.txt': 'STATUS: final\nVisitors: 410\n',
                                                     'reports/east.txt': 'STATUS: final\nVisitors: 228\n'})},
     ),

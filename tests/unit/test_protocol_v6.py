@@ -153,3 +153,19 @@ def test_repacking_an_existing_archive_keeps_its_mode(ws):
     (ws / "b.txt").write_text("b\n")
     step.archive_add("kit.tar", "b.txt")
     assert _mode(ws / "kit.tar") == 0o640
+
+
+def test_pack_takes_several_space_separated_sources_without_changing_the_prompt(ws):
+    (ws / "reports").mkdir()
+    for name in ("north", "east", "south"):
+        (ws / "reports" / f"{name}.txt").write_text(f"{name}\n")
+    step.archive_pack("final.tar.gz", "reports/north.txt reports/east.txt")
+    assert _members(ws / "final.tar.gz") == {"reports/north.txt": "north\n", "reports/east.txt": "east\n"}
+    (ws / "my notes.txt").write_text("n\n")  # an existing name with a space is still one source
+    step.archive_pack("notes.tar", "my notes.txt")
+    assert _members(ws / "notes.tar") == {"my notes.txt": "n\n"}
+    with pytest.raises(ValueError, match="No such file or directory: reports/west.txt"):
+        step.archive_pack("x.tar", "reports/north.txt reports/west.txt")
+    with pytest.raises(ValueError, match="one file"):
+        step.archive_pack("two.gz", "reports/north.txt reports/east.txt")
+    assert p.system_prompt(V6, version=6) == GOLDEN.read_text(encoding="utf8")  # behaviour only: prompt unchanged
