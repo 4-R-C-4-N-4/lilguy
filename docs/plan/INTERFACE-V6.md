@@ -46,3 +46,59 @@ The golden copy is `tests/unit/interface_v6_system_prompt.txt`. Observations and
 | 5 | Held-out v3 once on r14 s42 (v6) and once on 2.0 (v4) | ~30 min GPU | release |
 
 **What to expect from step 2:** untrained models have never seen these tools, so a small gain or no change is the likely result. As with v5, step 2 checks that the interface costs nothing before data is built on it. A loss in step 2 sends v6 back for redesign before any training.
+
+## Step 1 result (2026-11-24): declared
+
+Unit tests cover the tools, the version gating, the golden prompt, the path checks and safe extraction. The live sandbox runs cover:
+- the 106-task roster plus the focus fixtures under v6;
+- every tool's effects and policy stops;
+- compare in question mode, and the refusal to pack in question mode;
+- the bypass suite;
+- v5 unchanged.
+
+One defect was found and fixed before measuring: repacking an existing archive went through a 0600 temp file, so the policy saw read bits removed. It now keeps the original mode, as `fs.edit` does.
+
+## Step 2 result (2026-11-24): v6 goes back for redesign before any training
+
+The setup: the same code and the same RTX 3090 for all six runs, 106 roster tasks, untrained on v6. The v5 runs reproduce today's scores exactly.
+
+| Model | v5 | v6 | Permissions v5 → v6 (/4) | Archives v5 → v6 (/10) | Calls to the new tools |
+|---|---|---|---|---|---|
+| 2.0 | 64 | 63 | 3 → 2 | 4 → 5 | 5 |
+| r13 s42 | 68 | 64 | 2 → 1 | 5 → 4 | 11 |
+| r13 s43 | 59 | 58 | 3 → 1 | 4 → 5 | 17 |
+
+The rule in the step table above was that a loss sends v6 back. All three models lost (−1, −4, −1), and permissions fell at every model.
+
+Runs:
+- v5: `fast12-lq8rj9nv`, `broad-o8hroiih` (2.0); `fast12-evxe27xh`, `broad-px1ervgb` (s42); `fast12-g_wm3mhw`, `broad-yx6c2yqq` (s43)
+- v6: `fast12-v8rxi_tr`, `broad-xvy_t78f` (2.0); `fast12-9q2l82pi`, `broad-n5q3zy9h` (s42); `fast12-zg5ubl2a`, `broad-2gg0uogq` (s43)
+
+### What the traces show (development only)
+
+**`fs.chmod` cannot express "only".**
+- `restrict_local_draft_mode` asks for "owner-readable and owner-writable only". All three models reached for `fs.chmod`, and all three lost the task. On v5, two of them passed it with `chmod 600`. Each picked a different single class:
+  - 2.0: `who: all`, remove read and write, giving `---------`;
+  - s42: `who: others`, giving `rw-r-----`;
+  - s43: `who: user`, giving `---r--r--`.
+- The add/remove design needs two calls to reach 600 (group and others), and no model planned that.
+- This is the same comprehension gap lesson 7 found. The typed form moved it rather than removing it.
+
+**`fs.chmod` takes one path.** s43 tried `path: helpers/*.sh`, got "No such file or directory", then changed one of the two scripts.
+
+**`fs.chmod` became a fallback action.** r13 s42 and s43 called it 1 and 3 times on tasks with nothing to do with permissions, after a failed command (`chmod a+x settings.tar`, `others: read add` on a folder). One call even had every bit set to keep. An untrained model treats an unfamiliar tool as something to try.
+
+**The archive tools are used for what they are for.** `archive.list` is used to look before acting in nearly every archive task, and `archive.unpack` passed `unpack_without_overwriting` for 2.0 and s42 (0/3 on v5). The net archive score is still flat:
+- `archive.pack` with `add: true` was used to *extract* (s43, twice);
+- no model used `member` to take one file out.
+
+### Redesign before step 2 is repeated
+
+| # | Change | Why |
+|---|---|---|
+| 1 | `fs.chmod` states the result per class: `user`, `group` and `others` each take `keep`, or the permissions to end with, written as words: `none`, `read`, `read write`, `read execute`, `read write execute`. A separate `add`/`remove` stays for "let the group execute" | "Owner only" becomes one call: `user: read write`, `group: none`, `others: none` |
+| 2 | `fs.chmod` `path` accepts a glob (`helpers/*.sh`) | It is what models wrote |
+| 3 | `archive.pack` loses `add`, and a separate `archive.add` takes over adding to an existing archive | "pack … add" read as "take out" |
+| 4 | The prompt names the one-file case: "to take one file out, use archive.unpack with member" | No model found `member` |
+
+Nothing has been trained on v6, so it is revised in place, and the golden prompt is regenerated. Step 2 is then repeated under the same rule.
