@@ -146,3 +146,11 @@ Runs (v6, redesign):
 The other gains and losses are spread over unrelated tasks, at the seed-noise level seen before.
 
 **By the rule, v6 as designed does not go to training.** The decision for Ivy is in STATUS.
+
+## Archive-only v6 (2026-11-24, decided with Ivy)
+
+`fs.chmod` is dropped: two designs lost the permission tasks at every model. v6 is now `archive.list`, `archive.pack`, `archive.add` and `archive.unpack`. The tool habit reads: "For tar or gzip files, use the archive tools rather than tar. To take one file out of an archive, use archive.unpack with member."
+
+Permissions go back to being a data question. The [permission contrast](../data/PERMISSION-CONTRAST.md) showed that stating the mode as a number rescues the guarded runs, so round 14 can teach the mapping from words to modes.
+
+Step 2 is measured once more under the same rule, on the 3090 like every baseline. v5 has reproduced 64, 68 and 59 exactly on three code revisions today, and this change touches only v6. So only v6 is rerun, and v5 is cited from `broad-nv64y8py`, `broad-plfp83sf` and `broad-hkyxd2xq`.

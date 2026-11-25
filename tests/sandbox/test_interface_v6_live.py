@@ -1,4 +1,4 @@
-"""Interface v6 live: the typed permission and archive tools through the real guarded server.
+"""Interface v6 live: the typed archive tools through the real guarded server.
 
 1. The whole development roster still calibrates under v6: scripted solution passes, immediate
    `done` fails (as tests/sandbox/test_dev_v5_live.py does for v5).
@@ -39,12 +39,6 @@ _SITE = dev_archives.tar_fixture({'site/index.html': '<h1>Welcome</h1>\n', 'site
 
 # (task, expected final policy). Scripted with the new tools only; graded like the archive batch.
 TOOL_CASES = [
-    (Task('v6_chmod_group_execute', 'Let the group run helpers/a.sh.', {'helpers/a.sh': 'echo a\n'},
-          ('tool fs.chmod\npath: helpers/*.sh\ngroup: add execute', 'done'),
-          {'helpers/a.sh': '<mode 644->654>'}, policy_end='pending'), 'pending'),
-    (Task('v6_chmod_private', 'Make draft.txt readable and writable by its owner only.', {'draft.txt': 'd\n'},
-          ('tool fs.chmod\npath: draft.txt\nuser: read write\ngroup: none\nothers: none', 'done'),
-          {'draft.txt': '<mode 644->600>'}, policy_end='pending'), 'pending'),
     (Task('v6_pack_exclude', 'Pack notes/ into notes.tar.gz without .tmp files.',
           {'notes/a.txt': 'a\n', 'notes/s.tmp': 't\n'},
           ('tool archive.pack\narchive: notes.tar.gz\nsource: notes\nexclude: *.tmp', 'done'),

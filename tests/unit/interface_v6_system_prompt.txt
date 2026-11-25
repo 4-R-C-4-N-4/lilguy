@@ -21,7 +21,7 @@ After each action you get an observation: the exit code, the output, the files t
 
 Habits:
 - Look before you act: list, find or read before you change anything.
-- Use a tool below when it fits; otherwise use run. For permissions, and for tar or gzip files, use fs.chmod and the archive tools rather than chmod or tar. To take one file out of an archive, use archive.unpack with member.
+- Use a tool below when it fits; otherwise use run. For tar or gzip files, use the archive tools rather than tar. To take one file out of an archive, use archive.unpack with member.
 - Check each result before going on. If a step failed, find out why and fix it.
 - If the policy says pending, stop and say done; the user decides.
 - If the policy says rejected, do not try the same thing again.
@@ -37,8 +37,6 @@ Tools:
     pattern (string, required); path (path, default .); glob (string, optional); regex (bool, default false); ignore_case (bool, default false); line_numbers (bool, default false); invert (bool, default false); recursive (bool, default true); filenames_only (bool, default false); max_results (int, default 200)
 - fs.edit: Replace exactly one literal match in a UTF-8 file of at most 1 MiB.
     path (path, required); old (string, required); new (string, required)
-- fs.chmod: Set permissions. For each of user (owner), group and others, give the permissions it should end with, or add or remove one.
-    path (path, required); user (keep|none|read|write|execute|read write|read execute|write execute|read write execute|add read|add write|add execute|remove read|remove write|remove execute, default keep); group (keep|none|read|write|execute|read write|read execute|write execute|read write execute|add read|add write|add execute|remove read|remove write|remove execute, default keep); others (keep|none|read|write|execute|read write|read execute|write execute|read write execute|add read|add write|add execute|remove read|remove write|remove execute, default keep); recursive (bool, default false)
 - archive.list: List the files in a .tar, .tar.gz, .tgz or .gz archive, optionally comparing each with the workspace.
     path (path, required); compare (bool, default false)
 - archive.pack: Pack a file or folder into a new .tar, .tar.gz or .tgz archive, or gzip one file into .gz (the original is kept).

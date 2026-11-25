@@ -1,4 +1,4 @@
-"""Interface v6: typed permission and archive tools (docs/plan/INTERFACE-V6.md); v1-v5 unchanged."""
+"""Interface v6: typed archive tools (docs/plan/INTERFACE-V6.md); v1-v5 unchanged."""
 import gzip
 import io
 import os
@@ -21,8 +21,8 @@ def test_v6_prompt_is_frozen_and_adds_only_the_tools_and_one_habit():
     assert prompt == GOLDEN.read_text(encoding="utf8")
     v5 = p.system_prompt(p.load_tools(version=5), version=5)
     assert prompt.startswith(v5.split("- Use a tool below")[0])
-    assert "use fs.chmod and the archive tools rather than chmod or tar" in prompt
-    assert "fs.chmod" not in v5 and "archive." not in v5
+    assert "use the archive tools rather than tar" in prompt and "archive.unpack with member" in prompt
+    assert "archive." not in v5 and "fs.chmod" not in prompt  # measured twice and dropped
 
 
 def test_tools_are_gated_by_version_and_the_frozen_manifest_is_unchanged():
@@ -35,15 +35,15 @@ def test_tools_are_gated_by_version_and_the_frozen_manifest_is_unchanged():
 
 
 def test_v6_actions_round_trip_and_the_grammar_names_every_tool():
-    action = p.Action.call("fs.chmod", path="draft.txt", user="read write", group="none", others="none")
+    action = p.Action.call("archive.unpack", archive="settings.tar", into="out", member="colors.ini")
     text = p.render_action(action, V6, version=6)
-    assert text == "tool fs.chmod\npath: draft.txt\nuser: read write\ngroup: none\nothers: none"
+    assert text == "tool archive.unpack\narchive: settings.tar\ninto: out\nmember: colors.ini"
     parsed = p.parse_action(text, V6, version=6)
-    assert (parsed.kind, parsed.tool, parsed.args) == ("tool", "fs.chmod", action.args)
+    assert (parsed.kind, parsed.tool, parsed.args) == ("tool", "archive.unpack", action.args)
     grammar = p.grammar(V6, version=6)
     for name in p.TOOLS_V6:
         assert name in grammar
-    assert '"read write execute"' in grammar and '"add execute"' in grammar
+    assert "fs.chmod" not in grammar
 
 
 def test_every_path_argument_is_checked_before_the_sandbox():
@@ -62,41 +62,6 @@ def ws(tmp_path, monkeypatch):
 
 def _mode(path):
     return stat.S_IMODE(os.lstat(path).st_mode)
-
-
-def test_chmod_owner_only_is_one_call_and_add_is_relative(ws, capsys):
-    (ws / "draft.txt").write_text("d\n")
-    os.chmod(ws / "draft.txt", 0o644)
-    step.chmod("draft.txt", user="read write", group="none", others="none")
-    assert _mode(ws / "draft.txt") == 0o600
-    assert capsys.readouterr().out == "draft.txt: rw-r--r-- -> rw-------\n"
-    step.chmod("draft.txt", group="add execute")
-    assert _mode(ws / "draft.txt") == 0o610
-    step.chmod("draft.txt", user="remove write", others="read")
-    assert _mode(ws / "draft.txt") == 0o414
-    with pytest.raises(ValueError, match="Nothing to change"):
-        step.chmod("draft.txt")
-    with pytest.raises(ValueError, match="No such file or directory"):
-        step.chmod("missing.sh", user="add execute")
-
-
-def test_chmod_globs_recurses_and_never_follows_symlinks(ws, capsys):
-    (ws / "helpers").mkdir()
-    for name in ("a.sh", "b.sh", "README"):
-        (ws / "helpers" / name).write_text("x\n")
-        os.chmod(ws / "helpers" / name, 0o644)
-    step.chmod("helpers/*.sh", group="add execute")
-    assert [_mode(ws / "helpers" / n) for n in ("a.sh", "b.sh", "README")] == [0o654, 0o654, 0o644]
-    with pytest.raises(ValueError, match="No such file or directory"):
-        step.chmod("helpers/*.py", user="add execute")
-    (ws / "bin").mkdir()
-    (ws / "bin" / "x").write_text("x\n")
-    (ws / "bin" / "link").symlink_to("x")
-    os.chmod(ws / "bin" / "x", 0o644)
-    step.chmod("bin", others="add execute", recursive=True)
-    assert _mode(ws / "bin" / "x") == 0o645
-    with pytest.raises(ValueError, match="symbolic link"):
-        step.chmod("bin/link", user="add execute")
 
 
 def _members(path):
@@ -188,12 +153,3 @@ def test_repacking_an_existing_archive_keeps_its_mode(ws):
     (ws / "b.txt").write_text("b\n")
     step.archive_add("kit.tar", "b.txt")
     assert _mode(ws / "kit.tar") == 0o640
-
-
-def test_chmod_glob_cannot_leave_the_workspace(ws, tmp_path_factory):
-    outside = tmp_path_factory.mktemp("outside")
-    (outside / "x.sh").write_text("x\n")
-    with pytest.raises(ValueError, match="workspace-relative"):
-        step.chmod(f"../{outside.name}/*.sh", user="add execute")
-    with pytest.raises(ValueError, match="workspace-relative"):
-        step.chmod(f"{outside}/*.sh", user="add execute")

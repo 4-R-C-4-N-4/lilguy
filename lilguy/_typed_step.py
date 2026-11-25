@@ -235,70 +235,7 @@ def edit(path, old, new):
             staged.unlink(missing_ok=True)
 
 
-# --- interface v6: typed permission and archive tools (docs/plan/INTERFACE-V6.md) ---------------
-
-_BITS = {"u": {"read": stat.S_IRUSR, "write": stat.S_IWUSR, "execute": stat.S_IXUSR},
-         "g": {"read": stat.S_IRGRP, "write": stat.S_IWGRP, "execute": stat.S_IXGRP},
-         "o": {"read": stat.S_IROTH, "write": stat.S_IWOTH, "execute": stat.S_IXOTH}}
-
-
-def _symbolic(mode):
-    return "".join(c if mode & bit else "-" for c, bit in zip(
-        "rwxrwxrwx", (stat.S_IRUSR, stat.S_IWUSR, stat.S_IXUSR, stat.S_IRGRP, stat.S_IWGRP,
-                      stat.S_IXGRP, stat.S_IROTH, stat.S_IWOTH, stat.S_IXOTH)))
-
-
-def _chmod_targets(path):
-    """A path or a glob (helpers/*.sh), workspace-relative, sorted; symlinks are never followed."""
-    if not any(c in path for c in "*?["):
-        start, target = checked_path(path)
-        if not target.exists() and not start.is_symlink():
-            raise ValueError(_absent(path))
-        return [start]
-    import glob
-    hits = []
-    for name in sorted(glob.glob(path)):
-        start, _ = checked_path(name)
-        hits.append(start)
-    if not hits:
-        raise ValueError(_absent(path))
-    return hits
-
-
-def _class_mode(scope, value, before):
-    """New bits of one class (u, g or o) from a v6 value: keep, a final state, or add/remove one."""
-    bits = _BITS[scope]
-    mask = bits["read"] | bits["write"] | bits["execute"]
-    if value == "keep":
-        return before & mask
-    if value.startswith(("add ", "remove ")):
-        action, permission = value.split(" ")
-        return (before | bits[permission]) & mask if action == "add" else before & mask & ~bits[permission]
-    words = () if value == "none" else value.split(" ")
-    return sum(bits[w] for w in words)
-
-
-def chmod(path, user="keep", group="keep", others="keep", recursive=False):
-    values = {"u": user, "g": group, "o": others}
-    if all(v == "keep" for v in values.values()):
-        raise ValueError("Nothing to change: give user, group or others a value other than keep")
-    for start in _chmod_targets(path):
-        if start.is_symlink():
-            raise ValueError(f"{start.relative_to(Path.cwd()).as_posix()} is a symbolic link")
-        for entry in candidates(start, None if recursive else 0):
-            if entry.is_symlink():
-                continue
-            before = stat.S_IMODE(entry.lstat().st_mode)
-            after = before & ~0o777
-            for scope, value in values.items():
-                after |= _class_mode(scope, value, before)
-            name = entry.relative_to(Path.cwd()).as_posix()
-            if after != before:
-                os.chmod(entry, after)
-                print(f"{name}: {_symbolic(before)} -> {_symbolic(after)}")
-            else:
-                print(f"{name}: {_symbolic(before)} (unchanged)")
-
+# --- interface v6: typed archive tools (docs/plan/INTERFACE-V6.md) ------------------------------
 
 def _kind(path):
     name = path.lower()
@@ -514,7 +451,7 @@ def main():
         _TarError = tarfile.TarError
     try:
         {"fs.find": find, "fs.read": read, "fs.edit": edit,
-         "fs.list": list_, "fs.grep": grep, "fs.chmod": chmod, "archive.list": archive_list,
+         "fs.list": list_, "fs.grep": grep, "archive.list": archive_list,
          "archive.pack": archive_pack, "archive.add": archive_add, "archive.unpack": archive_unpack}[name](**json.loads(arguments))
     except (UnicodeError, OSError, OverflowError, RuntimeError):
         print("Unable to access workspace text", file=sys.stderr)

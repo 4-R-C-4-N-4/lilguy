@@ -53,7 +53,7 @@ TOOLS_V1 = ("fs.list", "fs.find", "fs.read", "fs.grep", "fs.edit")
 # Typed tools added in v6 (docs/plan/INTERFACE-V6.md), defined in their own file so the frozen
 # v1-v5 manifest stays byte-identical.
 TOOLSET_V6 = TOOLSET.with_name("toolset_v6.yaml")
-TOOLS_V6 = ("fs.chmod", "archive.list", "archive.pack", "archive.add", "archive.unpack")
+TOOLS_V6 = ("archive.list", "archive.pack", "archive.add", "archive.unpack")
 
 
 def tool_names(version):
@@ -534,13 +534,12 @@ _HEADERS[5] = _HEADERS[4].replace(
 )
 assert _HEADERS[5].count("never change a file with a similar name") == 1
 
-# v6 (docs/plan/INTERFACE-V6.md): typed permission and archive tools. The prompt adds them to the
+# v6 (docs/plan/INTERFACE-V6.md): typed archive tools. The prompt adds them to the
 # tool list and names them in the tool habit. Everything else is v5 unchanged.
 _HEADERS[6] = _HEADERS[5].replace(
     "- Use a tool below when it fits; otherwise use run.\n",
-    "- Use a tool below when it fits; otherwise use run. For permissions, and for tar or gzip files, "
-    "use fs.chmod and the archive tools rather than chmod or tar. To take one file out of an archive, "
-    "use archive.unpack with member.\n",
+    "- Use a tool below when it fits; otherwise use run. For tar or gzip files, use the archive tools "
+    "rather than tar. To take one file out of an archive, use archive.unpack with member.\n",
 )
 assert _HEADERS[6] != _HEADERS[5]
 
