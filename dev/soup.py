@@ -20,6 +20,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 FACTORY = ROOT / 'reports' / 'factory'
+# As dev.LLAMA (not imported: it pulls in the evaluation runner, absent from the training venv).
+LLAMA = Path(os.environ.get('LILGUY_LLAMA_CPP', Path.home() / 'programs/llama.cpp'))
 
 
 def lora_delta_keys(keys):
@@ -51,7 +53,7 @@ def main(argv=None):
     import transformers
     from safetensors import safe_open
 
-    from dev import factory_pilot, v2_train
+    from dev import v2_train
 
     base = v2_train.BASES['minicpm']
     plans = [json.loads((FACTORY / p / 'plan.json').read_text()) for p in args.pilots]
@@ -83,8 +85,8 @@ def main(argv=None):
     transformers.AutoTokenizer.from_pretrained(base['snapshot'], local_files_only=True).save_pretrained(merged)
 
     gguf = out / 'tuned-q8_0.gguf'
-    env = {**os.environ, 'PYTHONPATH': str(factory_pilot.LLAMA / 'gguf-py')}
-    subprocess.run([sys.executable, factory_pilot.LLAMA / 'convert_hf_to_gguf.py', merged, *base['convert_args'],
+    env = {**os.environ, 'PYTHONPATH': str(LLAMA / 'gguf-py')}
+    subprocess.run([sys.executable, LLAMA / 'convert_hf_to_gguf.py', merged, *base['convert_args'],
                     '--outtype', 'q8_0', '--outfile', gguf], check=True, env=env,
                    stdout=(out / 'export.log').open('w'), stderr=subprocess.STDOUT)
     shutil.rmtree(merged)
