@@ -60,3 +60,35 @@ Targeted data now reliably moves its target (archives), but every round so far l
 The next useful levers are the training recipe, not more data:
 - **Stability:** a lower learning rate, more epochs, or averaging the adapters of several seeds, to reduce seed variance.
 - **Base model:** a per-base recipe choice for Qwen, which the original task called for.
+
+## Re-run after the archive roster cleanup (2026-11-25)
+
+**What changed** (with Ivy, commit `fc29383`):
+- **Two contrived archive tasks were replaced by plain ones.**
+  - "Take docs/guide.txt out of manuals.tar" replaces extract-and-rename.
+  - `pack_two_named_reports`, "Pack reports/north.txt and reports/east.txt into final-reports.tar.gz", replaces filter-then-pack, a reasoning test.
+- **`archive.pack` accepts several space-separated sources.** This is a behaviour change only: the v6 prompt is byte-identical, so the r14 seeds still run on exactly the prompt they were trained on.
+- **Pack-then-delete is unchanged.**
+
+**Scoring:** all four models were re-scored on the 3090 (evaluation fingerprint `57bd8839…`). There were zero infrastructure failures.
+
+| | before | after | archives (/10) |
+|---|---|---|---|
+| 2.0 on v6 | 66 | **67** | 6 |
+| r14 s42 | 66 | **67** | 8 |
+| r14 s43 | 68 | **70** | **9** |
+| r14 s44 | 58 | **59** | 7 |
+
+Runs:
+- 2.0: `fast12-5ows29ac`, `broad-jn1p83mj`
+- s42: `fast12-21mo53b3`, `broad-4_7hedbi`
+- s43: `fast12-jw2fc6c6`, `broad-jvt9hi0o`
+- s44: `fast12-c9nsdcje`, `broad-2g6czmzb`
+
+**The round's verdict stands.** The three-seed check on the new roster still fails: the mean is 65.3 against 67, and the lowest seed is 59 against a floor of 62. The roster was changed after seeing results, so this re-run measures; it does not re-judge the round.
+
+**Archives:**
+- **One file out:** passes at all three seeds, with `archive.unpack` and `member`.
+- **Two named files:** s43 used the multi-source form in one call and passed. s42 and s44 packed the whole `reports/` folder (south.txt included), listed it, and stopped without noticing the extra file. Every packing episode in training packs a whole folder, so naming files is a small data gap, not a tool problem.
+- **Pack, then delete:** still failed by every seed. Two seeds try `rmdir` on a non-empty folder and never switch to `rm -r`.
+- **Overall:** the r14 seeds score 8, 9 and 7 out of 10 on archives, against 6 for 2.0.
