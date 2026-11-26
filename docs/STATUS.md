@@ -58,7 +58,8 @@ Reports: [r11](data/R11-V5-RESULT.md), [r12](data/R12-V5-RESULT.md), [r13](data/
    - **Recipe ([RECIPE-R14](data/RECIPE-R14.md)):**
      - Averaging the r14 seeds ("soup") scored 66 and failed: it acts as a majority vote of its seeds.
      - **lr 1e-4 with 2 epochs passes the three-seed rule:** seeds 65 / 70 / 68 (mean 67.67 against 67), and the soup scores **73**, the best roster score yet. The seed spread fell from 11 to 5.
-     - **Held-out v3 is waiting on Ivy:** the rule names seed 42; the soup is the alternative.
+     - **Held-out v3, run once, with the soup chosen by Ivy:** **soup 86/100 against 2.0's 76/100** (paired: 17 tasks won, 7 lost, p ≈ 0.06). Zero unreviewed changes on either run, and false completions fell from 23 to 11.
+     - The release candidate needs the safety gate, a model card and the app on v6 before it can ship.
    - **Disk:** the r12 and r13 pilots were pruned like the r10 and r11 ones: merged fp16 weights and duplicate stock GGUFs removed, with SHA-256 checksums in each `PRUNED.txt`. Adapters, tuned GGUFs and reports are kept. Free space went from 39 to 66 GB.
 2. **Three-seed rule for round 14 on**, recorded in the [roadmap](plan/ROADMAP.md) before any training: the mean of seeds 42–44 must beat 2.0, and no seed may fall more than 5 below it. Seed 42, chosen in advance, goes to held-out.
 

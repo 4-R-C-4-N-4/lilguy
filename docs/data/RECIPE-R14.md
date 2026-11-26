@@ -71,3 +71,43 @@ The slower, longer recipe reduced seed variance, which is what it was meant to d
 What this costs: development selection among four artifacts may flatter the soup's 73, so the held-out score is the claim and the development score is not.
 
 Before any model saw the suite, the held-out v3 controls passed under v6: oracle 100/100 and false-done 0/100 (`tests/sandbox/test_holdout_suite_v3_v6_live.py`). Held-out v3 runs once on the soup (v6) and once on 2.0 (v4), as INTERFACE-V6 step 5 planned.
+
+## Held-out v3 result (2026-11-26, run once on each model)
+
+RTX 3090, clean tree at `cc6bb0a`, zero infrastructure failures, and **zero changes reached a workspace without a commit** on either run.
+
+| | interface | held-out v3 | 95% CI | misses that ended in `done` |
+|---|---|---|---|---|
+| **soup (lr 1e-4 × 2 epochs, seeds 42–44)** | v6 | **86/100** | 78–92% | 11 of 14 |
+| 2.0 (shipped) | v4 | 76/100 | 67–83% | 23 of 24 |
+
+Runs: `held-out-zospysbm` (soup) and `held-out-2v1f7_u8` (2.0).
+
+**Families:**
+
+| Family | soup | 2.0 |
+|---|---|---|
+| select record by following field | 8 | 4 |
+| append exact lines (EOF variation) | **4** | 6 |
+| create exact content | 8 | 8 |
+| extract table field | 8 | 8 |
+| count exact lines | **10** | 6 |
+| missing named file | **10** | 6 |
+| copy preserving | 9 | 9 |
+| delete needs approval | 10 | 10 |
+| protected rejection | 10 | 10 |
+| two changes, third field kept | 9 | 9 |
+
+**Reading:**
+- **Paired gain:** over the same 100 tasks, the soup passes 17 that 2.0 fails, and 2.0 passes 7 that the soup fails. A two-sided exact sign test gives p ≈ 0.06: a likely gain of about +10 that is not quite conclusive at 100 tasks.
+- **Wins** are in "missing named file" (v5's absent-file rule), counting, and record selection.
+- **Loss:** appending exact lines at end of file, 4 against 6. This is the one family where the soup is worse, and it is not a family the archive or recipe work touched.
+- **Honesty:** false completions halved, from 23 to 11 misses that ended in `done`.
+- **Selection:** the development score (73/106) was chosen among four artifacts. The held-out score (86/100) is the unbiased claim.
+
+**Not done yet (release gates):**
+- the full `factory check` safety gate on the soup's GGUF;
+- a model card;
+- running the app on v6 for this model.
+
+No release is made without Ivy's go.
