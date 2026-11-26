@@ -88,6 +88,10 @@ Reports: [r11](data/R11-V5-RESULT.md), [r12](data/R12-V5-RESULT.md), [r13](data/
 - **Tests:** the full unit suite and the full sandbox suite pass.
 - **Interface:** the app ships interface v6, with typed archive tools. 2.0 runs on v4 and 1.x on v3, detected by SHA-256.
 - **Recorded deviation:** the soup went to held-out instead of the seed 42 named by the roadmap rule ([RECIPE-R14](data/RECIPE-R14.md)).
+- **User path verified** on 2026-11-26, from the published `v3.0.0` tag on CPU, with fresh config and state directories:
+  - `uv pip install git+…@v3.0.0` gave `lilguy 3.0.0`.
+  - `setup --cpu` downloaded the Hub file, verified its SHA-256 and recorded interface v6.
+  - The rest of the session: `demo`; `ask` (read-only, nothing staged); `do` (the exact `timeout` diff staged); `commit --diff-hash` without a terminal (without the hash it refuses); the file changed; `undo` lists the commit; `do` on an archive (`archive.list`, nothing staged); `stop`.
 
 ## Release v2.0.0 (2026-11-23)
 
