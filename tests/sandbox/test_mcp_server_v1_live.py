@@ -29,23 +29,29 @@ from mcp.client.stdio import stdio_client
 ROOT = Path(__file__).resolve().parents[2]
 
 
-def parameters(workspace, state):
+def parameters(workspace, state, interface=None):
     env = {k: os.environ[k] for k in ("XDG_RUNTIME_DIR",) if k in os.environ}
     return StdioServerParameters(command=sys.executable, cwd=ROOT, env=env, args=[
         "-m", "lilguy.mcp_server", "--workspace", str(workspace),
         "--state-dir", str(state), "--toolset", str(ROOT / "toolset.yaml"), "--interface-v1",
+        *(["--interface", str(interface)] if interface else []),
     ])
 
 
-def test_interface_v1_lists_run_plus_typed_tools(tmp_path):
+@pytest.mark.parametrize("interface,expected", [
+    (5, {"run", "fs.list", "fs.find", "fs.read", "fs.grep", "fs.edit"}),
+    (None, {"run", "fs.list", "fs.find", "fs.read", "fs.grep", "fs.edit",  # the shipped default (v6, 3.0)
+            "archive.list", "archive.pack", "archive.add", "archive.unpack"}),
+])
+def test_interface_v1_lists_run_plus_typed_tools(tmp_path, interface, expected):
     async def run():
         with anyio.fail_after(20):
-            async with stdio_client(parameters(tmp_path / "unused", tmp_path / "state")) as (read, write):
+            async with stdio_client(parameters(tmp_path / "unused", tmp_path / "state", interface)) as (read, write):
                 async with ClientSession(read, write) as client:
                     await client.initialize()
                     names = {tool.name for tool in (await client.list_tools()).tools}
-                    assert names == {"run", "fs.list", "fs.find", "fs.read", "fs.grep", "fs.edit"}
-                    assert not (names & {"apply", "approve", "commit"})
+                    assert names == expected
+                    assert not (names & {"apply", "approve", "commit", "undo"})
 
     asyncio.run(run())
 
