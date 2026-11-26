@@ -51,14 +51,17 @@ def _clean(s: str) -> list[str]:
     return out
 
 
-def _exact(s: str) -> list[str]:
-    """Interface v5: every line as printed, trailing spaces and blank lines included."""
+def _exact(s: str, collapse: bool = True) -> list[str]:
+    """Interface v5: every line as printed, trailing spaces and blank lines included. v5 and v6
+    still fold consecutive identical lines into `line  (xN)`; v7 (`collapse=False`) does not."""
     if not s:
         return []
     body = s.replace("\r\n", "\n").replace("\r", "\n")
     lines = [ANSI.sub("", ln)[:MAX_LINE] for ln in body.split("\n")]
     if body.endswith("\n"):
         lines.pop()
+    if not collapse:
+        return lines
     out: list[str] = []
     for line, repeats in groupby(lines):
         count = sum(1 for _ in repeats)
@@ -96,14 +99,16 @@ def tag_errors(stderr: str, stdout: str = "") -> list[str]:
 
 
 def digest(exit_code: int, stdout: str, stderr: str, extra_tags: list[str] | None = None,
-           *, framed: bool = False, exact: bool = False) -> Digest:
+           *, framed: bool = False, exact: bool = False, collapse: bool = True) -> Digest:
     """`framed` (interface v4) shows output lines exactly as printed, between `<<<` and `>>>`,
     instead of indenting each by two spaces: copied text must match the file byte for byte.
     `exact` (interface v5, implies framed) also keeps trailing spaces and blank lines, and says
     when stdout does not end with a newline, which a framed listing otherwise hides."""
     framed = framed or exact
-    clean = _exact if exact else _clean
-    out_lines, err_lines = clean(stdout), clean(stderr)
+    if exact:
+        out_lines, err_lines = _exact(stdout, collapse), _exact(stderr, collapse)
+    else:
+        out_lines, err_lines = _clean(stdout), _clean(stderr)
     tags = list(extra_tags or [])
     if exit_code != 0 or err_lines:
         tags += tag_errors(stderr, stdout if exit_code != 0 else "")

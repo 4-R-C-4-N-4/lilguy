@@ -17,7 +17,7 @@ from dev import dev_focus, fast12_runner
 from lilguy import protocol
 
 
-SETS = {'v4': 'dev.dev_focus', 'r11': 'dev.focus_r11'}
+SETS = {'v4': 'dev.dev_focus', 'r11': 'dev.focus_r11', 'append': 'dev.focus_append'}
 
 
 def group_of(task_id, focus=dev_focus):

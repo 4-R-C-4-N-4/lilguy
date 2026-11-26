@@ -41,10 +41,10 @@ import yaml
 from .digest import digest
 
 INTERFACE_VERSION = 6
-SUPPORTED_VERSIONS = (1, 2, 3, 4, 5, 6)
+SUPPORTED_VERSIONS = (1, 2, 3, 4, 5, 6, 7)
 # The development interface (newest). INTERFACE_VERSION stays the one the shipped model was
 # trained on until a model trained on a newer version is released.
-LATEST_VERSION = 6
+LATEST_VERSION = 7
 MODES = ("do", "ask")
 TOOLSET = Path(__file__).resolve().parent / "data" / "toolset.yaml"
 # Typed tools served in v1. The text tools in toolset.yaml are thin wrappers that `run` already
@@ -54,11 +54,14 @@ TOOLS_V1 = ("fs.list", "fs.find", "fs.read", "fs.grep", "fs.edit")
 # v1-v5 manifest stays byte-identical.
 TOOLSET_V6 = TOOLSET.with_name("toolset_v6.yaml")
 TOOLS_V6 = ("archive.list", "archive.pack", "archive.add", "archive.unpack")
+# v7 (docs/plan/INTERFACE-V7.md): appends move into the application.
+TOOLSET_V7 = TOOLSET.with_name("toolset_v7.yaml")
+TOOLS_V7 = ("fs.append",)
 
 
 def tool_names(version):
     """The typed tools served at an interface version, in interface order."""
-    return TOOLS_V1 + (TOOLS_V6 if version >= 6 else ())
+    return TOOLS_V1 + (TOOLS_V7 if version >= 7 else ()) + (TOOLS_V6 if version >= 6 else ())
 KINDS = ("run", "tool", "ask", "done")
 POLICIES = ("ok", "pending", "rejected")
 MAX_ACTION_CHARS = 16_384
@@ -124,6 +127,8 @@ def load_tools(toolset=TOOLSET, names=None, version=None):
     definitions = yaml.safe_load(Path(toolset).read_text(encoding="utf8"))["tools"]
     if any(name in TOOLS_V6 for name in names):
         definitions = {**definitions, **yaml.safe_load(TOOLSET_V6.read_text(encoding="utf8"))["tools"]}
+    if any(name in TOOLS_V7 for name in names):
+        definitions = {**definitions, **yaml.safe_load(TOOLSET_V7.read_text(encoding="utf8"))["tools"]}
     tools = {}
     for name in names:
         definition = definitions[name]
@@ -300,7 +305,8 @@ def render_observation(*, exit_code, stdout="", stderr="", tags=(), changes=(), 
     _check_version(version)
     if policy not in POLICIES:
         raise ProtocolError(f"policy must be one of {', '.join(POLICIES)}")
-    parts = [digest(exit_code, stdout, stderr, list(tags), framed=version >= 4, exact=version >= 5).text]
+    parts = [digest(exit_code, stdout, stderr, list(tags), framed=version >= 4, exact=version >= 5,
+                    collapse=version < 7).text]
     changes = list(changes)
     if changes:
         shown = "; ".join(f"{op} {path}" for op, path in changes[:MAX_CHANGES_SHOWN])
@@ -542,6 +548,15 @@ _HEADERS[6] = _HEADERS[5].replace(
     "rather than tar. To take one file out of an archive, use archive.unpack with member.\n",
 )
 assert _HEADERS[6] != _HEADERS[5]
+
+# v7 (docs/plan/INTERFACE-V7.md): fs.append owns end-of-file handling, and output never collapses
+# repeated lines. The prompt names fs.append in the tool habit; everything else is v6 unchanged.
+_HEADERS[7] = _HEADERS[6].replace(
+    "- Use a tool below when it fits; otherwise use run. For tar or gzip files,",
+    "- Use a tool below when it fits; otherwise use run. To add lines at the end of a file, use "
+    "fs.append. For tar or gzip files,",
+)
+assert _HEADERS[7] != _HEADERS[6]
 
 
 def _describe(arg):

@@ -455,6 +455,41 @@ def archive_unpack(archive, into=".", member=None, overwrite=False):
         print(f"kept existing: {name}")
 
 
+# --- interface v7: appends owned by the application (docs/plan/INTERFACE-V7.md) ---------------
+
+def append(path, lines):
+    """Add `lines` (one or several, newline-separated) at the end of an existing UTF-8 file. Every
+    added line ends with a newline; if the file's last line has none, one is added first."""
+    _, target = checked_path(path)
+    if not target.is_file():
+        raise ValueError(_missing(path, target))
+    with target.open("rb") as stream:
+        mode = stat.S_IMODE(os.fstat(stream.fileno()).st_mode)
+        original = stream.read(EDIT_LIMIT + 1)
+    if len(original) > EDIT_LIMIT:
+        raise ValueError("File exceeds the 1 MiB literal edit limit")
+    text = original.decode("utf8")
+    if "\0" in text:
+        raise ValueError("Expected UTF-8 text")
+    body = lines[:-1] if lines.endswith("\n") else lines
+    added = body.split("\n")
+    if not lines or not body:
+        raise ValueError("Nothing to append: give at least one line")
+    separator = "\n" if text and not text.endswith("\n") else ""
+    updated = (text + separator + "".join(line + "\n" for line in added)).encode("utf8")
+    with tempfile.NamedTemporaryFile(dir=target.parent, delete=False) as stream:
+        staged = Path(stream.name)
+        try:
+            stream.write(updated)
+            stream.flush()
+            os.fchmod(stream.fileno(), mode)
+            staged.replace(target)
+        finally:
+            staged.unlink(missing_ok=True)
+    note = " (added the missing final newline first)" if separator else ""
+    print(f"appended {len(added)} line{'s' if len(added) != 1 else ''} to {path}{note}")
+
+
 INTERFACE = 3  # the interface version the step reports to; set from the server's argv
 
 
@@ -472,7 +507,7 @@ def main():
         _TarError = tarfile.TarError
     try:
         {"fs.find": find, "fs.read": read, "fs.edit": edit,
-         "fs.list": list_, "fs.grep": grep, "archive.list": archive_list,
+         "fs.list": list_, "fs.grep": grep, "fs.append": append, "archive.list": archive_list,
          "archive.pack": archive_pack, "archive.add": archive_add, "archive.unpack": archive_unpack}[name](**json.loads(arguments))
     except (UnicodeError, OSError, OverflowError, RuntimeError):
         print("Unable to access workspace text", file=sys.stderr)

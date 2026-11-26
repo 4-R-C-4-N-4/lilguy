@@ -1,0 +1,12 @@
+# Interface v7 typed tools (docs/plan/INTERFACE-V7.md). Served only from interface 7 on.
+tools:
+  fs.append:
+    description: Add lines at the end of an existing file. Each line ends with a newline; a missing final newline is added first.
+    tier: 1
+    effect: write
+    args:
+      path: {type: path}
+      lines: {type: string, min_length: 1, max_length: 8192}
+    bash:
+      utility: cat
+      flags: {}
