@@ -22,14 +22,14 @@ The model half of **[lilguy](https://github.com/4-R-C-4-N-4/lilguy)**: a small l
 
 This is a LoRA fine-tune of [openbmb/MiniCPM5-2B](https://huggingface.co/openbmb/MiniCPM5-2B), merged and exported as a single Q8_0 GGUF for llama.cpp.
 
-> **This is not a chat model.** It was trained to emit one action at a time in lilguy's line protocol (`run`, `tool fs.read`, `tool fs.edit`, …, `done`). lilguy supplies the tools, the sandbox and the observations. Prompted directly, it will be unhelpful. Use it through lilguy.
+> **This is not a chat model.** It was trained to emit one action at a time in lilguy's line protocol (`run`, `tool fs.read`, `tool archive.unpack`, …, `done`). lilguy supplies the tools, the sandbox and the observations. Prompted directly, it will be unhelpful. Use it through lilguy.
 
 ## Use
 
 ```bash
-uv tool install git+https://github.com/4-R-C-4-N-4/lilguy@v2.0.0
+uv tool install git+https://github.com/4-R-C-4-N-4/lilguy@v3.0.0
 lilguy probe                 # sandbox prerequisites (Linux, bubblewrap ≥ 0.11, Landlock)
-lilguy setup                 # downloads the 2.0 file, checks its SHA-256, finds llama-server
+lilguy setup                 # downloads the 3.0 file, checks its SHA-256, finds llama-server
 lilguy demo ~/lilguy-demo    # practice folder + commands to try
 cd ~/lilguy-demo
 lilguy ask "What is the timeout in staging.conf?"
@@ -40,10 +40,11 @@ Full instructions, requirements and troubleshooting are in the [README](https://
 
 | File | lilguy | Interface | Held-out | SHA-256 |
 |---|---|---|---|---|
-| **`lilguy-v2-minicpm5-2b-q8_0.gguf`** | 2.0 | v4 | v2: 83/100 | `0d90e036f52ee7890df33e877898963d9a657785e0c4cb58532538689be8f233` |
+| **`lilguy-v3-minicpm5-2b-q8_0.gguf`** | 3.0 | v6 | v3: 86/100 | `2557103c7a05bfbbc320ffdcabeda882ec782f9815f6583cd1dce89938d2bf4d` |
+| `lilguy-v2-minicpm5-2b-q8_0.gguf` | 2.0 | v4 | v2: 83/100, v3: 76/100 | `0d90e036f52ee7890df33e877898963d9a657785e0c4cb58532538689be8f233` |
 | `lilguy-v1-minicpm5-2b-q8_0.gguf` | 1.x | v3 | v1: 74/100, v2: 76/100 | `5626927a90f9981d56ab94d4bed8495c183487df818af63651c4d32055b18c94` |
 
-Both files are 2,679,706,816 bytes (2.50 GiB). Each one only works on the interface it was trained on, and lilguy picks the right one automatically.
+All three files are 2,679,706,816 bytes (2.50 GiB). Each one only works on the interface it was trained on, and lilguy picks the right one automatically.
 
 Serving and request settings:
 - lilguy serves the model with `llama-server -c 4096 -np 1 -ngl all`.
@@ -52,65 +53,65 @@ Serving and request settings:
 - Every number below was measured with these settings.
 - CPU-only (`-ngl 0`) also works, at a few seconds per step.
 
-## Results (2.0 file)
+## Results (3.0 file)
 
-### Held-out suite v2: 83/100
+### Held-out suite v3: 86/100
 
-The held-out suite has 100 tasks in 10 families. It was frozen before this model ran on it, never used for training or tuning, and run once on this exact file. Every task ran beside two controls: a scripted correct solution, which passed 100/100, and an immediate "done", which passed 0/100.
+The held-out suite has 100 tasks in 10 families. It was frozen before any model ran on it, never used for training or tuning, and run once on this exact file. Every task ran beside two controls: a scripted correct solution, which passed 100/100, and an immediate "done", which passed 0/100.
 
-| | 2.0 (this file) | 1.0 (v1 file), same suite |
+| | 3.0 (this file, v6) | 2.0 (v2 file, v4), same suite |
 |---|---|---|
-| **Completed** | **83/100** (95% CI 75–89%) | 76/100 |
+| **Completed** | **86/100** (95% CI 78–92%) | 76/100 (67–83%) |
 | **Changes reaching the real folder without a commit** | **0** | 0 |
 | Infrastructure failures | 0 | 0 |
-| Said "done" on a task it got wrong | 16 of 17 misses | 13 of 24 |
+| Said "done" on a task it got wrong | 11 of 14 misses | 23 of 24 |
 
-| Family | 2.0 | 1.0 |
+| Family | 3.0 | 2.0 |
 |---|---|---|
-| Move into a folder (waits for approval) | 10/10 | 10/10 |
-| Protected file: edit refused | 10/10 | 10/10 |
-| Find a file in a subfolder, then edit | 10/10 | 10/10 |
-| Append two or three lines | 10/10 | 9/10 |
-| Change one setting | 9/10 | 9/10 |
-| **Change a line that also appears in another block** | **9/10** | **0/10** |
-| Quote a value from a file | 8/10 | 10/10 |
-| Count matching lines | 8/10 | 10/10 |
-| Named file is missing: ask instead of guessing | 5/10 | 4/10 |
-| Create a file with exact lines | 4/10 | 4/10 |
+| Delete waits for approval | 10/10 | 10/10 |
+| Protected folder: change refused | 10/10 | 10/10 |
+| **Count exact lines among near matches** | **10/10** | 6/10 |
+| **Named file is missing: ask, don't substitute** | **10/10** | 6/10 |
+| Copy, keeping source and destination | 9/10 | 9/10 |
+| Two changes, third field kept | 9/10 | 9/10 |
+| **Pick the record named by a following field** | **8/10** | 4/10 |
+| Create a file with exact content | 8/10 | 8/10 |
+| Extract one field from a table | 8/10 | 8/10 |
+| Append exact lines (with or without a final newline) | **4/10** | 6/10 |
 
 How to read this:
-- **One skill drives the gain.** 2.0 learned the one thing it was trained for: editing a line that also occurs elsewhere, via a multi-line `old` that includes a neighbouring line.
-- **The overall gap is not significant on its own.** Twelve tasks were passed only by 2.0 and five only by 1.0, which gives an exact McNemar p ≈ 0.14.
-- **Questions got slightly worse.** 2.0 lost four question tasks against 1.0.
+- **The gains are in noticing and reading.** 3.0 asks about a missing named file instead of editing a similar one, counts exact matches among near-misses, and picks the right record.
+- **The gap is likely but not conclusive.** On the same 100 tasks, seventeen were passed only by 3.0 and seven only by 2.0, which gives an exact two-sided sign test p ≈ 0.06.
+- **Appends got worse** (4/10 against 6/10). That is the one family where 3.0 scores lower.
+- **False completions halved.** 3.0 says "done" on a wrong task 11 times, against 23 for 2.0.
 
-### Development suite: 53/80
+### Development suite: 73/106
 
-There are 80 development tasks, run the same way.
-- 2.0: 53/80 (95% CI 55–76%).
-- 1.0 on the same code: 51/80.
-- Unmodified MiniCPM5-2B: 19/80.
+There are 106 development tasks, run the same way and on the same code, at each model's interface:
+- 3.0: 73/106;
+- 2.0: 67/106;
+- unmodified MiniCPM5-2B: 27/106.
 
-A second training run of the same recipe (seed 43) scored 52/80. On an RTX 3090 the median task took 0.9 s end to end, of which 0.22 s was model time.
+On archives, 3.0 scores 9/10 against 2.0's 6/10. On an RTX 3090 the median task took 1.0 s end to end, of which 0.24 s was model time.
 
 ### Caveats
 
-- **The development numbers are optimistic.** The training data was revised while watching that suite. Held-out v2 is the unbiased figure.
+- **The development number is optimistic.** It was chosen among four artifacts: three seeds and their average. Held-out v3 is the unbiased figure.
 - **It can claim success wrongly.** lilguy never applies anything without your yes, and that is the reason.
 - **Known weak spots:**
-  - creating a file with exact multi-line content;
-  - noticing that a named file is missing rather than choosing a similar one;
-  - appending to a file that has no final newline;
-  - scripts;
-  - `chmod` modes stated in words rather than in octal.
+  - appending exact lines;
+  - requests with two steps where the second is a delete (for example "pack this folder, then delete it");
+  - `chmod` modes stated in words rather than in octal;
+  - scripts.
 
 ## Intended use
 
 Use it for small, explicit, reviewable jobs on your own machine:
 - read a setting;
 - count matching lines;
-- change one value, including one of several identical lines in different sections;
-- append a few lines;
-- move named files into a folder.
+- change one value;
+- move named files into a folder;
+- list, pack, add to or unpack tar and gzip archives.
 
 Name the file, say what to change, and say what to leave alone.
 
@@ -120,38 +121,42 @@ Name the file, say what to change, and say what to leave alone.
 - use without lilguy's sandbox and review step;
 - general chat or coding.
 
-## Training (2.0 file)
+## Training (3.0 file)
 
 - **Base:** `openbmb/MiniCPM5-2B` at revision `42433e90dad95123ab87729fd7011e7110629556` (Apache-2.0).
-- **Method:**
+- **Method:** three LoRA runs, averaged into one model.
   - LoRA (rank 16, alpha 32, dropout 0) on all linear layers.
-  - lr 2e-4 with 3% warmup and cosine decay, for 1 epoch (485 optimizer steps). Training stopped at the fit target.
-  - Max length 4096, seed 42.
+  - lr **1e-4** with 3% warmup and cosine decay, for **2 epochs** (1,302 optimizer steps).
+  - Max length 4096, at seeds 42, 43 and 44. Each run took 171 minutes on one RTX 3090.
   - Loss is weighted 5× on each action's first line, where the decision is made.
-  - torch 2.11, transformers 5.15 and peft 0.20, on one RTX 3090 in 47 minutes.
-  - The adapter was merged and converted with llama.cpp to Q8_0.
-- **Data:** corpus revision 10 for interface v4: 7,745 next-action rows from 2,484 multi-turn episodes.
+  - torch 2.11, transformers 5.15 and peft 0.20.
+  - **Averaged ("model soup"):** the three runs' full weight changes (`B·A·α/r` per module) are averaged and added to the base, then converted with llama.cpp to Q8_0.
+  - Why averaging: the slower recipe made the seeds agree (they scored 65, 70 and 68 on development, against 59–70 for the earlier recipe), and the average scored above each of them.
+- **Data:** corpus revision 14 for interface v6: 10,416 next-action rows from 3,221 multi-turn episodes.
   - Every episode was generated from original fixtures and replayed in the real lilguy sandbox. It was kept only if its scripted actions produced exactly the expected files or answer.
-  - It is revision 8 re-recorded under v4, plus 320 episodes in four new families: multi-line `old <<<` edits for repeated lines, multi-line appends, appends to files without a final newline, and indented appends.
+  - It is revision 13 re-recorded under v6, with its archive episodes on the new archive tools, plus 120 new episodes:
+    - packing, gzip, adding to and unpacking archives, and comparing an archive with a folder;
+    - permission requests stated in words.
   - No personal shell history is used.
   - Shell usage in some examples is adapted from [tldr-pages](https://github.com/tldr-pages/tldr) (CC BY 4.0, pinned revision `2d64595`), and each one credits its page.
   - Training, development and held-out tasks are split by template family and audited for overlap.
-- **Interface v4:** a `run` tool plus five typed tools: `fs.list`, `fs.find`, `fs.read`, `fs.grep` and `fs.edit`.
-  - Command output is shown between `<<<` and `>>>`, exactly as printed.
-  - `fs.edit` refusals say whether the old text is missing or repeated, and on which lines.
-  - Answers to questions are quoted from the last command's output.
+- **Interface v6:** a `run` tool plus nine typed tools.
+  - The file tools are `fs.list`, `fs.find`, `fs.read`, `fs.grep` and `fs.edit`.
+  - The archive tools are `archive.list` (which can compare members with the workspace), `archive.pack`, `archive.add` and `archive.unpack` (which keeps existing files unless told otherwise, and can take out one member).
+  - Command output is shown between `<<<` and `>>>`, exactly as printed. A missing final newline is marked.
+  - A named file that does not exist is a reason to ask.
 
 Recipes, data generators, evaluation tasks and every round's report are in the [GitHub repo](https://github.com/4-R-C-4-N-4/lilguy) (`dev/`, `docs/data/`, `docs/FACTORY.md`).
 
 ## Safety
 
 The guarantees come from lilguy, not from the model:
-- commands run on an overlay copy of the folder, with no network and with resource limits (bubblewrap + Landlock);
+- commands and typed tools run on an overlay copy of the folder, with no network and with resource limits (bubblewrap + Landlock);
 - deletes, permission changes and protected paths (`.git/`, `.env`) wait for human approval;
 - the model is never offered approve, commit or undo;
 - commits are journaled and undoable.
 
-The 2.0.0 runtime passed lilguy's full 18-case bypass gate. That gate tests the sandbox, not this model's judgement.
+The 3.0.0 runtime passed lilguy's full 18-case bypass gate. That gate tests the sandbox, not this model's judgement.
 
 ## License and attribution
 

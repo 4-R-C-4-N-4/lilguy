@@ -4,7 +4,7 @@ Updated 2026-11-24. This is the one place for current state; the plan and its ga
 
 ## Where we stand (2026-11-24)
 
-**Shipped:** lilguy **2.0.0**, the MiniCPM5-2B r10 model on interface v4.
+**Shipped:** lilguy **3.0.0**, the MiniCPM5-2B r14 soup on interface v6 (held-out v3 86/100). 2.0.0 is the MiniCPM5-2B r10 model on interface v4.
 - **Held-out v2:** 83/100, against 76/100 for 1.0 on the same suite. Zero changes reached a folder without review.
 - **The app** runs each model on the interface it was trained on (2.0 on v4, 1.x on v3).
 
@@ -73,6 +73,21 @@ Reports: [r11](data/R11-V5-RESULT.md), [r12](data/R12-V5-RESULT.md), [r13](data/
 - **Safety:** the full `factory check` passed on the release commit `e2aae4b` (`reports/factory/check-qhnezxw9`, clean tree, 18/18 bypass cases), and earlier at `ea4e654`.
 - **User path verified:** an installed wheel was run end to end on CPU. Setup, demo, three `ask`s, two `do`s, commit, approve + commit, undo list and undo all worked. The GPU path was verified earlier on the 4070 and 3090.
 - **Not met yet:** the SCOPE latency target (< 10% of a 30B reference) has no matched measurement.
+
+## Release v3.0.0 (2026-11-26)
+
+- **Shipped model:** `lilguy-v3-minicpm5-2b-q8_0.gguf`, SHA-256 `2557103c…4dc0`, from `reports/factory/soup-r14-lr1e4/minicpm/tuned-q8_0.gguf`.
+  - It is the soup of three LoRA runs at seeds 42, 43 and 44, trained on corpus revision 14 for interface v6 with lr 1e-4 for 2 epochs.
+  - It is published to `4rc4n4/lilguy-minicpm5-2b-GGUF`, where the Hub's LFS hash matches.
+- **Held-out v3, run once per model:** 3.0 scored 86/100 (`held-out-zospysbm`) and 2.0 scored 76/100 (`held-out-2v1f7_u8`).
+  - The paired difference is 17 to 7, p ≈ 0.06.
+  - Zero changes reached a workspace without a commit, and false completions fell from 23 to 11.
+  - Appends regressed, 4/10 against 6/10.
+- **Development:** 73/106. 2.0 scores 67 and the base 27.
+- **Safety gate:** `factory check` passed on the clean commit `d83c626` (`check-8dkw_rxj`). All six stages passed, with 18/18 bypass cases, on the RTX 4070.
+- **Tests:** the full unit suite and the full sandbox suite pass.
+- **Interface:** the app ships interface v6, with typed archive tools. 2.0 runs on v4 and 1.x on v3, detected by SHA-256.
+- **Recorded deviation:** the soup went to held-out instead of the seed 42 named by the roadmap rule ([RECIPE-R14](data/RECIPE-R14.md)).
 
 ## Release v2.0.0 (2026-11-23)
 
