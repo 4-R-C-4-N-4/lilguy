@@ -55,6 +55,10 @@ Reports: [r11](data/R11-V5-RESULT.md), [r12](data/R12-V5-RESULT.md), [r13](data/
      - The three-seed rule fails on both counts: the mean is 64.0, and the lowest seed (58) is below the floor of 61.
      - Archives rose at every seed (7/7/6 vs 5), but permissions did not (2/2/4 vs 3).
      - The seed spread is 10 tasks, which points to the training recipe (seed variance) as the next lever rather than more data.
+   - **Recipe ([RECIPE-R14](data/RECIPE-R14.md)):**
+     - Averaging the r14 seeds ("soup") scored 66 and failed: it acts as a majority vote of its seeds.
+     - **lr 1e-4 with 2 epochs passes the three-seed rule:** seeds 65 / 70 / 68 (mean 67.67 against 67), and the soup scores **73**, the best roster score yet. The seed spread fell from 11 to 5.
+     - **Held-out v3 is waiting on Ivy:** the rule names seed 42; the soup is the alternative.
    - **Disk:** the r12 and r13 pilots were pruned like the r10 and r11 ones: merged fp16 weights and duplicate stock GGUFs removed, with SHA-256 checksums in each `PRUNED.txt`. Adapters, tuned GGUFs and reports are kept. Free space went from 39 to 66 GB.
 2. **Three-seed rule for round 14 on**, recorded in the [roadmap](plan/ROADMAP.md) before any training: the mean of seeds 42–44 must beat 2.0, and no seed may fall more than 5 below it. Seed 42, chosen in advance, goes to held-out.
 
