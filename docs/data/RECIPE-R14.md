@@ -62,3 +62,12 @@ The slower, longer recipe reduced seed variance, which is what it was meant to d
 **None of the three seeds reached the 99% training fit.** After 2 epochs they ended at 98.6–98.9%, so the epoch cap, not the fit stop, ended each run.
 
 **Held-out decision (Ivy).** The roadmap rule declared before r14 names **seed 42** (65 here) as the candidate that goes to held-out. The soup (73) was declared as a measurement with its own bar, not as the held-out candidate. Sending the soup instead is defensible, because it depends on all three seeds and so picks none of them. It is still a change to the declared rule, so it needs Ivy's call before held-out v3 is spent.
+
+**Decided (Ivy, 2026-11-26): the soup goes to held-out v3**, instead of the seed 42 named in the roadmap rule. This is a recorded deviation, for three reasons:
+- the soup was declared before training, with its own bar (70), and it passed that bar;
+- it is a fixed function of all three seeds, so choosing it picks no seed;
+- held-out v3 gives an unbiased score of this exact file, whatever role development selection played.
+
+What this costs: development selection among four artifacts may flatter the soup's 73, so the held-out score is the claim and the development score is not.
+
+Before any model saw the suite, the held-out v3 controls passed under v6: oracle 100/100 and false-done 0/100 (`tests/sandbox/test_holdout_suite_v3_v6_live.py`). Held-out v3 runs once on the soup (v6) and once on 2.0 (v4), as INTERFACE-V6 step 5 planned.
