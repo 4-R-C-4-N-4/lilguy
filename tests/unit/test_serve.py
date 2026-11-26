@@ -235,10 +235,11 @@ def test_release_url_points_at_hugging_face():
 
 
 def test_release_pin_is_the_evaluated_artifact():
-    # sha256 of reports/factory/pilot-5bw___5q/minicpm/tuned-q8_0.gguf (r10, seed 42), the file
-    # held-out v2 scored 83/100 on (reports/factory/held-out-1zp8qiwo)
-    assert serve.RELEASE["sha256"] == "0d90e036f52ee7890df33e877898963d9a657785e0c4cb58532538689be8f233"
-    assert serve.RELEASE["interface"] == 4 == serve.KNOWN_MODELS[serve.RELEASE["sha256"]]
+    # sha256 of reports/factory/soup-r14-lr1e4/minicpm/tuned-q8_0.gguf (r14 soup, lr 1e-4 x2, seeds
+    # 42-44), the file held-out v3 scored 86/100 on (reports/factory/held-out-zospysbm)
+    assert serve.RELEASE["sha256"] == "2557103c7a05bfbbc320ffdcabeda882ec782f9815f6583cd1dce89938d2bf4d"
+    assert serve.RELEASE["interface"] == 6 == serve.KNOWN_MODELS[serve.RELEASE["sha256"]]
+    assert serve.KNOWN_MODELS["0d90e036f52ee7890df33e877898963d9a657785e0c4cb58532538689be8f233"] == 4  # 2.0
     assert serve.KNOWN_MODELS["5626927a90f9981d56ab94d4bed8495c183487df818af63651c4d32055b18c94"] == 3
 
 

@@ -6,7 +6,7 @@ import pytest
 from lilguy import protocol as p
 
 GOLDEN = Path(__file__).with_name("interface_v1_system_prompt.txt")
-TOOLS = p.load_tools()
+TOOLS = p.load_tools(version=5)  # the frozen v1-v5 surface (v6 adds archive tools)
 
 COMMANDS = [
     "find . -name '*.log' -size +10M -mtime +7 -delete",

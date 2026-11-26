@@ -6,13 +6,13 @@ import pytest
 from lilguy import loop
 from lilguy import protocol as p
 
-TOOLS = p.load_tools()
+TOOLS = p.load_tools(version=5)  # the frozen v1-v5 surface (v6 adds archive tools)
 V2_GOLDEN = Path(__file__).with_name("interface_v2_system_prompt.txt")
 V3_GOLDEN = Path(__file__).with_name("interface_v3_system_prompt.txt")
 
 
 def test_shipped_version_is_4_and_earlier_versions_stay_supported():
-    assert p.INTERFACE_VERSION == 4  # the 2.0 model's; 1.x models run on v3
+    assert p.INTERFACE_VERSION == 6  # the 3.0 model's; 2.0 runs on v4, 1.x on v3
     assert p.SUPPORTED_VERSIONS == (1, 2, 3, 4, 5, 6)  # v5 and v6 are in development
     with pytest.raises(p.ProtocolError):
         p.system_prompt(TOOLS, version=7)

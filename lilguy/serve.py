@@ -39,10 +39,10 @@ _START_TIMEOUT = 180.0
 # The released model: the exact bytes the round reports and the safety gate were run against.
 RELEASE = {
     "repo": "4rc4n4/lilguy-minicpm5-2b-GGUF",
-    "file": "lilguy-v2-minicpm5-2b-q8_0.gguf",
-    "sha256": "0d90e036f52ee7890df33e877898963d9a657785e0c4cb58532538689be8f233",
+    "file": "lilguy-v3-minicpm5-2b-q8_0.gguf",
+    "sha256": "2557103c7a05bfbbc320ffdcabeda882ec782f9815f6583cd1dce89938d2bf4d",
     "bytes": 2679706816,
-    "interface": 4,
+    "interface": 6,
 }
 
 # Every released model, by SHA-256, and the interface it was trained on, so `setup --model`
@@ -50,6 +50,7 @@ RELEASE = {
 KNOWN_MODELS = {
     "5626927a90f9981d56ab94d4bed8495c183487df818af63651c4d32055b18c94": 3,  # 1.x: r8, interface v3
     "0d90e036f52ee7890df33e877898963d9a657785e0c4cb58532538689be8f233": 4,  # 2.0: r10, interface v4
+    "2557103c7a05bfbbc320ffdcabeda882ec782f9815f6583cd1dce89938d2bf4d": 6,  # 3.0: r14 soup, interface v6
 }
 
 

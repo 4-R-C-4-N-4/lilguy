@@ -15,8 +15,8 @@ def test_frozen_manifest_matches_server_and_protocol():
     assert manifest["status"] == "frozen-served"
     assert tuple(manifest["served"]) == EXPECTED
     assert set(manifest["tools"]) == set(EXPECTED[1:])
-    assert tuple(protocol.load_tools()) == EXPECTED[1:]
-    served = build_v1_tools()
+    assert tuple(protocol.load_tools(version=5)) == EXPECTED[1:]
+    served = build_v1_tools(5)
     assert tuple(served) == EXPECTED
     assert manifest["run_schema"] == served["run"].inputSchema
     assert not (set(manifest["proposals"]) & set(served))
@@ -24,7 +24,7 @@ def test_frozen_manifest_matches_server_and_protocol():
 
 def test_proposals_are_not_in_any_supported_grammar_or_prompt():
     manifest = yaml.safe_load(protocol.TOOLSET.read_text())
-    tools = protocol.load_tools()
+    tools = protocol.load_tools(version=5)
     for version in protocol.SUPPORTED_VERSIONS:
         grammar = protocol.grammar(tools, version=version)
         prompt = protocol.system_prompt(tools, version=version)

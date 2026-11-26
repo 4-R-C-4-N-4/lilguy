@@ -6,7 +6,7 @@ import pytest
 from lilguy import loop
 from lilguy import protocol as p
 
-TOOLS = p.load_tools()
+TOOLS = p.load_tools(version=5)  # the frozen v1-v5 surface (v6 adds archive tools)
 V1_GOLDEN = Path(__file__).with_name("interface_v1_system_prompt.txt")
 V2_GOLDEN = Path(__file__).with_name("interface_v2_system_prompt.txt")
 

@@ -9,7 +9,7 @@ import pytest
 from lilguy import _typed_step, loop
 from lilguy import protocol as p
 
-TOOLS = p.load_tools()
+TOOLS = p.load_tools(version=5)  # the frozen v1-v5 surface (v6 adds archive tools)
 GOLDEN = {v: Path(__file__).with_name(f"interface_v{v}_system_prompt.txt") for v in (3, 4, 5)}
 
 
@@ -26,7 +26,7 @@ def test_v5_prompt_adds_only_the_two_sentences():
 
 
 def test_shipped_default_is_still_v4_and_v5_stays_supported():
-    assert p.INTERFACE_VERSION == 4 and p.LATEST_VERSION >= 5 and 5 in p.SUPPORTED_VERSIONS
+    assert p.INTERFACE_VERSION >= 4 and p.LATEST_VERSION >= 5 and 5 in p.SUPPORTED_VERSIONS
 
 
 def test_missing_final_newline_is_announced_outside_the_frame():

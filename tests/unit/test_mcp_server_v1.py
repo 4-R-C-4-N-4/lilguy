@@ -17,7 +17,7 @@ from lilguy.mcp_server import InterfaceV1, build_v1_tools
 from lilguy.policy.engine import Decision
 from lilguy.sandbox.backend import DiffEntry, RunSpec, StepResult
 
-TOOLS = protocol.load_tools()
+TOOLS = protocol.load_tools(version=5)  # the frozen v1-v5 surface
 
 
 def _guarded(exit_code=0, stdout="", stderr="", tags=(), step_diff=(), decision=Decision("ok")):
@@ -30,7 +30,7 @@ def _guarded(exit_code=0, stdout="", stderr="", tags=(), step_diff=(), decision=
 
 
 def test_served_tools_are_exactly_v1_typed_tools_plus_run():
-    tools = build_v1_tools()
+    tools = build_v1_tools(5)
     assert set(tools) == {"run", "fs.list", "fs.find", "fs.read", "fs.grep", "fs.edit"}
     assert tools["run"].inputSchema["required"] == ["command"]
     assert tools["fs.read"].inputSchema["required"] == ["path"]
@@ -38,14 +38,14 @@ def test_served_tools_are_exactly_v1_typed_tools_plus_run():
 
 
 def test_no_apply_or_approval_tool_is_ever_registered():
-    tools = build_v1_tools()
+    tools = build_v1_tools(5)
     forbidden = {"apply", "approve", "approval", "commit", "deny"}
     assert not (set(tools) & forbidden)
 
 
 def test_run_dispatches_a_shell_runspec_through_guarded_session():
     guarded = _guarded(stdout="hi\n")
-    server = InterfaceV1(build_v1_tools(), lambda: guarded)
+    server = InterfaceV1(build_v1_tools(5), lambda: guarded)
     result = server.call("run", {"command": "echo hi"})
     spec: RunSpec = guarded.run.call_args.args[0]
     assert spec.shell == "echo hi" and spec.argv is None and spec.pipe is None
@@ -58,7 +58,7 @@ def test_run_dispatches_a_shell_runspec_through_guarded_session():
 
 def test_typed_tool_dispatches_through_typed_step_program_like_the_tracer():
     guarded = _guarded(stdout="a.txt\n")
-    server = InterfaceV1(build_v1_tools(), lambda: guarded)
+    server = InterfaceV1(build_v1_tools(5), lambda: guarded)
     server.call("fs.find", {"path": "."})
     spec: RunSpec = guarded.run.call_args.args[0]
     assert spec.argv[:4] == ["/usr/bin/python3", "-I", "-c", spec.argv[3]]
@@ -77,21 +77,21 @@ def test_typed_tool_dispatches_through_typed_step_program_like_the_tracer():
 ])
 def test_invalid_calls_never_open_a_session(name, args):
     open_guarded = Mock()
-    result = InterfaceV1(build_v1_tools(), open_guarded).call(name, args)
+    result = InterfaceV1(build_v1_tools(5), open_guarded).call(name, args)
     assert result.isError
     open_guarded.assert_not_called()
 
 
 def test_pending_outcome_is_surfaced_as_policy_pending_observation():
     guarded = _guarded(decision=Decision("pending", "rule", "too many deletes"))
-    server = InterfaceV1(build_v1_tools(), lambda: guarded)
+    server = InterfaceV1(build_v1_tools(5), lambda: guarded)
     result = server.call("run", {"command": "rm a b c"})
     assert "policy: pending (too many deletes)" in result.content[0].text
 
 
 def test_rejected_outcome_is_surfaced_as_policy_rejected_observation():
     guarded = _guarded(exit_code=1, decision=Decision("reject", "protected", "touches .git"))
-    server = InterfaceV1(build_v1_tools(), lambda: guarded)
+    server = InterfaceV1(build_v1_tools(5), lambda: guarded)
     result = server.call("run", {"command": "rm .git/config"})
     assert result.isError
     assert "policy: rejected (touches .git)" in result.content[0].text
@@ -100,7 +100,7 @@ def test_rejected_outcome_is_surfaced_as_policy_rejected_observation():
 def test_unknown_decision_returns_infrastructure_error_not_a_policy_grant():
     from lilguy.loop import policy_of
     guarded = _guarded(decision=Decision('unrecognized'), stdout='private step output')
-    result = InterfaceV1(build_v1_tools(), lambda: guarded).call('run', {'command': 'pwd'})
+    result = InterfaceV1(build_v1_tools(5), lambda: guarded).call('run', {'command': 'pwd'})
     assert result.isError and policy_of(result.content[0].text) == 'unknown'
     assert 'private step output' not in result.content[0].text
     guarded.run.assert_called_once()
@@ -109,7 +109,7 @@ def test_unknown_decision_returns_infrastructure_error_not_a_policy_grant():
 def test_changes_are_rendered_from_the_step_diff():
     diff = [DiffEntry("added", "out.txt", "file"), DiffEntry("deleted", "old.txt", "file")]
     guarded = _guarded(step_diff=diff)
-    server = InterfaceV1(build_v1_tools(), lambda: guarded)
+    server = InterfaceV1(build_v1_tools(5), lambda: guarded)
     result = server.call("run", {"command": "mv old.txt out.txt"})
     assert "changes: added out.txt; deleted old.txt" in result.content[0].text
 
@@ -118,7 +118,7 @@ def test_guarded_session_open_failure_never_crashes_the_server():
     def boom():
         raise RuntimeError("sandbox unavailable")
 
-    server = InterfaceV1(build_v1_tools(), boom)
+    server = InterfaceV1(build_v1_tools(5), boom)
     result = server.call("run", {"command": "echo hi"})
     assert result.isError
 
