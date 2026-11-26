@@ -18,7 +18,7 @@ import tempfile
 from collections import Counter
 from pathlib import Path
 
-from dev import fast12_runner, holdout_corpus, holdout_suite_v3, holdout_v2, holdout_v3
+from dev import fast12_runner, holdout_corpus, holdout_suite_v3, holdout_suite_v4, holdout_v2, holdout_v3
 from lilguy import protocol
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -45,6 +45,12 @@ SUITES = {
                interface=4, sources=('dev/holdout_runner.py', 'dev/holdout_suite_v3.py',
                    'dev/holdout_corpus.py', 'dev/holdout_suite_v3_manifest.json',
                    'dev/holdout_suite_v3_manifest.meta.json')),
+    'v4': dict(tasks=holdout_suite_v4.TASKS, grade=holdout_suite_v4.grade, ask=holdout_suite_v4.ASK,
+               oracles=holdout_suite_v4.ORACLES, families=holdout_suite_v4.FAMILIES,
+               manifest='dev/holdout_suite_v4_manifest.json', pin='dev/holdout_suite_v4_manifest.sha256',
+               interface=6, sources=('dev/holdout_runner.py', 'dev/holdout_suite_v4.py',
+                   'dev/holdout_corpus.py', 'dev/holdout_suite_v4_manifest.json',
+                   'dev/holdout_suite_v4_manifest.meta.json')),
 }
 SOURCES = SUITES['v1']['sources']
 
@@ -59,17 +65,18 @@ def check_frozen(suite):
     current = {t.id: (t.request, t.files) for t in spec['tasks']}
     if frozen != current:
         raise ValueError(f'held-out {suite} tasks differ from the frozen manifest')
-    if suite == 'v3':
-        from dev.holdout_suite_v3_freeze import held_rows, validate_roster
-        validate_roster(json.loads(data))
-        if json.loads(data) != json.loads(json.dumps(held_rows())):
-            raise ValueError('held-out v3 modes, oracles or expectations differ from the freeze')
-        meta = json.loads((ROOT / 'dev/holdout_suite_v3_manifest.meta.json').read_text())
+    if suite in ('v3', 'v4'):
+        import importlib
+        freeze = importlib.import_module(f'dev.holdout_suite_{suite}_freeze')
+        freeze.validate_roster(json.loads(data))
+        if json.loads(data) != json.loads(json.dumps(freeze.held_rows())):
+            raise ValueError(f'held-out {suite} modes, oracles or expectations differ from the freeze')
+        meta = json.loads((ROOT / f'dev/holdout_suite_{suite}_manifest.meta.json').read_text())
         if meta['manifest_sha256'] != hashlib.sha256(data).hexdigest():
-            raise ValueError('held-out v3 metadata differs from the manifest pin')
+            raise ValueError(f'held-out {suite} metadata differs from the manifest pin')
         for source, digest in meta['source_sha256'].items():
             if hashlib.sha256((ROOT / source).read_bytes()).hexdigest() != digest:
-                raise ValueError(f'held-out v3 frozen source changed: {source}')
+                raise ValueError(f'held-out {suite} frozen source changed: {source}')
 
 
 def suite_gate(suite):

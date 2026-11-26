@@ -168,7 +168,7 @@ def main():
     parser.add_argument('--stock', type=Path)
     parser.add_argument('--candidate', type=Path)
     parser.add_argument('--held-out', type=Path)
-    parser.add_argument('--suite', choices=('v1', 'v2', 'v3'), default='v1', help='held-out: which frozen suite')
+    parser.add_argument('--suite', choices=('v1', 'v2', 'v3', 'v4'), default='v1', help='held-out: which frozen suite')
     parser.add_argument('--interface', type=int, default=None,
                         help="held-out, fast12, broad: interface the model was trained on "
                              "(default: the suite's, or the shipped model's)")

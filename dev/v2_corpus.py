@@ -1983,6 +1983,8 @@ def gate(examples):
         if _REV >= 11:  # later held-out suites too (earlier revisions keep their original gate)
             suites += [('dev/holdout_v2_manifest.json', 'dev/holdout_v2_manifest.sha256'),
                        ('dev/holdout_suite_v3_manifest.json', 'dev/holdout_suite_v3_manifest.sha256')]
+        if _REV >= 15:  # held-out v4 was frozen after revision 14 was built (its freeze audited 1-14)
+            suites.append(('dev/holdout_suite_v4_manifest.json', 'dev/holdout_suite_v4_manifest.sha256'))
         for manifest, pin_path in suites:
             pin = (ROOT / pin_path).read_text().split()[0]
             result = eval_gate.verify(ROOT / manifest, pin, path)
