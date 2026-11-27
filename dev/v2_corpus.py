@@ -1609,8 +1609,10 @@ BOOST_R6 = {'read_value': 2, 'count': 2, 'largest': 2, 'grep_find': 2, 'awk_sum'
 # a pending handoff or a rejection is bare; a question's answer or a no-op report keeps its text.
 # Asking is kept only where the request cannot be done with the workspace (a named input is
 # absent); asks that judged ambiguity are dropped.
-BLOCKED_ASK_FAMILIES = ('recover_absent', 'named_file_missing')  # the latter: revision 11 only
-_INTERFACE = {1: 1, 2: 1, 3: 1, 4: 1, 5: 2, 6: 2, 7: 3, 8: 3, 9: 3, 10: 4, 11: 5, 12: 5, 13: 5, 14: 6}
+BLOCKED_ASK_FAMILIES = ('recover_absent', 'named_file_missing', 'rename_collision')  # the latter two:
+# revision 11 and revision 15 only
+_INTERFACE = {1: 1, 2: 1, 3: 1, 4: 1, 5: 2, 6: 2, 7: 3, 8: 3, 9: 3, 10: 4, 11: 5, 12: 5, 13: 5, 14: 6,
+              15: 8}
 
 
 def interface_for(revision):
@@ -1816,6 +1818,13 @@ def generate(seed=DEFAULT_SEED, scale=1.0, families=None, revision=1):
         # permission_words. Everything else is revision 13.
         from dev import corpus_r14
         table.update(corpus_r14.families(sys.modules[__name__]))
+    if revision >= 15:
+        # Revision 15 (docs/plan/INTERFACE-V8.md): revision 14 recorded under interface v8, where
+        # bulk renames by spaces_to_dashes or zero_pad use the typed fs.rename tool, plus
+        # rename_spaces, rename_zero_pad, rename_collision and rename_twin. Everything else is
+        # revision 14.
+        from dev import corpus_r15
+        table.update(corpus_r15.families(sys.modules[__name__]))
     for name, (fn, count) in table.items():
         if families and name not in families:
             continue
@@ -1951,6 +1960,12 @@ def _dev_rows():
         from dev import focus_r11
         rows += [dict(id='r11-' + t.id, split='dev', template_id='r11-' + t.id, request=t.request, files=t.files)
                  for t in focus_r11.TASKS]
+    if _REV >= 15:  # the rename and append probes measure exactly what revision 15 trains/guards
+        from dev import focus_append, focus_rename
+        rows += [dict(id='r15-' + t.id, split='dev', template_id='r15-' + t.id, request=t.request, files=t.files)
+                 for t in focus_rename.TASKS]
+        rows += [dict(id='r15-append-' + t.id, split='dev', template_id='r15-append-' + t.id,
+                       request=t.request, files=t.files) for t in focus_append.TASKS]
     return rows
 
 
