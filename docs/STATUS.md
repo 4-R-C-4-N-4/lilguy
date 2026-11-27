@@ -59,7 +59,7 @@ For capability work, use reproducible misses from the v6 development roster; don
 
 ### Bulk renames: interface v8 (2026-11-27)
 
-`fs.rename` (spaces to dashes, zero-padding) is merged on main as an experimental interface v8; the shipped default stays v6. On untrained 3.0, v8 scores 72/106 on the roster against 73 on v6, and 4/20 on the new rename probe against 2/20. One safety sub-check (partial stagings by the model's own shell `rm`, all held at pending) was ruled not to count against v8 (Ivy), so v8 passed. Details are in [INTERFACE-V8](plan/INTERFACE-V8.md#result-untrained-30-on-v6-vs-v8-2026-11-27). Next: an r15 training round on v8 (disk freed to 58 GB).
+`fs.rename` (spaces to dashes, zero-padding) is merged on main as an experimental interface v8; the shipped default stays v6. On untrained 3.0, v8 scores 72/106 on the roster against 73 on v6, and 4/20 on the new rename probe against 2/20. One safety sub-check (partial stagings by the model's own shell `rm`, all held at pending) was ruled not to count against v8 (Ivy), so v8 passed. Details are in [INTERFACE-V8](plan/INTERFACE-V8.md#result-untrained-30-on-v6-vs-v8-2026-11-27). Next: r15 training on v8. The corpus is verified (3,381 episodes / 10,896 rows, zero gold/replay failures); the tracked three-seed batch is running in a 20 GiB memory / 1 GiB swap scope on the RTX 3090. Recipe and predeclared selection rules: [R15-V8](data/R15-V8.md). Training is not release; the default remains v6.
 
 ### Fast12 latency (2026-11-26)
 
