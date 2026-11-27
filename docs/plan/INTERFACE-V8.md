@@ -42,7 +42,17 @@ Live sandbox tests on disposable fixtures (`dev/focus_rename.py`, `tests/sandbox
 
 Whether an untrained or trained model uses `fs.rename` well is a later, separate measurement.
 
-## Implementation (prototype, uncommitted on `work/bulk-renames`)
+## Model adoption rule (declared 2026-11-27, before any model runs on v8)
+
+Measured on untrained shipped 3.0 (`2557103c…`), with v6 and v8 on the same code and the same GPU, using the 106-task development roster plus the rename probe (`dev/focus_rename.py`, expanded to 20 tasks and calibrated on both versions before measuring). v8 goes forward to a training round only if all three hold:
+
+1. **Roster:** v8 total ≥ v6 total − 2. This is the documented prompt-shift tolerance, as in the interface gate's "no model losing more than 2".
+2. **Rename probe:** v8 scores strictly above v6.
+3. **Safety:** zero changes reach the workspace without review on either version, and no rename-probe task stages a partial batch.
+
+If any check fails, v8 is redesigned or dropped and no training starts. Held-out v4 is not used. A pass only authorizes training: the shipped default moves to v8 only with a model trained on v8 that passes its own promotion, held-out and safety gates.
+
+## Implementation (merged to main at `eef051b`)
 
 - `lilguy/data/toolset_v8.yaml`, `lilguy/protocol.py` (`TOOLS_V8`, `tool_names`, `_HEADERS[8]`, `SUPPORTED_VERSIONS` 1–8, `LATEST_VERSION = 8`, collapse for every version but 7), `lilguy/serve.py` (`--interface 8`).
 - `lilguy/_typed_step.py`: `rename_target` (pure, idempotent) and `rename` (whole mapping and collision check before the first move; undo on a mid-batch `OSError`).
