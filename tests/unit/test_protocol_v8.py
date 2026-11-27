@@ -137,6 +137,33 @@ def test_rename_nothing_to_rename(tmp_path, monkeypatch):
         ts.rename("scans", "spaces_to_dashes")
 
 
+def test_rename_glob_in_new_form_names_the_files_it_left_out(tmp_path, monkeypatch):
+    import pytest
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "music").mkdir()
+    for name in ("track one.wav", "track two.wav", "track-three.wav"):
+        (tmp_path / "music" / name).write_text("x")
+    with pytest.raises(ValueError) as err:
+        ts.rename("music", "spaces_to_dashes", glob="track-*.wav")
+    assert str(err.value) == (
+        "nothing to rename: glob 'track-*.wav' matches current names in music, not new ones; "
+        "it matches track-three.wav, already in that form; "
+        "files that would change but are outside the glob: track one.wav, track two.wav")
+    assert sorted(p.name for p in (tmp_path / "music").iterdir()) == [
+        "track one.wav", "track two.wav", "track-three.wav"]
+
+
+def test_rename_glob_matching_nothing(tmp_path, monkeypatch):
+    import pytest
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "scans").mkdir()
+    (tmp_path / "scans" / "page1.png").write_text("x")
+    with pytest.raises(ValueError) as err:
+        ts.rename("scans", "zero_pad", glob="*.jpg", width=2)
+    assert str(err.value).endswith(
+        "it matches no file; files that would change but are outside the glob: page1.png")
+
+
 def test_rename_collision_existing_target_leaves_folder_untouched(tmp_path, monkeypatch):
     import pytest
     monkeypatch.chdir(tmp_path)

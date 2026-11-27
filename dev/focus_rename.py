@@ -90,7 +90,7 @@ TASKS = (
     ),
     Task(
         'spaces_videos_clips',
-        'Rename the .mp4 clips in videos/ to use dashes instead of spaces. Leave '
+        'Rename the .mp4 files in videos/ to use dashes instead of spaces. Leave '
         'videos/notes.txt and other/keep.txt alone.',
         {'videos/intro take.mp4': 'intro\n', 'videos/outro take.mp4': 'outro\n',
          'videos/clip one.mp4': 'one\n', 'videos/clip two.mp4': 'two\n',

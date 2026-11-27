@@ -1612,7 +1612,7 @@ BOOST_R6 = {'read_value': 2, 'count': 2, 'largest': 2, 'grep_find': 2, 'awk_sum'
 BLOCKED_ASK_FAMILIES = ('recover_absent', 'named_file_missing', 'rename_collision')  # the latter two:
 # revision 11 and revision 15 only
 _INTERFACE = {1: 1, 2: 1, 3: 1, 4: 1, 5: 2, 6: 2, 7: 3, 8: 3, 9: 3, 10: 4, 11: 5, 12: 5, 13: 5, 14: 6,
-              15: 8}
+              15: 8, 16: 8}
 
 
 def interface_for(revision):
@@ -1825,6 +1825,11 @@ def generate(seed=DEFAULT_SEED, scale=1.0, families=None, revision=1):
         # revision 14.
         from dev import corpus_r15
         table.update(corpus_r15.families(sys.modules[__name__]))
+    if revision >= 16:
+        # Revision 16 (docs/data/R16-V8.md): revision 15 plus prefix-scoped spaces_to_dashes and
+        # recovery from a glob written in the new form. Everything else is revision 15.
+        from dev import corpus_r16
+        table.update(corpus_r16.families(sys.modules[__name__]))
     for name, (fn, count) in table.items():
         if families and name not in families:
             continue

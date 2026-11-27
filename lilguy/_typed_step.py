@@ -537,6 +537,26 @@ def _selection(start, glob):
         yield entry
 
 
+def _glob_miss(path, start, rule, glob, width, entries, shown=5):
+    """Why a glob-scoped rename changed nothing, naming the current files the glob left out.
+
+    The glob matches names as they are now, before renaming; a model that writes the glob in the
+    new form (``track-*.wav`` for ``track one.wav``) learns that from this message.
+    """
+    def names(items):
+        items = sorted(items)
+        more = f" and {len(items) - shown} more" if len(items) > shown else ""
+        return ", ".join(items[:shown]) + more
+    matched = [e.name for e in entries]
+    outside = [e.name for e in _selection(start, None)
+               if e.name not in matched and rename_target(e.name, rule, width) != e.name]
+    head = f"nothing to rename: glob {glob!r} matches current names in {path}, not new ones"
+    seen = f"it matches {names(matched)}, already in that form" if matched else "it matches no file"
+    left = (f"files that would change but are outside the glob: {names(outside)}" if outside
+            else f"no file in {path} changes under {rule}")
+    return f"{head}; {seen}; {left}"
+
+
 def rename(path, rule, glob=None, width=None):
     rename_target("x", rule, width)  # check rule and width before looking at any file
     _, start = checked_path(path)
@@ -552,7 +572,9 @@ def rename(path, rule, glob=None, width=None):
             continue
         pairs.append((entry, entry.with_name(new_name), entry.name, new_name))
     if not pairs:
-        raise ValueError(f"nothing to rename: no file name in {path} changes under {rule}")
+        if glob is None:
+            raise ValueError(f"nothing to rename: no file name in {path} changes under {rule}")
+        raise ValueError(_glob_miss(path, start, rule, glob, width, entries))
     for _, _, _, new_name in pairs:
         if "/" in new_name or new_name in ("", ".", ".."):
             raise ValueError(f"{new_name!r} is not a valid file name")
