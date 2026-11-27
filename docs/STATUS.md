@@ -57,6 +57,10 @@ Reports: [r11](data/R11-V5-RESULT.md), [r12](data/R12-V5-RESULT.md), [r13](data/
 
 For capability work, use reproducible misses from the v6 development roster; don't use spent held-out traces to pick fixes.
 
+### Bulk renames: interface v8 (2026-11-27)
+
+`fs.rename` (spaces to dashes, zero-padding) is merged on main as an experimental interface v8; the shipped default stays v6. On untrained 3.0, v8 scores 72/106 on the roster against 73 on v6, and 4/20 on the new rename probe against 2/20. One safety sub-check (partial stagings by the model's own shell `rm`, all held at pending) awaits Ivy's reading. Details are in [INTERFACE-V8](plan/INTERFACE-V8.md#result-untrained-30-on-v6-vs-v8-2026-11-27). Next: an r15 training round on v8, which needs disk space first (23 GB free).
+
 ### Fast12 latency (2026-11-26)
 
 Matched development check on one RTX 3090, same llama.cpp build and v6 evaluation fingerprint, configured for full GPU offload. Shipped MiniCPM5-2B Q8_0 (`2557103c…4dc0`, `fast12-e6k9l70p`) vs. Qwen3.6-35B-A3B UD-IQ4_XS (`649d7508…bbb3`, `fast12-d8fdh496`). The reference has 35B total parameters and about 3B active; this is not a comparison against a dense 30B model. Both passed 10/12, with nine shared passes and no infrastructure failures or changes to originals.

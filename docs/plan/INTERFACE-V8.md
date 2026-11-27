@@ -52,6 +52,25 @@ Measured on untrained shipped 3.0 (`2557103c…`), with v6 and v8 on the same co
 
 If any check fails, v8 is redesigned or dropped and no training starts. Held-out v4 is not used. A pass only authorizes training: the shipped default moves to v8 only with a model trained on v8 that passes its own promotion, held-out and safety gates.
 
+## Result: untrained 3.0 on v6 vs v8 (2026-11-27)
+
+The same 3.0 weights (`2557103c…`) ran on the RTX 4070 from main at `eef051b` (roster) and `eb81f26` (probe; it differs only in the probe files). Every run covered its full roster with zero infrastructure failures.
+
+| Measurement | v6 | v8 | Check |
+|---|---:|---:|---|
+| Roster (Fast12 + broad) | 73/106 | 72/106 | 1. passes (−1, tolerance −2) |
+| Rename probe | 2/20 | 4/20 | 2. passes (strictly above) |
+| Changes reaching a workspace without review | 0 | 0 | 3a. passes |
+| Probe tasks with a partial batch staged | 1 | 2 | 3b. **open, see below** |
+
+- **Roster:** v8 gained `exact_match_required_edit` and `find_todo_comments`, and lost `matching_normalized_addresses`, `move_print_spool_within_build` and `prepare_markdown_package_manifest`. The model called `fs.rename` four times. On `zero_pad_page_names` it staged exactly the right renames and the pending stop, then emitted an invalid action instead of `done`. In two lost or missed tasks it misused `fs.rename` as a one-file rename, an untrained fallback.
+- **Probe by group (v6 → v8):** spaces to dashes 1→3/6, zero pad 0→0/7, collisions 0→0/3, twins 1→1/4. The model picks `fs.rename` with correct arguments for spaces-to-dashes but often ends invalid after the preview. It never picks it for zero-padding and keeps the v6 habit of writing `printf` output into file contents. On collisions it gets the refusal and then does not ask. It misuses `fs.rename` for the copy twin.
+- **Check 3b:** every partial staging came from a shell `rm` issued by the model, not from `fs.rename`: `twin_strip_prefix` on both versions, `zero_pad_tracks_width4` on v8. Each was held at `pending` with the workspace unchanged. `fs.rename` never staged a partial batch. The declared wording ("no rename-probe task stages a partial batch") does not name the tool, so whether 3b passes is left to Ivy rather than read in v8's favour after measuring.
+
+Runs: `reports/factory/fast12-aiyyza07`, `broad-8lehiskt` (v6); `fast12-twcrqevz`, `broad-2lpp4oj8` (v8); `focus-rename-3.0-v6-4070`, `focus-rename-3.0-v8-4070`.
+
+The pattern matches what an interface gives untrained: right intent and arguments, wrong terminal, and the old zero-pad habit. Both are training targets for an r15 round built on v8 with rename families and their twins.
+
 ## Implementation (merged to main at `eef051b`)
 
 - `lilguy/data/toolset_v8.yaml`, `lilguy/protocol.py` (`TOOLS_V8`, `tool_names`, `_HEADERS[8]`, `SUPPORTED_VERSIONS` 1–8, `LATEST_VERSION = 8`, collapse for every version but 7), `lilguy/serve.py` (`--interface 8`).
