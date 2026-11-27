@@ -1,0 +1,14 @@
+# Interface v8 typed tools (docs/plan/INTERFACE-V8.md). Served only from interface 8 on.
+tools:
+  fs.rename:
+    description: "Rename the files in a folder by one rule: spaces_to_dashes, or zero_pad (numbers padded to width digits). Shows every old -> new name; refuses the whole batch if any new name is taken."
+    tier: 1
+    effect: write
+    args:
+      path: {type: path}
+      rule: {type: enum, values: [spaces_to_dashes, zero_pad]}
+      glob: {type: string, optional: true, max_length: 4096}
+      width: {type: int, optional: true, min: 1, max: 9}
+    bash:
+      utility: mv
+      flags: {}
