@@ -1,8 +1,8 @@
 # Status
 
-Updated 2026-11-24. This is the one place for current state; the plan and its gates are in [plan/ROADMAP.md](plan/ROADMAP.md). Run evidence lives under `reports/` (gitignored, local).
+Updated 2026-11-26. This is the one place for current state; the plan and its gates are in [plan/ROADMAP.md](plan/ROADMAP.md). Run evidence lives under `reports/` (gitignored, local).
 
-## Where we stand (2026-11-24)
+## Where we stand (2026-11-26)
 
 **Shipped:** lilguy **3.0.0**, the MiniCPM5-2B r14 soup on interface v6 (held-out v3 86/100). 2.0.0 is the MiniCPM5-2B r10 model on interface v4.
 - **Held-out v2:** 83/100, against 76/100 for 1.0 on the same suite. Zero changes reached a folder without review.
@@ -41,10 +41,36 @@ Reports: [r11](data/R11-V5-RESULT.md), [r12](data/R12-V5-RESULT.md), [r13](data/
 | | State |
 |---|---|
 | Development roster | **106** sandbox-calibrated tasks (target 150). Batch 7 added archives 10, organise 8 and recovery 8. |
-| Held-out v3 | Frozen (pin `d1b3f1b9…`), controls pass on v4 and v5. **Unused.** |
+| Held-out v3 | Closed for development: 3.0 scored 86/100 and 2.0 scored 76/100. |
+| Held-out v4 | **Frozen and unused** (`47b80e7`, pin `f17523a0…`). 100 tasks; scripted oracle 100/100, immediate `done` 0/100 under interface v6. |
 | Margins | Run per round: `dev.factory margins --pilot P [--pilot P] [--reference-runs F,B --runs P=F,B]` |
 
-**Next steps:**
+### Post-3.0 follow-up
+
+| Original rank | Gap | Current evidence and next step |
+|---|---|---|
+| 1 | Exact-line appends | **Investigated, not fixed.** Held-out v3 fell from 6/10 to 4/10, but the fresh development probe favored 3.0 (18/20 vs 10/20), including files without a final newline (9/10 vs 1/10). That does not isolate the checkpoint from its interface. With identical 3.0 weights, experimental v7 dropped to 2/20 on the probe and 71/106 on the roster (v6: 73/106); the model picked the tool but did not emit valid multiline payloads. [v7 was not adopted](plan/INTERFACE-V7.md#result-not-adopted). Keep v6; only revisit with a reproducible development failure and a test that isolates the interface change. |
+| 2 | Separate Qwen recipe | **Deferred.** Per-base schedule selection was prototyped on `wip/per-base-schedules`, not merged into `main`. The `1e-4`, two-epoch recipe and three-seed average earned the MiniCPM release; that is not evidence for the same recipe on Qwen. No Qwen run is part of the 3.0 follow-up. |
+| 3 | Pack, then delete | **Passed on the shipped model's roster case.** All three [original r14 seeds missed it](data/R14-V6-RESULT.md#re-run-after-the-archive-roster-cleanup-2026-11-25), two after `rmdir` on a nonempty folder. The shipped soup packed the folder and stopped at pending deletion approval with originals unchanged (`broad-7jat3bea`, `archive_then_remove_folder`). Keep it as a regression check; one pass does not establish reliability, and it does not justify new training examples by itself. |
+| 4 | Freeze held-out v4 | **Done.** Frozen before the next training round; audited against 33,644 rows. No model has run it. Reserve it for a one-shot comparison of the selected next candidate and shipped 3.0, after development and safety gates. Suite v4 is not interface v4. |
+| 5 | Latency vs. a 30B+ reference | **Measured on Fast12; target not met on this check.** On nine shared passes, 3.0 took 0.886 s median per episode vs. 1.366 s for the 35B-A3B reference (64.9% of reference time; target <10%). See [Fast12 latency](#fast12-latency-2026-11-26). |
+
+For capability work, use reproducible misses from the v6 development roster; don't use spent held-out traces to pick fixes.
+
+### Fast12 latency (2026-11-26)
+
+Matched development check on one RTX 3090, same llama.cpp build and v6 evaluation fingerprint, configured for full GPU offload. Shipped MiniCPM5-2B Q8_0 (`2557103c…4dc0`, `fast12-e6k9l70p`) vs. Qwen3.6-35B-A3B UD-IQ4_XS (`649d7508…bbb3`, `fast12-d8fdh496`). The reference has 35B total parameters and about 3B active; this is not a comparison against a dense 30B model. Both passed 10/12, with nine shared passes and no infrastructure failures or changes to originals.
+
+| Median | Tasks | 3.0 | 35B-A3B | 3.0 / reference |
+|---|---:|---:|---:|---:|
+| Whole episode (primary, shared passes) | 9 | 0.886 s | 1.366 s | 64.9% |
+| Model requests (shared passes) | 9 | 0.214 s | 0.711 s | 30.1% |
+| Whole episode (all tasks) | 12 | 0.886 s | 1.367 s | 64.8% |
+| Model requests (all tasks) | 12 | 0.218 s | 0.720 s | 30.3% |
+
+Times exclude model loading and human review. This is one pass per artifact on a development suite; broad-suite latency and cost were not measured. Held-out v4 was untouched.
+
+**How v6 reached release:**
 1. **Interface v6** ([plan](plan/INTERFACE-V6.md)): typed `fs.chmod` and archive tools, built and calibrated.
    - Measured untrained on 106 tasks, v6 costs 1–4 tasks against v5 (2.0 64→63, r13 s42 68→64, s43 59→58).
    - `fs.chmod` cannot express "owner only" in one call, so permissions fell at every model. The archive tools are used as intended.
@@ -128,7 +154,9 @@ Reports: [r11](data/R11-V5-RESULT.md), [r12](data/R12-V5-RESULT.md), [r13](data/
 - **Stock MiniCPM held-out:** 37/100, against 74/100 for 1.0 (`reports/factory/held-out-gr0qf39x`).
 - **Next:** freeze held-out v2, then run it once on the r10 seed-42 candidate before any 2.0 decision.
 
-## Summary
+## Historical factory summary
+
+This snapshot records the earlier interface-v2 training sprint and its then-open decisions. For the current release and follow-up, see [Where we stand](#where-we-stand-2026-11-26).
 
 | Step | State | Evidence |
 |---|---|---|

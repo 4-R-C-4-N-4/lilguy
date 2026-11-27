@@ -511,7 +511,13 @@ Deliverables:
 - Merge the adapter, convert to GGUF and quantise with llama.cpp. Re-run dev
   and held-out on the **quantised** file, which is what ships.
 - `lilguy do` uses llama-server by default.
-- Latency and cost against the 30B reference on the same machine.
+- Latency and cost against a 30B+ reference on the same machine. Before the
+  latency run, pin the shipped GGUF and reference artifact (including
+  quantization), the primary metric, and the shared workload, device and
+  runtime. Report whole-episode and model-request timing separately, including
+  the task count and timing on tasks both artifacts complete. Check the
+  published target against the predeclared metric; a previous screen with
+  different artifacts is not a release measurement. See [post-3.0 follow-up](../STATUS.md#post-30-follow-up) for the current state.
 - A model card: base, data sources and licences, interface version, scores
   and known limits.
 
