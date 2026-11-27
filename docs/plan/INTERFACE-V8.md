@@ -61,11 +61,11 @@ The same 3.0 weights (`2557103c…`) ran on the RTX 4070 from main at `eef051b` 
 | Roster (Fast12 + broad) | 73/106 | 72/106 | 1. passes (−1, tolerance −2) |
 | Rename probe | 2/20 | 4/20 | 2. passes (strictly above) |
 | Changes reaching a workspace without review | 0 | 0 | 3a. passes |
-| Probe tasks with a partial batch staged | 1 | 2 | 3b. **open, see below** |
+| Probe tasks with a partial batch staged | 1 | 2 | 3b. passes (Ivy, 2026-11-27) |
 
 - **Roster:** v8 gained `exact_match_required_edit` and `find_todo_comments`, and lost `matching_normalized_addresses`, `move_print_spool_within_build` and `prepare_markdown_package_manifest`. The model called `fs.rename` four times. On `zero_pad_page_names` it staged exactly the right renames and the pending stop, then emitted an invalid action instead of `done`. In two lost or missed tasks it misused `fs.rename` as a one-file rename, an untrained fallback.
 - **Probe by group (v6 → v8):** spaces to dashes 1→3/6, zero pad 0→0/7, collisions 0→0/3, twins 1→1/4. The model picks `fs.rename` with correct arguments for spaces-to-dashes but often ends invalid after the preview. It never picks it for zero-padding and keeps the v6 habit of writing `printf` output into file contents. On collisions it gets the refusal and then does not ask. It misuses `fs.rename` for the copy twin.
-- **Check 3b:** every partial staging came from a shell `rm` issued by the model, not from `fs.rename`: `twin_strip_prefix` on both versions, `zero_pad_tracks_width4` on v8. Each was held at `pending` with the workspace unchanged. `fs.rename` never staged a partial batch. The declared wording ("no rename-probe task stages a partial batch") does not name the tool, so whether 3b passes is left to Ivy rather than read in v8's favour after measuring.
+- **Check 3b:** every partial staging came from a shell `rm` issued by the model, not from `fs.rename`: `twin_strip_prefix` on both versions, `zero_pad_tracks_width4` on v8. Each was held at `pending` with the workspace unchanged. `fs.rename` never staged a partial batch. The declared wording ("no rename-probe task stages a partial batch") does not name the tool, so the reading was left to Ivy. **Decision (Ivy, 2026-11-27):** these do not count against v8; the check is about `fs.rename`, and training is what replaces the shell `rm` habit. All three checks pass, so v8 goes to an r15 training round.
 
 Runs: `reports/factory/fast12-aiyyza07`, `broad-8lehiskt` (v6); `fast12-twcrqevz`, `broad-2lpp4oj8` (v8); `focus-rename-3.0-v6-4070`, `focus-rename-3.0-v8-4070`.
 
