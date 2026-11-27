@@ -17,7 +17,20 @@ from dev import dev_focus, fast12_runner
 from lilguy import protocol
 
 
-SETS = {'v4': 'dev.dev_focus', 'r11': 'dev.focus_r11', 'append': 'dev.focus_append'}
+SETS = {'v4': 'dev.dev_focus', 'r11': 'dev.focus_r11', 'append': 'dev.focus_append',
+        'rename': 'dev.focus_rename'}
+
+
+def oracles_for(focus, version):
+    """The oracles dict for one focus module at one interface version.
+
+    If the module defines `oracles(version)`, use its result (version-aware selection, e.g.
+    dev.focus_rename picks a v6 replacement below v8). Otherwise keep using the module's
+    `ORACLES` attribute exactly as before, unconditionally -- existing sets ('v4', 'r11',
+    'append') must behave byte-identically.
+    """
+    pick = getattr(focus, 'oracles', None)
+    return pick(version) if pick is not None else focus.ORACLES
 
 
 def group_of(task_id, focus=dev_focus):
@@ -54,7 +67,8 @@ def main(argv=None):
         for task in focus.TASKS:
             with tempfile.TemporaryDirectory() as tmp:
                 verdict = fast12_runner.judge_task(Path(tmp), task, tools, port, opener, focus.grade,
-                                                   args.interface, ask_ids=focus.ASK, oracles=focus.ORACLES)
+                                                   args.interface, ask_ids=focus.ASK,
+                                                   oracles=oracles_for(focus, args.interface))
             verdicts.append(verdict)
             (args.out / f'task_{task.id}.json').write_text(json.dumps(verdict, indent=2) + '\n')
     summary = {'set': args.set, 'interface': args.interface, **summarize(verdicts, focus)}
