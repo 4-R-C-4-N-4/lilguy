@@ -156,8 +156,11 @@ def build_v1_tools(version: int = protocol.INTERFACE_VERSION) -> dict[str, types
 
 @functools.lru_cache(maxsize=1)
 def _v1_arg_types() -> dict:
+    # Union over every supported interface: v8 does not serve v7's fs.append, but a v7 call must
+    # still be audited with its path shown.
     return {name: {arg: spec.type for arg, spec in tool.args.items()}
-            for name, tool in protocol.load_tools(version=protocol.LATEST_VERSION).items()}
+            for version in protocol.SUPPORTED_VERSIONS
+            for name, tool in protocol.load_tools(version=version).items()}
 
 
 def audit_args(name: str, arguments: dict) -> list:

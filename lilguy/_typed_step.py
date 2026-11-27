@@ -493,6 +493,108 @@ def append(path, lines):
 INTERFACE = 3  # the interface version the step reports to; set from the server's argv
 
 
+# --- interface v8: bulk rename (docs/plan/INTERFACE-V8.md) --------------------------------------
+
+_DIGITS = re.compile(r"[0-9]+")
+
+
+def rename_target(name, rule, width=None):
+    """The new file NAME (no directories) under RULE. Pure; idempotent (applying it twice is the
+    same as applying it once)."""
+    if rule == "spaces_to_dashes":
+        if width is not None:
+            raise ValueError("spaces_to_dashes does not take width")
+        return name.replace(" ", "-")
+    if rule == "zero_pad":
+        if width is None:
+            raise ValueError("zero_pad needs width")
+        if "." in name and not name.startswith("."):
+            stem, _, ext = name.rpartition(".")
+            ext = "." + ext
+        else:
+            stem, ext = name, ""
+        matches = list(_DIGITS.finditer(stem))
+        if not matches:
+            return name
+        last = matches[-1]
+        digits = last.group(0)
+        if len(digits) >= width:
+            return name
+        padded = digits.zfill(width)
+        stem = stem[:last.start()] + padded + stem[last.end():]
+        return stem + ext
+    raise ValueError("rule: must be one of spaces_to_dashes, zero_pad")
+
+
+def _selection(start, glob):
+    for entry in sorted(start.iterdir()):
+        if entry.name.startswith("."):
+            continue
+        if entry.is_symlink() or not entry.is_file():
+            continue
+        if glob is not None and not fnmatch.fnmatchcase(entry.name, glob):
+            continue
+        yield entry
+
+
+def rename(path, rule, glob=None, width=None):
+    rename_target("x", rule, width)  # check rule and width before looking at any file
+    _, start = checked_path(path)
+    if not start.exists() and not start.is_symlink():
+        raise ValueError(_absent(path))
+    if start.is_symlink() or not start.is_dir():
+        raise ValueError(f"{path} is not a folder")
+    entries = list(_selection(start, glob))
+    pairs = []  # (old_path, new_path, old_name, new_name)
+    for entry in entries:
+        new_name = rename_target(entry.name, rule, width)
+        if new_name == entry.name:
+            continue
+        pairs.append((entry, entry.with_name(new_name), entry.name, new_name))
+    if not pairs:
+        raise ValueError(f"nothing to rename: no file name in {path} changes under {rule}")
+    for _, _, _, new_name in pairs:
+        if "/" in new_name or new_name in ("", ".", ".."):
+            raise ValueError(f"{new_name!r} is not a valid file name")
+
+    root = Path.cwd()
+    renamed_old_names = {old_name for _, _, old_name, _ in pairs}
+    targets = {}  # new_name -> [old_name, ...]
+    for _, _, old_name, new_name in pairs:
+        targets.setdefault(new_name, []).append(old_name)
+
+    collisions = []
+    for new_name, sources in sorted(targets.items()):
+        new_path = start / new_name
+        if len(sources) > 1:
+            froms = ", ".join(f"{(start / s).relative_to(root).as_posix()}" for s in sorted(sources))
+            collisions.append(f"{new_path.relative_to(root).as_posix()} from both {froms}")
+        elif os.path.lexists(new_path) and new_name not in renamed_old_names:
+            collisions.append(
+                f"{new_path.relative_to(root).as_posix()} already exists "
+                f"(from {(start / sources[0]).relative_to(root).as_posix()})")
+
+    if collisions:
+        lines = "\n".join(sorted(set(collisions)))
+        raise ValueError(f"refused: {len(set(collisions))} name collisions, nothing renamed\n{lines}")
+
+    done = []
+    try:
+        for old_path, new_path, _, _ in pairs:
+            os.rename(old_path, new_path)
+            done.append((old_path, new_path))
+    except OSError:
+        for old_path, new_path in reversed(done):
+            os.rename(new_path, old_path)
+        raise
+
+    pairs_sorted = sorted(pairs, key=lambda item: item[0].relative_to(root).as_posix())
+    count = len(pairs_sorted)
+    print(f"renamed {count} file{'s' if count != 1 else ''} in {path}:")
+    for old_path, new_path, _, _ in pairs_sorted:
+        print(f"  {old_path.relative_to(root).as_posix()} -> {new_path.relative_to(root).as_posix()}")
+
+
 class _TarError(Exception):
     """Placeholder until tarfile is imported (only archive tools need it)."""
 
@@ -507,7 +609,8 @@ def main():
         _TarError = tarfile.TarError
     try:
         {"fs.find": find, "fs.read": read, "fs.edit": edit,
-         "fs.list": list_, "fs.grep": grep, "fs.append": append, "archive.list": archive_list,
+         "fs.list": list_, "fs.grep": grep, "fs.append": append, "fs.rename": rename,
+         "archive.list": archive_list,
          "archive.pack": archive_pack, "archive.add": archive_add, "archive.unpack": archive_unpack}[name](**json.loads(arguments))
     except (UnicodeError, OSError, OverflowError, RuntimeError):
         print("Unable to access workspace text", file=sys.stderr)

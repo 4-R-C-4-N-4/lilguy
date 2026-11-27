@@ -41,10 +41,10 @@ import yaml
 from .digest import digest
 
 INTERFACE_VERSION = 6
-SUPPORTED_VERSIONS = (1, 2, 3, 4, 5, 6, 7)
+SUPPORTED_VERSIONS = (1, 2, 3, 4, 5, 6, 7, 8)
 # The development interface (newest). INTERFACE_VERSION stays the one the shipped model was
 # trained on until a model trained on a newer version is released.
-LATEST_VERSION = 7
+LATEST_VERSION = 8
 MODES = ("do", "ask")
 TOOLSET = Path(__file__).resolve().parent / "data" / "toolset.yaml"
 # Typed tools served in v1. The text tools in toolset.yaml are thin wrappers that `run` already
@@ -57,11 +57,16 @@ TOOLS_V6 = ("archive.list", "archive.pack", "archive.add", "archive.unpack")
 # v7 (docs/plan/INTERFACE-V7.md): appends move into the application.
 TOOLSET_V7 = TOOLSET.with_name("toolset_v7.yaml")
 TOOLS_V7 = ("fs.append",)
+# v8 (docs/plan/INTERFACE-V8.md): bulk rename moves into the application. v8 = v6 + fs.rename;
+# it does not include v7's fs.append or v7's uncollapsed output.
+TOOLSET_V8 = TOOLSET.with_name("toolset_v8.yaml")
+TOOLS_V8 = ("fs.rename",)
 
 
 def tool_names(version):
     """The typed tools served at an interface version, in interface order."""
-    return TOOLS_V1 + (TOOLS_V7 if version >= 7 else ()) + (TOOLS_V6 if version >= 6 else ())
+    return (TOOLS_V1 + (TOOLS_V7 if version == 7 else ())
+            + (TOOLS_V8 if version >= 8 else ()) + (TOOLS_V6 if version >= 6 else ()))
 KINDS = ("run", "tool", "ask", "done")
 POLICIES = ("ok", "pending", "rejected")
 MAX_ACTION_CHARS = 16_384
@@ -129,6 +134,8 @@ def load_tools(toolset=TOOLSET, names=None, version=None):
         definitions = {**definitions, **yaml.safe_load(TOOLSET_V6.read_text(encoding="utf8"))["tools"]}
     if any(name in TOOLS_V7 for name in names):
         definitions = {**definitions, **yaml.safe_load(TOOLSET_V7.read_text(encoding="utf8"))["tools"]}
+    if any(name in TOOLS_V8 for name in names):
+        definitions = {**definitions, **yaml.safe_load(TOOLSET_V8.read_text(encoding="utf8"))["tools"]}
     tools = {}
     for name in names:
         definition = definitions[name]
@@ -306,7 +313,7 @@ def render_observation(*, exit_code, stdout="", stderr="", tags=(), changes=(), 
     if policy not in POLICIES:
         raise ProtocolError(f"policy must be one of {', '.join(POLICIES)}")
     parts = [digest(exit_code, stdout, stderr, list(tags), framed=version >= 4, exact=version >= 5,
-                    collapse=version < 7).text]
+                    collapse=version != 7).text]
     changes = list(changes)
     if changes:
         shown = "; ".join(f"{op} {path}" for op, path in changes[:MAX_CHANGES_SHOWN])
@@ -557,6 +564,15 @@ _HEADERS[7] = _HEADERS[6].replace(
     "fs.append. For tar or gzip files,",
 )
 assert _HEADERS[7] != _HEADERS[6]
+
+# v8 (docs/plan/INTERFACE-V8.md): bulk rename. v8 = v6 + fs.rename (not v7's fs.append, not v7's
+# uncollapsed output). The prompt names fs.rename in the tool habit; everything else is v6 unchanged.
+_HEADERS[8] = _HEADERS[6].replace(
+    "- Use a tool below when it fits; otherwise use run. For tar or gzip files,",
+    "- Use a tool below when it fits; otherwise use run. To rename several files by one rule "
+    "(spaces to dashes, zero-padded numbers), use fs.rename. For tar or gzip files,",
+)
+assert _HEADERS[8] != _HEADERS[6]
 
 
 def _describe(arg):

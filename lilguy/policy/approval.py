@@ -178,6 +178,15 @@ def summarize(session, *, limit: int = 20) -> str:
         lines.append(f"   ... {len(ordered) - limit} more (use --all)")
     if new:
         lines.append("   * = not covered by an earlier approval")
+    from .renames import rename_plan
+    plan = rename_plan(request, session)
+    if plan is not None:
+        lines.append("")
+        lines.append("Renames (computed by lilguy from the rule and the staged changes):")
+        for old, new_path in plan.pairs:
+            lines.append(f"   renamed {_clean(old)} -> {_clean(new_path)}")
+        for op, path in plan.unexplained:
+            lines.append(f"   ! not part of the rename: {_clean(op)} {_clean(path)}")
     lines += ["", f"Diff hash {request['diff_hash']}"]
     return "\n".join(lines)
 
