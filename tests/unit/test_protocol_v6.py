@@ -31,7 +31,7 @@ def test_tools_are_gated_by_version_and_the_frozen_manifest_is_unchanged():
         assert tuple(build_v1_tools(version)) == ("run", *p.TOOLS_V1)
     assert tuple(V6) == p.TOOLS_V1 + p.TOOLS_V6
     assert tuple(build_v1_tools(6)) == ("run", *p.TOOLS_V1, *p.TOOLS_V6)
-    assert tuple(p.load_tools()) == p.TOOLS_V1 + p.TOOLS_V6  # the shipped interface (v6, 3.0)
+    assert tuple(p.load_tools(version=6)) == p.TOOLS_V1 + p.TOOLS_V6  # 3.0's interface
 
 
 def test_v6_actions_round_trip_and_the_grammar_names_every_tool():

@@ -40,8 +40,10 @@ def parameters(workspace, state, interface=None):
 
 @pytest.mark.parametrize("interface,expected", [
     (5, {"run", "fs.list", "fs.find", "fs.read", "fs.grep", "fs.edit"}),
-    (None, {"run", "fs.list", "fs.find", "fs.read", "fs.grep", "fs.edit",  # the shipped default (v6, 3.0)
-            "archive.list", "archive.pack", "archive.add", "archive.unpack"}),
+    (6, {"run", "fs.list", "fs.find", "fs.read", "fs.grep", "fs.edit",  # 3.0
+         "archive.list", "archive.pack", "archive.add", "archive.unpack"}),
+    (None, {"run", "fs.list", "fs.find", "fs.read", "fs.grep", "fs.edit",  # the shipped default (v8, 4.0)
+            "archive.list", "archive.pack", "archive.add", "archive.unpack", "fs.rename"}),
 ])
 def test_interface_v1_lists_run_plus_typed_tools(tmp_path, interface, expected):
     async def run():

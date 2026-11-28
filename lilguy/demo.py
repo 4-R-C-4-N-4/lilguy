@@ -19,6 +19,9 @@ FILES = {
     "notes/agenda.md": "# Team meeting\n\n- Status updates\n- Release plan\n",
     "reports/2024-q1.csv": "name,amount\nalpha,10\nbeta,20\n",
     "reports/2024-q2.csv": "name,amount\nalpha,12\nbeta,25\n",
+    "photos/beach day.jpg": "beach\n",
+    "photos/city walk.jpg": "city\n",
+    "photos/old-harbour.jpg": "harbour\n",
 }
 
 STEPS = [
@@ -31,8 +34,9 @@ STEPS = [
         'lilguy do "Change timeout from 30 to 45 in staging.conf. Leave retry unchanged."',
         'lilguy do "Add \'Budget review\' as the last item of the agenda in notes/agenda.md."',
     ]),
-    ("Something that needs your approval (a move deletes the original; the prompt says why)", [
+    ("Something that needs your approval (a move or rename deletes the original name; the prompt says why)", [
         'lilguy do "Move reports/2024-q1.csv into a new folder reports/archive."',
+        'lilguy do "In photos/, replace spaces in the file names with dashes."',
     ]),
     ("Said no, or changed your mind? From this folder", [
         "lilguy diff              # the latest staged change here",

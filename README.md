@@ -1,6 +1,6 @@
 # lilguy
 
-A small local model that does everyday file tasks for you — read a setting, count matching lines, edit a config, append to a list, tidy files into a folder — inside a Linux sandbox. **Nothing it does reaches your files until you've seen the diff and said yes.**
+A small local model that does everyday file tasks for you — read a setting, count matching lines, edit a config, append to a list, tidy files into a folder, rename a folder's files — inside a Linux sandbox. **Nothing it does reaches your files until you've seen the diff and said yes.**
 
 ```text
 $ lilguy do "Change timeout from 30 to 45 in staging.conf. Leave retry unchanged."
@@ -28,7 +28,7 @@ Applied 1 change(s). Undo with: lilguy undo 1795399978803-24d821c70069
 lilguy is two halves that only make sense together:
 
 - **The model** — [`lilguy-minicpm5-2b-GGUF`](https://huggingface.co/4rc4n4/lilguy-minicpm5-2b-GGUF), a 2.5 GiB fine-tune of [MiniCPM5-2B](https://huggingface.co/openbmb/MiniCPM5-2B) that proposes one action at a time in lilguy's protocol. On its own it is not a chat model.
-- **The runtime** — this repo. It serves six typed tools, runs every command in a [bubblewrap](https://github.com/containers/bubblewrap) + overlay + [Landlock](https://landlock.io/) sandbox, applies an effect policy (deletes, permission changes and protected files wait for your approval), and keeps a journaled, undoable commit path.
+- **The runtime** — this repo. It serves eleven typed tools (file reads and edits, archives, bulk renames), runs every command in a [bubblewrap](https://github.com/containers/bubblewrap) + overlay + [Landlock](https://landlock.io/) sandbox, applies an effect policy (deletes, permission changes and protected files wait for your approval), and keeps a journaled, undoable commit path.
 
 ## Requirements
 
@@ -41,7 +41,7 @@ lilguy is two halves that only make sense together:
 ## Install
 
 ```bash
-uv tool install git+https://github.com/4-R-C-4-N-4/lilguy@v2.0.0
+uv tool install git+https://github.com/4-R-C-4-N-4/lilguy@v4.0.0
 lilguy probe          # checks the sandbox prerequisites; every "required" row must pass
 ```
 
@@ -92,7 +92,7 @@ Applied 1 change(s). Undo with: lilguy undo 1795399978803-24d821c70069
 
 Anything but `y` leaves your folder untouched and the change staged.
 
-**Approval** — deleting or moving files, `chmod`, and protected paths (`.git/`, `.env`, …) cross an approval threshold. The output says why, and the same single prompt becomes `Approve and apply …? [y/N]`:
+**Approval** — deleting, moving or renaming files, `chmod`, and protected paths (`.git/`, `.env`, …) cross an approval threshold. The output says why, and the same single prompt becomes `Approve and apply …? [y/N]`:
 
 ```bash
 lilguy do "Move reports/2024-q1.csv into a new folder reports/archive."
@@ -115,37 +115,32 @@ When you're done: `lilguy stop` frees the GPU or CPU.
 
 Use it for **small, explicit, reviewable jobs**: name the file, say what to change, and say what to leave alone. It is a 2B model.
 
-On lilguy's **frozen held-out suite v2**, the 2.0 model completes **83/100 tasks (95% CI 75–89%)**. Those are 100 tasks it was never trained or tuned on, frozen before it ran and run once. **None** of its changes reached the real folder without a commit. The 1.0 model scores 76/100 on the same suite. The difference comes almost entirely from edits inside a named block: 9/10 for 2.0 against 0/10 for 1.0.
+On lilguy's **frozen held-out suite v4**, the 4.0 model completes **95/100 tasks**. Those are 100 tasks it was never trained or tuned on, frozen before it ran and run once. **None** of its changes reached the real folder without a commit. The 3.0 model scores 87/100 on the same suite: nine tasks only 4.0 passed, one only 3.0 passed (exact sign test p ≈ 0.02).
 
-| Held-out v2 family | 2.0 | 1.0 |
+| Held-out v4 family | 4.0 | 3.0 |
 |---|---|---|
-| Move into a folder (waits for approval) | 10/10 | 10/10 |
-| Protected file refused | 10/10 | 10/10 |
-| Find a file in a subfolder, then edit | 10/10 | 10/10 |
-| Append two or three lines | 10/10 | 9/10 |
-| Change one setting | 9/10 | 9/10 |
-| **Change a line that also appears in another block** | **9/10** | **0/10** |
-| Quote a value from a file | 8/10 | 10/10 |
-| Count matching lines | 8/10 | 10/10 |
-| Named file is missing: ask instead of guessing | 5/10 | 4/10 |
-| Create a file with exact lines | 4/10 | 4/10 |
+| Append lines (with or without a final newline) | 10/10 | 9/10 |
+| Change a setting next to a near-duplicate key | 10/10 | 10/10 |
+| Quote a value from a named section | 5/10 | 2/10 |
+| Count exact lines | 10/10 | 9/10 |
+| List archive contents | 10/10 | 10/10 |
+| Take one member out of an archive | 10/10 | 10/10 |
+| Pack a folder into a tar.gz | 10/10 | 10/10 |
+| Named file is missing: ask | 10/10 | 10/10 |
+| Move two named files (waits for approval) | 10/10 | 7/10 |
+| Create a file with exact lines | 10/10 | 10/10 |
 
-On the 80-task development suite, 2.0 passes 53/80. 1.0 passes 51/80, and unmodified MiniCPM5-2B passes 19/80.
+**New in 4.0: bulk renames.** `lilguy do "In photos/, replace spaces in the file names with dashes."` or `"... pad the page numbers to 3 digits"`. The model picks the folder, the rule (spaces to dashes, or zero-padding the last number) and optionally which files; lilguy works out every new name, refuses the whole batch if two names would collide, and shows the full `OLD -> NEW` list before anything is renamed. On a 20-task development probe the 4.0 model gets 19/20. Held-out v4 has no rename family, so that number is development evidence.
 
 Read these numbers with care:
 
-- **Overall, 2.0 is better on one skill, not everywhere.**
-  - Across the whole suite, 83 against 76 is not statistically significant on its own: 12 tasks only 2.0 passed, 5 only 1.0 passed, exact McNemar p ≈ 0.14.
-  - The named-block result is clear-cut.
-  - 2.0 is slightly worse at quoting values and counts: 4 tasks lost.
-- **"Done" is not proof.** On held-out v2, the model said "done" on 16 of its 17 misses. That is why lilguy shows you the diff and asks before applying anything.
+- **"Done" is not proof.** On held-out v4, the model said "done" on 3 of its 5 misses. That is why lilguy shows you the diff and asks before applying anything.
 - **Weak spots:**
-  - creating a file with exact multi-line content;
-  - noticing that a named file is missing rather than picking a similar one;
-  - appending to a file that has no final newline;
-  - scripts;
-  - `chmod` modes stated in words rather than numbers.
-- **Coming from 1.x:** run `lilguy setup` again to download the 2.0 model. A 1.x config keeps working: lilguy runs each model on the interface it was trained on (2.0 on v4, 1.x on v3).
+  - quoting a value from a named section of a config file;
+  - two-step requests where the second step is a delete ("pack this folder, then delete it");
+  - shell quoting of literal `$` text, and per-key sums in tables;
+  - scripts.
+- **Coming from 3.x, 2.x or 1.x:** run `lilguy setup` again to download the 4.0 model. An older config keeps working: lilguy runs each model on the interface it was trained on (4.0 on v8, 3.0 on v6, 2.0 on v4, 1.x on v3).
 
 ## Safety model
 

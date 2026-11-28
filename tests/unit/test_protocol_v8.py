@@ -4,8 +4,9 @@ import lilguy._typed_step as ts
 import lilguy.protocol as p
 
 
-def test_interface_version_stays_6_latest_is_8():
-    assert p.INTERFACE_VERSION == 6
+def test_interface_version_is_8_the_4_0_model():
+    assert p.INTERFACE_VERSION == 8
+    assert tuple(p.load_tools()) == tuple(p.load_tools(version=8))
     assert p.LATEST_VERSION == 8
     assert 8 in p.SUPPORTED_VERSIONS
 

@@ -1,5 +1,25 @@
 # Changelog
 
+## 4.0.0
+
+**New model:** `lilguy-v4-minicpm5-2b-q8_0.gguf`.
+- MiniCPM5-2B with LoRA, three seeds averaged, trained on corpus revision 16 for interface v8. SHA-256 `3f777732…48cf5`.
+- **Held-out v4: 95/100.** A new frozen suite, run once. 3.0 scores 87/100 on it (9 tasks only 4.0 passed, 1 only 3.0; p ≈ 0.02).
+- Zero changes reached the workspace without a commit.
+- Development suite: 72/106 (3.0: 73). Rename probe: 19/20 (3.0 with the tool, untrained: 4/20).
+
+**Interface v8: bulk renames.**
+- `fs.rename` renames the files directly inside one folder: spaces to dashes, or zero-padding the last number in each name to a width, optionally scoped by a glob on the current names.
+- lilguy computes every new name, refuses the whole batch on any collision, and the review lists each `OLD -> NEW`. Renames wait for approval like moves.
+- A glob that renames nothing says why and lists the files it left out.
+
+**Each model still runs on the interface it was trained on:** 4.0 on v8, 3.0 on v6, 2.0 on v4, 1.x on v3.
+
+**Factory.**
+- Held-out v4: 100 tasks in 10 families, frozen and pinned; controls calibrated at v6 and v8.
+- Rename probe (`dev/focus_rename.py`, 20 tasks); corpus revisions 15 and 16.
+- Development rule compares like with like: seeds with seeds, averaged model with averaged model.
+
 ## 2.0.0
 
 **New model:** `lilguy-v2-minicpm5-2b-q8_0.gguf`.

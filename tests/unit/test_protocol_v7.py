@@ -18,7 +18,7 @@ def test_v7_prompt_is_frozen_and_v6_is_unchanged():
     assert v6 == Path(__file__).with_name("interface_v6_system_prompt.txt").read_text(encoding="utf8")
     assert "fs.append" in v7 and "fs.append" not in v6
     assert tuple(p.load_tools(version=7)) == p.TOOLS_V1 + p.TOOLS_V7 + p.TOOLS_V6
-    assert p.INTERFACE_VERSION == 6  # the shipped app stays on v6 until a v7-trained model ships
+    assert p.INTERFACE_VERSION == 8  # v7 was never shipped; 4.0 ships v8
 
 
 def test_repeated_lines_are_shown_as_printed_only_from_v7():

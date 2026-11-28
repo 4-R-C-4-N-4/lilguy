@@ -1,6 +1,6 @@
 # Interface v8: the application owns bulk renames
 
-Status: experimental prototype, started 2026-11-26 on branch `work/bulk-renames`. The shipped app stays on v6 (`INTERFACE_VERSION = 6`). v8 is built on **v6**, not on v7: v7 (`fs.append`, uncollapsed output) was measured and not adopted, so none of its changes are part of v8. Versioning follows [ROADMAP](ROADMAP.md#interface-versioning-adopted-from-v3-on). No training, no held-out run.
+Status: **shipped in 4.0.0 (2026-11-28)**, with the r16 soup trained on v8 (`INTERFACE_VERSION = 8`). Started 2026-11-26 on branch `work/bulk-renames`. v8 is built on **v6**, not on v7: v7 (`fs.append`, uncollapsed output) was measured and not adopted, so none of its changes are part of v8. Versioning follows [ROADMAP](ROADMAP.md#interface-versioning-adopted-from-v3-on). Training and held-out results: [R15-V8](../data/R15-V8.md), [R16-V8](../data/R16-V8.md).
 
 ## Why
 

@@ -1,6 +1,13 @@
 # Status
 
-Updated 2026-11-26. This is the one place for current state; the plan and its gates are in [plan/ROADMAP.md](plan/ROADMAP.md). Run evidence lives under `reports/` (gitignored, local).
+Updated 2026-11-28. This is the one place for current state; the plan and its gates are in [plan/ROADMAP.md](plan/ROADMAP.md). Run evidence lives under `reports/` (gitignored, local).
+
+## Release 4.0.0 (2026-11-28)
+
+- **Shipped artifact:** the r16 soup (seeds 42/43/44, corpus revision 16) on interface v8, Q8_0, SHA-256 `3f777732…48cf5`, from `reports/factory/soup-r16/minicpm/tuned-q8_0.gguf`; published as `lilguy-v4-minicpm5-2b-q8_0.gguf` in `4rc4n4/lilguy-minicpm5-2b-GGUF`.
+- **New:** bulk renames (`fs.rename`: spaces to dashes, zero-padding), computed and collision-checked by lilguy, approved like moves.
+- **Evidence:** held-out v4 95/100 against 3.0's 87/100 (`held-out-4e35sow7`, `held-out-hikw07yu`); rename probe 19/20; development 72/106 (seeds 73/73/74). The averaged model missed the development rule by one task and went to held-out by Ivy's recorded decision ([R16-V8](data/R16-V8.md)).
+- **Older models** keep their interfaces: 3.0 on v6, 2.0 on v4, 1.x on v3.
 
 ## Where we stand (2026-11-26)
 
