@@ -8,6 +8,8 @@ Updated 2026-11-28. This is the one place for current state; the plan and its ga
 - **New:** bulk renames (`fs.rename`: spaces to dashes, zero-padding), computed and collision-checked by lilguy, approved like moves.
 - **Evidence:** held-out v4 95/100 against 3.0's 87/100 (`held-out-4e35sow7`, `held-out-hikw07yu`); rename probe 19/20; development 72/106 (seeds 73/73/74). The averaged model missed the development rule by one task and went to held-out by Ivy's recorded decision ([R16-V8](data/R16-V8.md)).
 - **Older models** keep their interfaces: 3.0 on v6, 2.0 on v4, 1.x on v3.
+- **Release gates:** safety gate passed at the release commit `22e0317` on interface v8 (`check-peoqmcfv`, all six stages incl. the 18-case bypass set); the published file's SHA-256 matched the evaluated one. Tag `v4.0.0`, [GitHub release](https://github.com/4-R-C-4-N-4/lilguy/releases/tag/v4.0.0).
+- **User path verified from the published tag (RTX 3090):** fresh `uv tool install …@v4.0.0` in isolated dirs, `probe`, `setup` (Hub download, hash `3f777732…`, interface v8), `demo`, a read-only `ask` (timeout=30), the demo rename staged exactly `beach day.jpg -> beach-day.jpg` and `city walk.jpg -> city-walk.jpg` with originals unchanged, hash-reviewed `commit`, `undo` restored both names, `stop`.
 
 ## Where we stand (2026-11-26)
 
