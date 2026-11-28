@@ -1,7 +1,7 @@
-"""Held-out suite v4 calibration at interface 6: controls only, no model.
+"""Held-out suite v4 calibration at interfaces 6 and 8: controls only, no model.
 
 The scripted solution must pass and an immediate `done` must fail for every task, before the
-suite is frozen and before any model sees it.
+suite is frozen and before any model sees it under that interface.
 """
 import pytest
 
@@ -9,11 +9,11 @@ from dev import fast12_runner, holdout_suite_v4
 from lilguy import protocol
 
 pytestmark = pytest.mark.sandbox
-V = 6
 
 
+@pytest.mark.parametrize('V', (6, 8))
 @pytest.mark.parametrize('task', holdout_suite_v4.TASKS, ids=lambda task: task.id)
-def test_holdout_suite_v4_controls(tmp_path, task):
+def test_holdout_suite_v4_controls(tmp_path, task, V):
     tools = protocol.load_tools(version=V)
     mode = fast12_runner.task_mode(task, V, holdout_suite_v4.ASK)
     oracle = fast12_runner.run_oracle(tmp_path / 'oracle', task, tools, holdout_suite_v4.grade, version=V, mode=mode)
